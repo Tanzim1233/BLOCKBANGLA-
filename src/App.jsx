@@ -2206,6 +2206,8 @@ export default function App() {
   const [lang, setLang] = useState('en'); // 'en' | 'bn'
   const [atmosphere, setAtmosphere] = useState('dusk');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Full Visual Redesign Direction: 'editorial' (Digital Museum default) | 'technical' (Studio Dashboard)
+  const [designMode, setDesignMode] = useState('editorial');
 
   // ==========================================================================
   // MOTION ENGINE, SCROLL PROGRESS, CUSTOM CURSOR & ROUTE CURTAIN STATE
@@ -3435,7 +3437,13 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#070B0A] bg-voxel-mesh text-slate-100 font-sans-bd pb-20 xl:pb-0 selection:bg-emerald-500 selection:text-slate-950">
+    <div
+      className={`min-h-screen w-full max-w-full overflow-x-hidden text-slate-100 font-sans-bd pb-20 xl:pb-0 selection:bg-emerald-500 selection:text-slate-950 ${
+        designMode === 'editorial'
+          ? 'bg-[#080B0A]'
+          : 'bg-[#070B0A] bg-voxel-mesh'
+      }`}
+    >
       <V2GlobalStyles />
 
       {/* Custom Interactive Dual-Ring Reticle Cursor */}
@@ -3444,7 +3452,7 @@ export default function App() {
       {/* Top Scroll Progress Indicator Bar */}
       <div className="fixed top-0 left-0 right-0 z-[70] h-1 bg-slate-950/60 pointer-events-none">
         <div
-          className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 shadow-[0_0_14px_#10B981] transition-all duration-75"
+          className="h-full bg-gradient-to-r from-emerald-400 via-amber-300 to-emerald-500 transition-all duration-75"
           style={{ width: `${scrollProgressPct}%` }}
         />
       </div>
@@ -3461,8 +3469,8 @@ export default function App() {
           ))}
           <div className="fixed inset-0 flex items-center justify-center">
             <div className="px-6 py-3 rounded-2xl bg-[#050807]/95 border border-emerald-400/50 shadow-2xl text-center">
-              <div className="text-[10px] font-mono-code text-emerald-400 tracking-widest uppercase">
-                BLOCKBANGLA // ROUTE TRANSITION
+              <div className="text-[10px] font-mono-code text-amber-300 tracking-widest uppercase">
+                BLOCKBANGLA
               </div>
               <div className="text-2xl font-display font-extrabold text-white tracking-tight mt-0.5">
                 {routeTransitionTitle}
@@ -3472,18 +3480,30 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Utility Bar — Strictly Constrained to 390px Mobile Viewport Without Horizontal Cutoff */}
-      <div className="w-full max-w-full bg-[#050807] border-b border-emerald-500/20 px-3 sm:px-4 py-1.5 text-xs">
+      {/* Top Utility Bar — Responsive & Constrained for 390px Mobile Viewports */}
+      <div className="w-full max-w-full bg-[#050706] border-b border-white/10 px-3 sm:px-4 py-1.5 text-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="inline-flex items-center gap-1.5 text-emerald-400 font-mono-code text-[11px] truncate">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-              <span className="truncate">BST: {formatDhakaTime(new Date(nowMs))}</span>
+            <span className="inline-flex items-center gap-1.5 text-amber-300/90 font-medium text-[11px] truncate">
+              <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+              <span className="truncate">
+                {lang === 'bn' ? 'ঢাকা সময়:' : 'Dhaka:'} {formatDhakaTime(new Date(nowMs))}
+              </span>
             </span>
-            <span className="hidden lg:inline text-slate-600">|</span>
-            <span className="hidden lg:inline text-[11px] font-mono-code text-slate-400">
-              Live Status API: <strong className="text-cyan-300">mcsrvstat.us</strong> • Asia/Dhaka (UTC+6)
-            </span>
+            <span className="hidden md:inline text-slate-700">•</span>
+            <button
+              type="button"
+              onClick={() =>
+                setDesignMode((m) => (m === 'editorial' ? 'technical' : 'editorial'))
+              }
+              className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 text-[11px] transition"
+              title="Switch between Cleaner Editorial Digital-Museum look and Technical Studio look"
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>
+                Style: {designMode === 'editorial' ? 'Editorial Museum' : 'Technical Studio'}
+              </span>
+            </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -3502,7 +3522,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setReducedMotion((rm) => !rm)}
-              className={`px-2 py-1 rounded-md font-mono-code text-[11px] border transition ${
+              className={`px-2 py-1 rounded-md text-[11px] border transition ${
                 reducedMotion
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                   : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
@@ -3519,7 +3539,7 @@ export default function App() {
                 setFormNotice(null);
                 setActiveModal('submit-server');
               }}
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/30 font-mono-code text-[11px]"
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 text-amber-200 border border-amber-500/30 text-[11px] font-medium"
             >
               <Plus className="w-3 h-3" />
               <span>{lang === 'bn' ? 'যুক্ত করুন' : 'Contribute'}</span>
@@ -3530,7 +3550,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setAuthModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-mono-code text-[11px]"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 text-[11px]"
               >
                 <img
                   src={playerProfile.skin_url}
@@ -3546,7 +3566,7 @@ export default function App() {
                   setAuthError(null);
                   setAuthModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 transition text-[11px]"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-400 text-slate-950 font-bold hover:bg-amber-300 transition text-[11px]"
               >
                 <UserCheck className="w-3 h-3 shrink-0" />
                 <span>{lang === 'bn' ? 'লগইন' : 'Login'}</span>
@@ -3560,27 +3580,27 @@ export default function App() {
       <header
         className={`sticky top-0 z-40 w-full max-w-full transition-all duration-300 ${
           headerScrolled
-            ? 'bg-[#060A09]/95 backdrop-blur-2xl border-b border-emerald-500/35 py-2 shadow-2xl shadow-black/80'
-            : 'bg-[#090D0C]/85 backdrop-blur-md border-b border-emerald-500/15 py-3'
+            ? 'bg-[#060908]/95 backdrop-blur-2xl border-b border-white/10 py-2.5 shadow-2xl shadow-black/80'
+            : 'bg-[#080B0A]/90 backdrop-blur-md border-b border-white/5 py-3.5'
         }`}
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-4 flex items-center justify-between gap-2">
           {/* Brand Identity */}
           <button
             type="button"
-            onClick={() => switchTabWithMotion('home', 'HOME // BLOCKBANGLA')}
+            onClick={() => switchTabWithMotion('home', 'BLOCKBANGLA')}
             onMouseEnter={() => setCursorLabel('HOME')}
             onMouseLeave={() => setCursorLabel(null)}
             className="flex items-center gap-2.5 text-left group min-w-0"
           >
             <BlockBanglaLogo size={headerScrolled ? 34 : 38} />
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span className="text-base sm:text-xl font-display font-extrabold tracking-tight text-white group-hover:text-emerald-400 transition truncate">
                   BLOCK<span className="text-emerald-400">BANGLA</span>
                 </span>
-                <span className="hidden sm:inline-block text-[10px] font-mono-code uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  BD HUB
+                <span className="hidden sm:inline-block text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-200 border border-amber-500/30">
+                  {lang === 'bn' ? 'বাংলাদেশ সংস্করণ' : 'Bangladesh Archive & Hub'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 truncate">
@@ -3663,10 +3683,10 @@ export default function App() {
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:border-emerald-500/50 text-xs font-mono-code"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:border-emerald-500/50 text-xs"
             >
               <Search className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ctrl+K</span>
+              <span>{lang === 'bn' ? 'খুঁজুন' : 'Search'}</span>
             </button>
           </nav>
 
@@ -3695,8 +3715,19 @@ export default function App() {
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
           <div className="lg:hidden border-t border-emerald-500/20 bg-[#0B1210] px-3 py-3 space-y-3 max-h-[80vh] overflow-y-auto">
-            <div className="text-[10px] font-mono-code text-emerald-400 uppercase px-1">
-              Primary Destinations
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[10px] font-semibold text-amber-300 uppercase tracking-wider">
+                Main Destinations
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  setDesignMode((m) => (m === 'editorial' ? 'technical' : 'editorial'))
+                }
+                className="text-[11px] px-2 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10"
+              >
+                Style: {designMode === 'editorial' ? 'Editorial Museum' : 'Technical Studio'}
+              </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {primaryNavItems.map((item) => {
@@ -3722,8 +3753,8 @@ export default function App() {
                 );
               })}
             </div>
-            <div className="text-[10px] font-mono-code text-slate-400 uppercase px-1 pt-1">
-              Community, Tools & Resources
+            <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-1 pt-1">
+              Community, Guides & Utilities
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {secondaryNavItems.map((item) => {
@@ -3756,15 +3787,15 @@ export default function App() {
       {/* ================================================================== */}
       {/* MAIN CONTENT VIEWPORT                                              */}
       {/* ================================================================== */}
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 space-y-12 overflow-x-hidden">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-10 space-y-14 overflow-x-hidden">
         {/* ================================================================ */}
-        {/* VIEW A: HOME — THE FRONT PAGE                                    */}
+        {/* VIEW A: HOME — EDITORIAL DIGITAL MUSEUM & COMMUNITY PORTAL       */}
         {/* ================================================================ */}
         {activeTab === 'home' && (
-          <div className="space-y-12">
-            {/* 1. Cinematic Hero Section with Full-Bleed Atmospheric Photography Mask & Voxel Canvas */}
-            <section className="relative rounded-3xl overflow-hidden border border-emerald-500/25 bg-[#070D0B] p-6 sm:p-10 shadow-2xl">
-              {/* Autonomous Atmospheric Background Image Layer with Gradient Mask */}
+          <div className="space-y-14">
+            {/* 1. Editorial Hero Section: Giving Bangladesh & Its Minecraft Story Visual Prominence */}
+            <section className="relative rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-b from-[#0C1411] via-[#09100E] to-[#070A09] p-5 sm:p-10 shadow-2xl">
+              {/* Soft River Delta Photography Backdrop */}
               <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
                 <img
                   src={
@@ -3772,154 +3803,154 @@ export default function App() {
                     VISUAL_ASSET_MANIFEST[0].originalUrl
                   }
                   alt="Bangladesh Delta Atmosphere"
-                  className="w-full h-full object-cover opacity-20 scale-105 filter saturate-125"
+                  className="w-full h-full object-cover opacity-20 scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#070B0A] via-[#070B0A]/90 to-[#070B0A]/65" />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#070B0A] via-transparent to-[#070B0A]/80" />
               </div>
 
               <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              <div className="lg:col-span-5 space-y-5">
-                <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono-code">
-                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                  <span>
+                <div className="lg:col-span-5 space-y-5">
+                  <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-400/30 text-amber-200 text-xs font-medium">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>
+                      {lang === 'bn'
+                        ? 'বাংলাদেশের মাইনক্রাফট আর্কাইভ ও কমিউনিটি প্ল্যাটফর্ম'
+                        : 'The Digital Museum & Community Hub of Minecraft in Bangladesh'}
+                    </span>
+                  </div>
+
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold tracking-tight text-white leading-[1.12]">
+                    <KineticSplitText
+                      text={
+                        lang === 'bn'
+                          ? 'বাংলাদেশের একটি নিজস্ব মাইনক্রাফট ইতিহাস আছে। চলুন পরবর্তী অধ্যায়টি গড়ি।'
+                          : "Bangladesh has a Minecraft story. Let's build its next chapter."
+                      }
+                      highlightWords={['Minecraft', 'story.', 'মাইনক্রাফট', 'ইতিহাস']}
+                      reducedMotion={reducedMotion}
+                    />
+                  </h1>
+
+                  <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
                     {lang === 'bn'
-                      ? 'জাভা (PC) • বেডরক (মোবাইল) • বাংলাদেশ কমিউনিটি'
-                      : 'JAVA (PC) • BEDROCK (MOBILE) • BANGLADESH HUB'}
-                  </span>
+                      ? '২০১১ সালের অফলাইন ল্যান থেকে শুরু করে আজকের পিসি ও মোবাইল ক্রসপ্লে সার্ভার এবং ৩,৬০০+ বাংলা ইউটিউব চ্যানেল—বাংলাদেশের মাইনক্রাফট ইতিহাস, সার্ভার এবং ইভেন্টের প্রামাণ্য ঠিকানা।'
+                      : 'From 2011 dorm-room LAN worlds to today’s crossplay servers and 3,600+ Bengali creator channels—discover active servers, join community events, or explore sixteen years of documented history.'}
+                  </p>
+
+                  {/* Plain-Language Jargon Helper Pills for Newer Players */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-slate-400 mr-1">
+                      {lang === 'bn' ? 'সহজ ব্যাখ্যা:' : 'Plain-English Guide:'}
+                    </span>
+                    <TermTooltip term="Geyser" label="Crossplay (PC + Mobile)" lang={lang} />
+                    <TermTooltip term="BDIX" label="BDIX Local Ping" lang={lang} />
+                    <TermTooltip term="SMP" label="What is an SMP?" lang={lang} />
+                  </div>
+
+                  {/* 3 Clear Priority Actions */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
+                    <MagneticButton
+                      onClick={() => switchTabWithMotion('servers', 'SERVER DIRECTORY')}
+                      onCursorHover={setCursorLabel}
+                      cursorLabel="SERVERS"
+                      reducedMotion={reducedMotion}
+                      className="tactile-btn flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition"
+                    >
+                      <Server className="w-4 h-4 shrink-0" />
+                      <span>{lang === 'bn' ? 'সার্ভার খুঁজুন' : 'Find a Server'}</span>
+                    </MagneticButton>
+                    <MagneticButton
+                      onClick={() => switchTabWithMotion('legacy', 'THE LEGACY ARCHIVE')}
+                      onCursorHover={setCursorLabel}
+                      cursorLabel="HISTORY"
+                      reducedMotion={reducedMotion}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-200 border border-amber-400/40 font-semibold text-xs sm:text-sm transition"
+                    >
+                      <History className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>{lang === 'bn' ? 'ইতিহাস আর্কাইভ' : 'Explore History'}</span>
+                    </MagneticButton>
+                    <MagneticButton
+                      onClick={() => switchTabWithMotion('events', 'COMMUNITY EVENTS')}
+                      onCursorHover={setCursorLabel}
+                      cursorLabel="EVENTS"
+                      reducedMotion={reducedMotion}
+                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/15 font-semibold text-xs sm:text-sm transition"
+                    >
+                      <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>{lang === 'bn' ? 'ইভেন্ট দেখুন' : 'Join Events'}</span>
+                    </MagneticButton>
+                  </div>
+
+                  {/* Editorial Sourced Highlights (With Clear Human-Readable Evidence) */}
+                  <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-white/10 text-left">
+                    <button
+                      type="button"
+                      onClick={() => switchTabWithMotion('legacy', 'HISTORY ARCHIVE')}
+                      className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-amber-400/50 transition"
+                    >
+                      <div className="text-base sm:text-lg font-display font-extrabold text-amber-300">
+                        2010–2026
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-200">10 Historical Eras</div>
+                      <div className="text-[10px] text-slate-400">7 dated citations</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchTabWithMotion('servers', 'SERVERS')}
+                      className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-emerald-400/50 transition"
+                    >
+                      <div className="text-base sm:text-lg font-display font-extrabold text-emerald-400">
+                        {liveEcosystemStats.onlineNodes} of {servers.length}
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-200">Servers Responding</div>
+                      <div className="text-[10px] text-slate-400">Checked via mcsrvstat.us</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchTabWithMotion('creators', 'CREATORS')}
+                      className="p-2.5 rounded-xl bg-white/[0.03] border border-white/10 hover:border-cyan-400/50 transition"
+                    >
+                      <div className="text-base sm:text-lg font-display font-extrabold text-cyan-300">
+                        <AnimatedStatCounter targetValue={19000} suffix="+" reducedMotion={reducedMotion} />
+                      </div>
+                      <div className="text-[11px] font-medium text-slate-200">Bangla Videos</div>
+                      <div className="text-[10px] text-slate-400">Public YouTube hashtag</div>
+                    </button>
+                  </div>
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-display font-extrabold tracking-tight text-white leading-[1.12]">
-                  <KineticSplitText
-                    text={
-                      lang === 'bn'
-                        ? 'বাংলাদেশের একটি নিজস্ব মাইনক্রাফট ইতিহাস আছে। চলুন পরবর্তী অধ্যায়টি গড়ি।'
-                        : "Bangladesh has a Minecraft story. Let's build its next chapter."
-                    }
-                    highlightWords={['Minecraft', 'story.', 'মাইনক্রাফট', 'ইতিহাস']}
-                    reducedMotion={reducedMotion}
+                {/* Interactive Voxel Bangladesh Landmark Scene */}
+                <div className="lg:col-span-7 animate-clip-reveal">
+                  <HeroVoxelBangladeshCanvas
+                    atmosphere={atmosphere}
+                    setAtmosphere={setAtmosphere}
+                    lang={lang}
                   />
-                </h1>
-
-                <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-                  {lang === 'bn'
-                    ? '২০১১ সালের অফলাইন ল্যান থেকে শুরু করে আজকের পিসি ও মোবাইল ক্রসপ্লে সার্ভার এবং ৩,৬০০+ বাংলা ইউটিউব চ্যানেল—BLOCKBANGLA হলো বাংলাদেশের সকল মাইনক্রাফট প্লেয়ারদের কেন্দ্রীয় ঠিকানা।'
-                    : 'From 2011 LAN worlds to today’s PC & mobile crossplay servers and 3,600+ Bengali creator channels—find a server, join tournaments, or explore our sourced history archive.'}
-                </p>
-
-                {/* Plain-Language Jargon Helper Pills for Newer Players */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[11px] text-slate-400 mr-1">
-                    {lang === 'bn' ? 'নতুন প্লেয়ার গাইড:' : 'New to these terms?'}
-                  </span>
-                  <TermTooltip term="Geyser" label="Crossplay (Geyser)" lang={lang} />
-                  <TermTooltip term="BDIX" label="BDIX Low Ping" lang={lang} />
-                  <TermTooltip term="SMP" label="What is SMP?" lang={lang} />
                 </div>
-
-                {/* 3 Focused Primary Priority Actions + Contribute */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
-                  <MagneticButton
-                    onClick={() => switchTabWithMotion('servers', 'LIVE SERVER DIRECTORY')}
-                    onCursorHover={setCursorLabel}
-                    cursorLabel="SERVERS"
-                    reducedMotion={reducedMotion}
-                    className="tactile-btn flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition"
-                  >
-                    <Server className="w-4 h-4 shrink-0" />
-                    <span>{lang === 'bn' ? '১. সার্ভার খুঁজুন' : '1. Find a Server'}</span>
-                  </MagneticButton>
-                  <MagneticButton
-                    onClick={() => switchTabWithMotion('events', 'TOURNAMENT ENGINE')}
-                    onCursorHover={setCursorLabel}
-                    cursorLabel="EVENTS"
-                    reducedMotion={reducedMotion}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-emerald-500/40 font-semibold text-xs sm:text-sm transition"
-                  >
-                    <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span>{lang === 'bn' ? '২. ইভেন্ট ও টুর্নামেন্ট' : '2. Join Events'}</span>
-                  </MagneticButton>
-                  <MagneticButton
-                    onClick={() => switchTabWithMotion('legacy', 'THE LEGACY MUSEUM')}
-                    onCursorHover={setCursorLabel}
-                    cursorLabel="MUSEUM"
-                    reducedMotion={reducedMotion}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-amber-500/40 font-semibold text-xs sm:text-sm transition"
-                  >
-                    <History className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span>{lang === 'bn' ? '৩. ইতিহাস আর্কাইভ' : '3. History Archive'}</span>
-                  </MagneticButton>
-                </div>
-
-                {/* Sourced Metrics Snapshot with Explicit Provenance Links */}
-                <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-slate-800/80 text-center">
-                  <button
-                    type="button"
-                    onClick={() => switchTabWithMotion('creators', 'CREATORS')}
-                    className="p-2.5 rounded-lg bg-[#0D1614] border border-emerald-500/25 hover:border-emerald-400 transition text-center"
-                  >
-                    <div className="text-base sm:text-lg font-display font-extrabold text-emerald-400">
-                      <AnimatedStatCounter targetValue={19000} suffix="+" reducedMotion={reducedMotion} />
-                    </div>
-                    <div className="text-[10px] text-slate-300">#minecraftbangla Videos</div>
-                    <div className="text-[9px] font-mono-code text-emerald-400/80">Source: YT Index</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchTabWithMotion('servers', 'SERVERS')}
-                    className="p-2.5 rounded-lg bg-[#0D1614] border border-cyan-500/25 hover:border-cyan-400 transition text-center"
-                  >
-                    <div className="text-base sm:text-lg font-display font-extrabold text-cyan-400">
-                      {liveEcosystemStats.onlineNodes}/{servers.length}
-                    </div>
-                    <div className="text-[10px] text-slate-300">Tracked Servers Online</div>
-                    <div className="text-[9px] font-mono-code text-cyan-400/80">Live: mcsrvstat.us</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchTabWithMotion('legacy', 'LEGACY')}
-                    className="p-2.5 rounded-lg bg-[#0D1614] border border-amber-500/25 hover:border-amber-400 transition text-center"
-                  >
-                    <div className="text-base sm:text-lg font-display font-extrabold text-amber-400">
-                      2010–2026
-                    </div>
-                    <div className="text-[10px] text-slate-300">10 Sourced Eras</div>
-                    <div className="text-[9px] font-mono-code text-amber-400/80">7 Primary Citations</div>
-                  </button>
-                </div>
-              </div>
-
-              {/* Interactive Voxel Bangladesh Canvas */}
-              <div className="lg:col-span-7 animate-clip-reveal">
-                <HeroVoxelBangladeshCanvas
-                  atmosphere={atmosphere}
-                  setAtmosphere={setAtmosphere}
-                  lang={lang}
-                />
-              </div>
               </div>
             </section>
 
             {/* 2. First-Visit "Find Your Server" Guided Matcher Flow */}
-            <section className="rounded-3xl bg-[#0D1513] border border-emerald-500/35 p-5 sm:p-8 space-y-6 shadow-xl">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <section className="rounded-3xl bg-[#0C1311] border border-white/10 p-5 sm:p-8 space-y-6 shadow-xl">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
                 <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                    FIRST-TIME VISITOR GUIDE // FIND YOUR BANGLADESHI SERVER IN 10 SECONDS
+                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                    {lang === 'bn' ? 'প্রথমবার এসেছেন? সার্ভার খুঁজুন' : 'Start Playing • Find a Bangladeshi Server'}
                   </span>
                   <h2 className="text-xl sm:text-2xl font-display font-extrabold text-white mt-0.5">
                     {lang === 'bn'
                       ? 'আপনার ডিভাইস ও পছন্দের গেম মোড অনুযায়ী সার্ভার বেছে নিন'
-                      : 'Find Your Server: Filter by Your Device & Favorite Mode'}
+                      : 'Choose Your Device and Preferred Game Mode'}
                   </h2>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowStatusDisclosure((d) => !d)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 text-xs font-mono-code"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-medium"
                 >
-                  <Info className="w-3.5 h-3.5" />
-                  <span>{showStatusDisclosure ? 'Hide Verification Info' : 'How We Check Status'}</span>
+                  <Info className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{showStatusDisclosure ? 'Hide Verification Note' : 'How We Check Server Status'}</span>
                 </button>
               </div>
 
