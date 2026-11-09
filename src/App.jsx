@@ -165,8 +165,10 @@ const V2GlobalStyles = () => (
       --font-mono: 'JetBrains Mono', monospace;
     }
 
-    html {
+    html, body {
       scroll-behavior: smooth;
+      max-width: 100%;
+      overflow-x: hidden;
     }
 
     .font-display {
@@ -305,6 +307,78 @@ const V2GlobalStyles = () => (
     }
   `}</style>
 );
+
+// ============================================================================
+// 0.15 PLAIN-LANGUAGE GLOSSARY & BEGINNER-FRIENDLY JARGON TOOLTIP COMPONENT
+// ============================================================================
+const PLAIN_LANGUAGE_GLOSSARY = {
+  BDIX: {
+    short: 'Local Bangladesh Internet Exchange',
+    en: 'BDIX connects Bangladeshi ISPs directly inside the country. Servers on BDIX give 5–15ms ping in Bangladesh instead of 50–180ms international ping.',
+    bn: 'বিডিআইএক্স (BDIX) বাংলাদেশের অভ্যন্তরীণ নেটওয়ার্ক এক্সচেঞ্জ। এতে যুক্ত সার্ভারে বাংলাদেশ থেকে মাত্র ৫-১৫ পিং পাওয়া যায়।'
+  },
+  Geyser: {
+    short: 'Java + Mobile Bedrock Crossplay Bridge',
+    en: 'GeyserMC is an open-source plugin that lets Android, iOS, and Console (Bedrock Edition) players join PC (Java Edition) servers using Port 19132.',
+    bn: 'GeyserMC এমন একটি প্রযুক্তি যার মাধ্যমে মোবাইল (Bedrock) এবং পিসি (Java) প্লেয়াররা একই সার্ভারে একসাথে খেলতে পারে।'
+  },
+  'API RTT': {
+    short: 'Status API Check Time (Not In-Game Ping)',
+    en: 'API RTT measures how fast your browser reached the public server-status checker (mcsrvstat.us). Your actual in-game ping inside Bangladesh will usually be much lower.',
+    bn: 'এটি ব্রাউজার থেকে স্ট্যাটাস চেকার এপিআই-এর রেসপন্স সময় নির্দেশ করে; গেমের ভেতরের আসল পিং সাধারণত আরও কম হয়।'
+  },
+  PBR: {
+    short: 'Physically Based Rendering (Realistic Lighting)',
+    en: 'PBR is a graphics technique used by Minecraft shaders and 3D scenes so water, gold, and wet mud reflect sunlight realistically.',
+    bn: 'পিবিআর (PBR) হলো আধুনিক গ্রাফিক্স প্রযুক্তি যা মাইনক্রাফটের পানি, ধাতু ও ব্লকের ওপর বাস্তবসম্মত আলোর প্রতিফলন তৈরি করে।'
+  },
+  SMP: {
+    short: 'Survival Multiplayer Server',
+    en: 'A shared multiplayer survival world where players gather resources, build towns, trade, and collaborate or compete together.',
+    bn: 'সারভাইভাল মাল্টিপ্লেয়ার ওয়ার্ল্ড—যেখানে অনেক প্লেয়ার একসাথে ঘর বানায়, রিসোর্স সংগ্রহ করে এবং দলবদ্ধভাবে খেলে।'
+  }
+};
+
+const TermTooltip = ({ term, label, lang = 'en' }) => {
+  const [open, setOpen] = useState(false);
+  const entry = PLAIN_LANGUAGE_GLOSSARY[term] || {
+    short: term,
+    en: label || term,
+    bn: label || term
+  };
+
+  return (
+    <span className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono-code underline decoration-dotted underline-offset-2 transition"
+        aria-label={`Explain ${term}`}
+      >
+        <span>{label || term}</span>
+        <HelpCircle className="w-3 h-3 text-emerald-400 shrink-0" />
+      </button>
+      {open && (
+        <span
+          role="tooltip"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-xl bg-[#060A09] border border-emerald-400/50 shadow-2xl text-left z-50 pointer-events-none"
+        >
+          <span className="block text-[10px] font-mono-code font-bold text-emerald-400 uppercase">
+            {term} — {entry.short}
+          </span>
+          <span className="block text-[11px] font-sans-bd text-slate-200 leading-relaxed mt-1">
+            {lang === 'bn' ? entry.bn : entry.en}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+};
 
 // ============================================================================
 // 0.2 PROFESSIONAL MOTION & WEBGL ENGINE COMPONENTS (GSAP + THREE.JS + R3F/CSS3D)
@@ -678,45 +752,34 @@ const KineticMarqueeRibbon = ({ lang }) => {
     'ONE BLOCK AT A TIME',
     'JAVA & BEDROCK CROSSPLAY',
     'BDIX LOW-LATENCY ROUTING',
-    '2010–2026 DIGITAL MUSEUM',
+    '2010–2026 SOURCED ARCHIVE',
     '19,000+ #MINECRAFTBANGLA VIDEOS',
-    'ZERO FAKE SERVER STATS'
+    'LIVE MCSRVSTAT.US STATUS QUERIES'
   ];
   const itemsBn = [
     'মাইনক্রাফট বাংলাদেশ',
     'কমিউনিটির নিজের ঘর',
     'জাভা ও বেডরক ক্রসপ্লে',
     'বিডিআইএক্স লো-পিং সার্ভার',
-    '২০১০–২০২৬ ডিজিটাল মিউজিয়াম',
+    '২০১০–২০২৬ প্রামাণ্য আর্কাইভ',
     '১৯,০০০+ বাংলা মাইনক্রাফট ভিডিও'
   ];
   const list = lang === 'bn' ? itemsBn : itemsEn;
 
   return (
-    <div className="relative py-5 bg-[#050908] border-y border-emerald-500/25 overflow-hidden select-none space-y-2.5">
+    <div className="relative w-full max-w-full py-4 bg-[#050908] border-y border-emerald-500/25 overflow-hidden select-none space-y-2">
       {/* Row 1: Leftward Kinetic Stream */}
       <div className="marquee-track-left">
         {[...list, ...list].map((item, idx) => (
-          <div key={idx} className="flex items-center gap-5 mx-5">
+          <div key={idx} className="flex items-center gap-4 mx-4">
             <span
-              className={`text-xl sm:text-3xl font-display font-extrabold tracking-tight uppercase transition ${
+              className={`text-lg sm:text-2xl font-display font-extrabold tracking-tight uppercase transition ${
                 idx % 2 === 0 ? 'text-white' : 'text-stroke-emerald'
               }`}
             >
               {item}
             </span>
-            <span className="w-2.5 h-2.5 rotate-45 bg-emerald-400 shadow-[0_0_12px_#10B981]" />
-          </div>
-        ))}
-      </div>
-      {/* Row 2: Rightward Subtle Telemetry Stream */}
-      <div className="marquee-track-right opacity-75">
-        {[...list, ...list].map((item, idx) => (
-          <div key={idx} className="flex items-center gap-4 mx-4">
-            <span className="text-xs font-mono-code text-emerald-400/80 tracking-widest uppercase">
-              // {item}
-            </span>
-            <span className="text-amber-400 text-xs">✦</span>
+            <span className="w-2 h-2 rotate-45 bg-emerald-400 shadow-[0_0_12px_#10B981]" />
           </div>
         ))}
       </div>
@@ -724,15 +787,33 @@ const KineticMarqueeRibbon = ({ lang }) => {
   );
 };
 
-// 7. Real Three.js WebGL / Interactive 3D Voxel Bangladesh Floating Island (Bruno Simon / Lusion / Mesh3D Style)
+// 7. Real Three.js WebGL / Interactive 3D Voxel Bangladesh Floating Island (With Offscreen Pause & Mobile Guardrails)
 const WebGLVoxelBengalScene = ({ atmosphere = 'dusk', threeReady, reducedMotion }) => {
   const mountRef = useRef(null);
   const [activeBiomeMode, setActiveBiomeMode] = useState('sangsad-delta');
   const [webglActive, setWebglActive] = useState(false);
+  const [isVisibleOnScreen, setIsVisibleOnScreen] = useState(true);
+  const [sceneEnabled, setSceneEnabled] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 640 : true
+  );
+
+  // Motion Guardrail: Pause WebGL loop when scrolled off-screen
+  useEffect(() => {
+    const el = mountRef.current;
+    if (!el || !('IntersectionObserver' in window)) return undefined;
+    const io = new IntersectionObserver(
+      (entries) => {
+        setIsVisibleOnScreen(Boolean(entries[0]?.isIntersecting));
+      },
+      { threshold: 0.05 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const container = mountRef.current;
-    if (!container || !window.THREE) return;
+    if (!container || !window.THREE || !sceneEnabled || !isVisibleOnScreen) return;
 
     const THREE = window.THREE;
     let renderer;
@@ -911,22 +992,36 @@ const WebGLVoxelBengalScene = ({ atmosphere = 'dusk', threeReady, reducedMotion 
       container.removeEventListener('pointermove', onPointerMove);
       renderer.dispose();
     };
-  }, [atmosphere, threeReady, activeBiomeMode, reducedMotion]);
+  }, [atmosphere, threeReady, activeBiomeMode, reducedMotion, sceneEnabled, isVisibleOnScreen]);
 
   return (
     <div className="rounded-2xl bg-[#09110F] border border-emerald-500/30 overflow-hidden shadow-2xl">
       <div className="px-4 py-2.5 bg-[#060A09] border-b border-emerald-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 font-mono-code text-emerald-300">
-          <Box className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: '10s' }} />
+          <Box className="w-4 h-4 text-emerald-400" />
           <span>
-            THREE.JS WEBGL 3D VOXEL BENGAL DELTA // {webglActive ? '60FPS GPU ACTIVE' : 'INITIALIZING 3D'}
+            3D VOXEL BENGAL LANDMARK SCENE //{' '}
+            {!sceneEnabled
+              ? 'STATIC POWER-SAVER MODE'
+              : !isVisibleOnScreen
+              ? 'PAUSED OFF-SCREEN'
+              : webglActive
+              ? 'INTERACTIVE 3D ACTIVE'
+              : 'READY'}
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSceneEnabled((prev) => !prev)}
+            className="px-2.5 py-1 rounded text-[11px] font-mono-code bg-slate-800 text-amber-300 border border-amber-500/30 hover:bg-slate-700"
+          >
+            {sceneEnabled ? 'Pause / Static View' : 'Enable Interactive 3D'}
+          </button>
           {[
             { id: 'sangsad-delta', label: 'Sangsad & Padma' },
             { id: 'paharpur-arch', label: 'Paharpur Stupa' },
-            { id: 'sundarbans-night', label: 'Sundarbans Fireflies' }
+            { id: 'sundarbans-night', label: 'Sundarbans' }
           ].map((m) => (
             <button
               key={m.id}
@@ -943,21 +1038,39 @@ const WebGLVoxelBengalScene = ({ atmosphere = 'dusk', threeReady, reducedMotion 
           ))}
         </div>
       </div>
-      <div
-        ref={mountRef}
-        className="w-full h-64 sm:h-72 cursor-grab active:cursor-grabbing relative bg-gradient-to-b from-[#071210] via-[#0B1C18] to-[#050908]"
-        title="Drag or move cursor to orbit 3D Voxel Bangladesh Island"
-      />
-      <div className="px-4 py-2 bg-[#060A09] border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono-code text-slate-400">
-        <span>Interactive WebGL Scene: Move mouse or drag to orbit 3D voxel chunks</span>
-        <span className="text-emerald-400">28 Dynamic Firefly Particles • PBR Lighting</span>
+      {sceneEnabled ? (
+        <div
+          ref={mountRef}
+          className="w-full h-60 sm:h-72 cursor-grab active:cursor-grabbing relative bg-gradient-to-b from-[#071210] via-[#0B1C18] to-[#050908]"
+          title="Drag or move cursor to orbit 3D Voxel Bangladesh Island"
+        />
+      ) : (
+        <div
+          ref={mountRef}
+          className="w-full h-56 sm:h-64 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#071210] via-[#0B1C18] to-[#050908] space-y-3"
+        >
+          <p className="text-xs sm:text-sm text-slate-300 max-w-md">
+            3D WebGL scene is paused to save battery and keep scrolling fast on mobile/low-power devices.
+          </p>
+          <button
+            type="button"
+            onClick={() => setSceneEnabled(true)}
+            className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
+          >
+            Launch Interactive 3D Voxel Island
+          </button>
+        </div>
+      )}
+      <div className="px-4 py-2 bg-[#060A09] border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono-code text-slate-400">
+        <span>Drag to orbit landmarks • Auto-pauses when scrolled off-screen</span>
+        <TermTooltip term="PBR" label="What is PBR Lighting?" />
       </div>
     </div>
   );
 };
 
-// 8. Pinned Scroll-Synchronized Storytelling Section (GSAP ScrollTrigger + Reversible Scroll Scrubber)
-const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
+// 8. Scroll-Driven History Journey (Pinned on Desktop + Accessible Non-Pinned Fallback on Mobile)
+const PinnedBengalStoryScrubber = ({ lang, onNavigateTab, onOpenSubmitMemory }) => {
   const sectionRef = useRef(null);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [manualStage, setManualStage] = useState(null);
@@ -974,7 +1087,8 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
         'আন্তর্জাতিক পেমেন্ট কার্ড সহজলভ্য হওয়ার আগে পেনড্রাইভ এবং লগমিইন হামাচি ভার্চুয়াল ল্যানের মাধ্যমে বাংলাদেশের তরুণদের মাঝে মাইনক্রাফট ছড়িয়ে পড়ে।',
       coord: 'X: 2011, Y: 64, Z: 90',
       accent: '#10B981',
-      badge: 'GENESIS ERA'
+      badge: 'DOCUMENTED ECOSYSTEM ERA',
+      sourceLabel: 'Source: SRC-BD-01 (2011–2014 Oral & Forum Archive)'
     },
     {
       stage: '02 / 04',
@@ -987,7 +1101,8 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
         'মাতৃভাষা বাংলায় সারভাইভাল গেমপ্লে এবং সাশ্রয়ী অ্যান্ড্রয়েড স্মার্টফোনের মাধ্যমে সারা বাংলাদেশে মাইনক্রাফট পৌঁছে যায়।',
       coord: 'X: 2017, Y: 85, Z: 310',
       accent: '#F59E0B',
-      badge: 'EXPANSION ERA'
+      badge: 'VERIFIED ECOSYSTEM SHIFT',
+      sourceLabel: 'Source: SRC-BD-05 (YouTube #minecraftbangla Archive)'
     },
     {
       stage: '03 / 04',
@@ -1000,7 +1115,8 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
         '৯ এপ্রিল ২০১৮-এ BDZONE এবং ২০২১-এ Cyan Plex প্রতিষ্ঠার মাধ্যমে দেশীয় সার্ভারের যুগ শুরু হয় এবং নির্মিত হয় সংসদ ভবন ও পদ্মা সেতুর ভক্সেল রেপ্লিকা।',
       coord: 'X: 2021, Y: 108, Z: 580',
       accent: '#06B6D4',
-      badge: 'INFRASTRUCTURE ERA'
+      badge: 'VERIFIED FACT',
+      sourceLabel: 'Source: SRC-BD-02 & SRC-BD-03 (bdzonemc.com/about & Registry)'
     },
     {
       stage: '04 / 04',
@@ -1013,7 +1129,8 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
         'আজ GeyserMC প্রযুক্তিতে পিসি ও মোবাইল প্লেয়াররা একসাথে খেলছে এবং ইউটিউবে #minecraftbangla হ্যাশট্যাগে যুক্ত হয়েছে ১৯ হাজারেরও বেশি ভিডিও।',
       coord: 'X: 2026, Y: 128, Z: 900',
       accent: '#34D399',
-      badge: 'PRESENT & FUTURE'
+      badge: 'VERIFIED FACT (NOV 2026)',
+      sourceLabel: 'Source: SRC-BD-04 & SRC-BD-05 (Public Directory & YouTube Index)'
     }
   ];
 
@@ -1041,29 +1158,29 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-[190vh] rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-[#081210] via-[#0B1916] to-[#070D0C] p-4 sm:p-8"
+      className="relative lg:min-h-[165vh] rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-[#081210] via-[#0B1916] to-[#070D0C] p-4 sm:p-8"
     >
-      <div className="sticky top-20 z-20 rounded-2xl bg-[#070C0B]/95 backdrop-blur-xl border border-emerald-500/30 p-6 sm:p-10 shadow-2xl space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="lg:sticky lg:top-20 z-20 rounded-2xl bg-[#070C0B]/95 backdrop-blur-xl border border-emerald-500/30 p-5 sm:p-8 shadow-2xl space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
           <div>
             <span className="text-xs font-mono-code text-emerald-400 uppercase tracking-wider">
-              PINNED SCROLL-SYNCHRONIZED STORYTELLING // GSAP SCROLLTRIGGER ENGINE
+              SOURCED HISTORY JOURNEY (2010–2026) • SCROLL OR SELECT ERA
             </span>
-            <h2 className="text-2xl sm:text-3xl font-display font-extrabold text-white mt-1">
+            <h2 className="text-xl sm:text-3xl font-display font-extrabold text-white mt-1">
               {lang === 'bn'
-                ? 'স্ক্রল করুন: বাংলাদেশের মাইনক্রাফট মহাকাব্য (২০১০–২০২৬)'
-                : 'Scroll Through Time: The Bangladesh Minecraft Odyssey (2010–2026)'}
+                ? 'বাংলাদেশের মাইনক্রাফট ইতিহাসের প্রামাণ্য সফর'
+                : 'The Bangladesh Minecraft Story: Sourced Timeline'}
             </h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {chapters.map((ch, idx) => (
               <button
                 key={ch.stage}
                 type="button"
-                onClick={() => setManualStage(idx === manualStage ? null : idx)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-mono-code font-bold transition ${
+                onClick={() => setManualStage(idx)}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-mono-code font-bold transition ${
                   computedIndex === idx
-                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30 scale-105'
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30'
                     : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
                 }`}
               >
@@ -1073,47 +1190,56 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
           </div>
         </div>
 
-        {/* Scroll Progress Bar inside Pinned Viewport */}
+        {/* Scroll Progress Bar */}
         <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
           <div
             className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-150"
-            style={{ width: `${Math.max(12, Math.round(((computedIndex + 1) / chapters.length) * 100))}%` }}
+            style={{ width: `${Math.max(15, Math.round(((computedIndex + 1) / chapters.length) * 100))}%` }}
           />
         </div>
 
-        {/* Dynamic Morphing Stage Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center gap-3 text-xs font-mono-code">
+        {/* Dynamic Stage Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div className="lg:col-span-7 space-y-3.5">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-mono-code">
               <span
-                className="px-3 py-1 rounded-full font-bold text-slate-950"
+                className="px-2.5 py-1 rounded-full font-bold text-slate-950"
                 style={{ backgroundColor: activeChapter.accent }}
               >
-                CHAPTER {activeChapter.stage} • {activeChapter.badge}
+                {activeChapter.stage} • {activeChapter.badge}
               </span>
-              <span className="text-slate-400">{activeChapter.coord}</span>
+              <span className="text-slate-400">{activeChapter.sourceLabel}</span>
             </div>
 
-            <div className="text-4xl sm:text-5xl font-display font-extrabold text-white tracking-tight">
+            <div className="text-3xl sm:text-4xl font-display font-extrabold text-white tracking-tight">
               {activeChapter.years}
             </div>
 
-            <h3 className="text-xl sm:text-2xl font-display font-bold text-emerald-300">
+            <h3 className="text-lg sm:text-2xl font-display font-bold text-emerald-300">
               {lang === 'bn' ? activeChapter.titleBn : activeChapter.titleEn}
             </h3>
 
-            <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+            <p className="text-xs sm:text-base text-slate-300 leading-relaxed">
               {lang === 'bn' ? activeChapter.descBn : activeChapter.descEn}
             </p>
 
-            <div className="pt-2 flex flex-wrap gap-3">
+            <div className="pt-2 flex flex-wrap gap-2.5">
               <button
                 type="button"
                 onClick={() => onNavigateTab('legacy')}
                 className="tactile-btn px-4 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
               >
-                Open Full 10-Era Digital Museum →
+                Explore All 10 Eras & Citations →
               </button>
+              {onOpenSubmitMemory && (
+                <button
+                  type="button"
+                  onClick={onOpenSubmitMemory}
+                  className="px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-mono-code font-semibold"
+                >
+                  + Submit Memory / Report Correction
+                </button>
+              )}
               {manualStage !== null && (
                 <button
                   type="button"
@@ -1128,35 +1254,34 @@ const PinnedBengalStoryScrubber = ({ lang, onNavigateTab }) => {
 
           {/* Animated Isometric Morphing Stage Visualizer */}
           <div className="lg:col-span-5">
-            <div className="rounded-2xl bg-[#050807] border border-emerald-500/30 p-6 relative overflow-hidden">
-              <svg viewBox="0 0 320 220" className="w-full h-52">
+            <div className="rounded-2xl bg-[#050807] border border-emerald-500/30 p-5 relative overflow-hidden">
+              <svg viewBox="0 0 320 200" className="w-full h-44">
                 <defs>
                   <radialGradient id="pinStageGlow" cx="50%" cy="50%" r="50%">
                     <stop offset="0%" stopColor={activeChapter.accent} stopOpacity="0.45" />
                     <stop offset="100%" stopColor="#050807" stopOpacity="0" />
                   </radialGradient>
                 </defs>
-                <circle cx="160" cy="110" r="95" fill="url(#pinStageGlow)" />
-                {/* Morphing Voxel Geometry based on computedIndex */}
+                <circle cx="160" cy="100" r="85" fill="url(#pinStageGlow)" />
                 <g
-                  transform={`translate(160, 115) scale(${1 + computedIndex * 0.08}) rotate(${
+                  transform={`translate(160, 105) scale(${1 + computedIndex * 0.08}) rotate(${
                     computedIndex * 12
                   })`}
                   style={{ transition: 'transform 500ms cubic-bezier(0.16, 1, 0.3, 1)' }}
                 >
                   <polygon
-                    points="0,-55 64,-22 0,12 -64,-22"
+                    points="0,-50 60,-20 0,12 -60,-20"
                     fill={activeChapter.accent}
                     fillOpacity="0.85"
                   />
-                  <polygon points="-64,-22 0,12 0,68 -64,34" fill="#0F766E" />
-                  <polygon points="0,12 64,-22 64,34 0,68" fill="#064E3B" />
-                  <circle cx="0" cy="-22" r={8 + computedIndex * 3} fill="#FDE047" />
+                  <polygon points="-60,-20 0,12 0,60 -60,30" fill="#0F766E" />
+                  <polygon points="0,12 60,-20 60,30 0,60" fill="#064E3B" />
+                  <circle cx="0" cy="-20" r={7 + computedIndex * 3} fill="#FDE047" />
                 </g>
               </svg>
               <div className="flex items-center justify-between text-[11px] font-mono-code text-slate-400 border-t border-slate-800 pt-2">
-                <span>SCROLL PROGRESS: {Math.round(scrollProgress * 100)}%</span>
-                <span className="text-emerald-400">REVERSIBLE TIMELINE SCRUB</span>
+                <span>PROGRESS: {Math.round(((computedIndex + 1) / chapters.length) * 100)}%</span>
+                <span className="text-emerald-400">{activeChapter.coord}</span>
               </div>
             </div>
           </div>
@@ -1335,25 +1460,127 @@ const HERO_HOTSPOTS = [
 
 const HeroVoxelBangladeshCanvas = ({ atmosphere, setAtmosphere, lang }) => {
   const [activeHotspot, setActiveHotspot] = useState(HERO_HOTSPOTS[0]);
+  // Voxel Construction Reveal (Stages 1 to 4, default 4 = Full Build; can step/animate or skip)
+  const [buildStage, setBuildStage] = useState(4);
+  const [isConstructing, setIsConstructing] = useState(false);
+  // Map-to-Build Camera Transition Toggle ('voxel' | 'map-delta')
+  const [canvasMode, setCanvasMode] = useState('voxel');
+
+  useEffect(() => {
+    if (!isConstructing) return undefined;
+    const timer = setInterval(() => {
+      setBuildStage((prev) => {
+        if (prev >= 4) {
+          setIsConstructing(false);
+          return 4;
+        }
+        return prev + 1;
+      });
+    }, 650);
+    return () => clearInterval(timer);
+  }, [isConstructing]);
+
+  const triggerBuildReveal = () => {
+    setCanvasMode('voxel');
+    setBuildStage(1);
+    setIsConstructing(true);
+  };
+
   const skyGradient = atmosphere === 'dusk' ? ['#1E1B4B', '#7C2D12', '#F59E0B'] : atmosphere === 'monsoon' ? ['#090D16', '#0F292E', '#134E4A'] : ['#050807', '#0B1917', '#064E3B'];
   const sunColor = atmosphere === 'dusk' ? '#FBBF24' : atmosphere === 'monsoon' ? '#38BDF8' : '#34D399';
 
   return (
     <div className="relative rounded-2xl border border-emerald-500/30 bg-[#0B1210] overflow-hidden shadow-2xl shadow-emerald-950/60">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-[#090D0C]/90 border-b border-emerald-500/20 text-xs">
-        <div className="flex items-center gap-2">
-          <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-mono text-emerald-300 tracking-wide">VOXEL_BENGAL_RENDER // 23.6850°N, 90.3563°E</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 bg-[#090D0C]/95 border-b border-emerald-500/20 text-xs">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setCanvasMode((m) => (m === 'voxel' ? 'map-delta' : 'voxel'))}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono-code font-semibold hover:bg-emerald-500/30 transition"
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>{canvasMode === 'voxel' ? 'Map ↔ Build View' : 'Back to Voxel Build'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={triggerBuildReveal}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono-code hover:bg-amber-500/30 transition"
+          >
+            <Hammer className="w-3.5 h-3.5" />
+            <span>{isConstructing ? `Building ${buildStage}/4...` : 'Construct Blocks'}</span>
+          </button>
+          {buildStage < 4 && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsConstructing(false);
+                setBuildStage(4);
+              }}
+              className="px-2 py-1 rounded-md bg-slate-800 text-slate-200 font-mono-code text-[11px]"
+            >
+              Skip / Static
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-1.5">
-          <span className="text-slate-400 mr-1 hidden sm:inline">{lang === 'bn' ? 'আবহাওয়া:' : 'Atmosphere:'}</span>
-          <button type="button" onClick={() => setAtmosphere('dusk')} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition ${atmosphere === 'dusk' ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40' : 'text-slate-400 hover:text-slate-200 bg-white/5'}`}><Sun className="w-3.5 h-3.5" /><span>{lang === 'bn' ? 'গোধূলি' : 'Golden Dusk'}</span></button>
-          <button type="button" onClick={() => setAtmosphere('midnight')} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition ${atmosphere === 'midnight' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'text-slate-400 hover:text-slate-200 bg-white/5'}`}><Moon className="w-3.5 h-3.5" /><span>{lang === 'bn' ? 'মধ্যরাত' : 'Midnight'}</span></button>
-          <button type="button" onClick={() => setAtmosphere('monsoon')} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-medium transition ${atmosphere === 'monsoon' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'text-slate-400 hover:text-slate-200 bg-white/5'}`}><CloudRain className="w-3.5 h-3.5" /><span>{lang === 'bn' ? 'বর্ষাকাল' : 'Monsoon'}</span></button>
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={() => setAtmosphere('dusk')} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium transition ${atmosphere === 'dusk' ? 'bg-amber-500/20 text-amber-300 border border-amber-400/40' : 'text-slate-400 hover:text-slate-200 bg-white/5'}`}><Sun className="w-3.5 h-3.5" /><span className="hidden sm:inline">{lang === 'bn' ? 'গোধূলি' : 'Dusk'}</span></button>
+          <button type="button" onClick={() => setAtmosphere('midnight')} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium transition ${atmosphere === 'midnight' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40' : 'text-slate-400 hover:text-slate-200 bg-white/5'}`}><Moon className="w-3.5 h-3.5" /><span className="hidden sm:inline">{lang === 'bn' ? 'রাত' : 'Night'}</span></button>
+          <button type="button" onClick={() => setAtmosphere('monsoon')} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md font-medium transition ${atmosphere === 'monsoon' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40' : 'text-slate-400 hover:text-slate-200 bg-white/5'}`}><CloudRain className="w-3.5 h-3.5" /><span className="hidden sm:inline">{lang === 'bn' ? 'বর্ষা' : 'Monsoon'}</span></button>
         </div>
       </div>
 
       <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] select-none overflow-hidden">
+        {/* Map-to-Build Overlay when user toggles Bangladesh Delta Coordinates Map */}
+        {canvasMode === 'map-delta' && (
+          <div className="absolute inset-0 z-20 bg-[#050C0A]/95 backdrop-blur-md p-5 flex flex-col justify-between animate-clip-reveal">
+            <div className="flex items-center justify-between border-b border-emerald-500/30 pb-2.5">
+              <div>
+                <span className="text-[10px] font-mono-code text-emerald-400 uppercase block">
+                  BANGLADESH DELTA TOPOGRAPHIC MAP → VOXEL BUILD COORDINATES
+                </span>
+                <h4 className="text-sm sm:text-base font-display font-bold text-white">
+                  Select a Real-World Region in Bangladesh to Zoom Into Its Voxel Build
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCanvasMode('voxel')}
+                className="px-3 py-1 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
+              >
+                Enter Voxel Scene →
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-auto py-2">
+              {HERO_HOTSPOTS.map((spot) => (
+                <button
+                  key={spot.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveHotspot(spot);
+                    setCanvasMode('voxel');
+                  }}
+                  className="text-left p-3 rounded-xl bg-[#091412] hover:bg-emerald-500/15 border border-emerald-500/30 transition flex items-start justify-between gap-2"
+                >
+                  <div>
+                    <div className="text-xs font-bold text-white">
+                      {lang === 'bn' ? spot.titleBn : spot.titleEn}
+                    </div>
+                    <div className="text-[11px] font-mono-code text-emerald-400 mt-0.5">
+                      {spot.biome} ({spot.coords})
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">{spot.blocks}</div>
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-emerald-400 shrink-0" />
+                </button>
+              ))}
+            </div>
+            <div className="text-[11px] font-mono-code text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
+              <span>23.6850°N, 90.3563°E • Bengal Delta Grid</span>
+              <span className="text-emerald-300">Click any landmark above to transition</span>
+            </div>
+          </div>
+        )}
+
         <svg viewBox="0 0 640 360" className="w-full h-full object-cover" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={skyGradient[0]} /><stop offset="55%" stopColor={skyGradient[1]} /><stop offset="100%" stopColor={skyGradient[2]} /></linearGradient>
@@ -1377,6 +1604,7 @@ const HeroVoxelBangladeshCanvas = ({ atmosphere, setAtmosphere, lang }) => {
             <rect x="40" y="52" width="76" height="12" /><rect x="56" y="44" width="44" height="8" />
             <rect x="450" y="42" width="96" height="14" /><rect x="470" y="32" width="52" height="10" /><rect x="190" y="66" width="64" height="10" />
           </g>
+          {/* Stage 1+: Riverbed Foundation & Delta Water */}
           <polygon points="0,210 140,175 290,195 450,168 640,195 640,360 0,360" fill="#064E3B" opacity="0.55" />
           <polygon points="0,235 190,198 370,220 540,192 640,215 640,360 0,360" fill="#065F46" />
           <polygon points="0,260 220,225 460,240 640,225 640,360 0,360" fill="url(#padmaWater)" />
@@ -1384,53 +1612,95 @@ const HeroVoxelBangladeshCanvas = ({ atmosphere, setAtmosphere, lang }) => {
             <rect x="215" y="252" width="38" height="3" /><rect x="225" y="262" width="26" height="3" /><rect x="330" y="275" width="48" height="3" />
             <rect x="445" y="268" width="36" height="3" /><rect x="120" y="295" width="44" height="3" /><rect x="290" y="315" width="62" height="4" />
           </g>
-          <g transform="translate(185, 98)">
-            <polygon points="-15,125 135,125 150,145 -30,145" fill="#0891B2" opacity="0.7" />
-            <rect x="0" y="108" width="118" height="16" fill="#991B1B" />
-            <rect x="8" y="98" width="102" height="10" fill="#CBD5E1" />
-            <rect x="12" y="38" width="24" height="60" fill="#94A3B8" stroke="#334155" strokeWidth="1" />
-            <rect x="82" y="38" width="24" height="60" fill="#64748B" stroke="#334155" strokeWidth="1" />
-            <rect x="32" y="22" width="54" height="76" fill="#E2E8F0" stroke="#475569" strokeWidth="1" />
-            <polygon points="32,22 59,8 86,22" fill="#F8FAFC" />
-            <polygon points="59,34 45,62 73,62" fill="#0F172A" />
-            <circle cx="24" cy="56" r="6" fill="#0F172A" /><circle cx="94" cy="56" r="6" fill="#0F172A" />
-            <rect x="18" y="72" width="12" height="16" fill="#0F172A" /><rect x="88" y="72" width="12" height="16" fill="#0F172A" />
-            <rect x="55" y="72" width="8" height="18" fill="#38BDF8" opacity="0.85" /><circle cx="59" cy="53" r="3" fill="#FBBF24" />
-          </g>
-          <g transform="translate(415, 102)">
-            <rect x="-10" y="102" width="130" height="18" fill="#78350F" />
-            <rect x="0" y="88" width="110" height="14" fill="#92400E" />
-            <rect x="12" y="42" width="86" height="46" fill="#B45309" stroke="#451A03" strokeWidth="1" />
-            <rect x="34" y="18" width="42" height="24" fill="#D97706" stroke="#451A03" strokeWidth="1" />
-            <rect x="46" y="4" width="18" height="14" fill="#F59E0B" />
-            <polygon points="40,88 40,60 55,48 70,60 70,88" fill="#090D0C" />
-            <rect x="53" y="55" width="4" height="7" fill="#FDE047" /><rect x="22" y="58" width="6" height="10" fill="#FBBF24" /><rect x="82" y="58" width="6" height="10" fill="#FBBF24" />
-          </g>
-          <g transform="translate(24, 145)">
-            <polygon points="0,120 185,105 205,145 0,155" fill="#3F2E21" />
-            <polygon points="0,112 175,98 190,115 0,125" fill="#15803D" />
-            <g stroke="#5C3A21" strokeWidth="3.5" fill="none">
-              <path d="M55,75 L38,118 M55,75 L55,120 M55,75 L72,116" />
-              <path d="M125,65 L108,112 M125,65 L125,115 M125,65 L144,110" />
+          {/* Stage 2+: Jatiya Sangsad Bhaban Voxel Monument */}
+          {buildStage >= 2 && (
+            <g transform="translate(185, 98)" style={{ transition: 'opacity 300ms' }}>
+              <polygon points="-15,125 135,125 150,145 -30,145" fill="#0891B2" opacity="0.7" />
+              <rect x="0" y="108" width="118" height="16" fill="#991B1B" />
+              <rect x="8" y="98" width="102" height="10" fill="#CBD5E1" />
+              {buildStage >= 3 && (
+                <>
+                  <rect x="12" y="38" width="24" height="60" fill="#94A3B8" stroke="#334155" strokeWidth="1" />
+                  <rect x="82" y="38" width="24" height="60" fill="#64748B" stroke="#334155" strokeWidth="1" />
+                  <rect x="32" y="22" width="54" height="76" fill="#E2E8F0" stroke="#475569" strokeWidth="1" />
+                </>
+              )}
+              {buildStage >= 4 && (
+                <>
+                  <polygon points="32,22 59,8 86,22" fill="#F8FAFC" />
+                  <polygon points="59,34 45,62 73,62" fill="#0F172A" />
+                  <circle cx="24" cy="56" r="6" fill="#0F172A" /><circle cx="94" cy="56" r="6" fill="#0F172A" />
+                  <rect x="18" y="72" width="12" height="16" fill="#0F172A" /><rect x="88" y="72" width="12" height="16" fill="#0F172A" />
+                  <rect x="55" y="72" width="8" height="18" fill="#38BDF8" opacity="0.85" /><circle cx="59" cy="53" r="3" fill="#FBBF24" />
+                </>
+              )}
             </g>
-            <rect x="20" y="34" width="70" height="32" fill="#047857" stroke="#022C22" strokeWidth="1" />
-            <rect x="32" y="18" width="46" height="18" fill="#10B981" />
-            <rect x="92" y="24" width="76" height="34" fill="#065F46" stroke="#022C22" strokeWidth="1" />
-            <rect x="108" y="10" width="44" height="16" fill="#059669" />
-            <rect x="30" y="66" width="3" height="22" fill="#34D399" opacity="0.8" /><rect x="78" y="66" width="3" height="18" fill="#34D399" opacity="0.8" /><rect x="150" y="58" width="3" height="24" fill="#34D399" opacity="0.8" />
-            <circle cx="48" cy="86" r="2.5" fill="#FDE047" /><circle cx="96" cy="78" r="3" fill="#FDE047" /><circle cx="142" cy="92" r="2.5" fill="#A3E635" />
-          </g>
-          <g transform="translate(240, 232)">
-            <rect x="20" y="24" width="14" height="42" fill="#475569" /><rect x="150" y="24" width="14" height="42" fill="#475569" /><rect x="280" y="24" width="14" height="42" fill="#475569" />
-            <rect x="0" y="12" width="360" height="6" fill="#94A3B8" /><rect x="0" y="24" width="360" height="5" fill="#64748B" />
-            <path d="M0,24 L20,12 L40,24 L60,12 L80,24 L100,12 L120,24 L140,12 L160,24 L180,12 L200,24 L220,12 L240,24 L260,12 L280,24 L300,12 L320,24 L340,12 L360,24" fill="none" stroke="#CBD5E1" strokeWidth="2" />
-            <line x1="0" y1="23" x2="360" y2="23" stroke="#EF4444" strokeWidth="1.8" strokeDasharray="8 6" />
-            <g transform="translate(82, 54)">
-              <polygon points="0,12 68,12 56,24 12,24" fill="#78350F" stroke="#451A03" strokeWidth="1" />
-              <rect x="22" y="2" width="24" height="10" fill="#B45309" stroke="#451A03" strokeWidth="1" />
-              <rect x="31" y="5" width="6" height="6" fill="#FDE047" />
+          )}
+          {/* Stage 2+: Paharpur Terracotta Monastery */}
+          {buildStage >= 2 && (
+            <g transform="translate(415, 102)">
+              <rect x="-10" y="102" width="130" height="18" fill="#78350F" />
+              <rect x="0" y="88" width="110" height="14" fill="#92400E" />
+              {buildStage >= 3 && (
+                <>
+                  <rect x="12" y="42" width="86" height="46" fill="#B45309" stroke="#451A03" strokeWidth="1" />
+                  <rect x="34" y="18" width="42" height="24" fill="#D97706" stroke="#451A03" strokeWidth="1" />
+                </>
+              )}
+              {buildStage >= 4 && (
+                <>
+                  <rect x="46" y="4" width="18" height="14" fill="#F59E0B" />
+                  <polygon points="40,88 40,60 55,48 70,60 70,88" fill="#090D0C" />
+                  <rect x="53" y="55" width="4" height="7" fill="#FDE047" /><rect x="22" y="58" width="6" height="10" fill="#FBBF24" /><rect x="82" y="58" width="6" height="10" fill="#FBBF24" />
+                </>
+              )}
             </g>
-          </g>
+          )}
+          {/* Stage 2+: Sundarbans Mangrove Canopy */}
+          {buildStage >= 2 && (
+            <g transform="translate(24, 145)">
+              <polygon points="0,120 185,105 205,145 0,155" fill="#3F2E21" />
+              <polygon points="0,112 175,98 190,115 0,125" fill="#15803D" />
+              {buildStage >= 3 && (
+                <g stroke="#5C3A21" strokeWidth="3.5" fill="none">
+                  <path d="M55,75 L38,118 M55,75 L55,120 M55,75 L72,116" />
+                  <path d="M125,65 L108,112 M125,65 L125,115 M125,65 L144,110" />
+                </g>
+              )}
+              {buildStage >= 4 && (
+                <>
+                  <rect x="20" y="34" width="70" height="32" fill="#047857" stroke="#022C22" strokeWidth="1" />
+                  <rect x="32" y="18" width="46" height="18" fill="#10B981" />
+                  <rect x="92" y="24" width="76" height="34" fill="#065F46" stroke="#022C22" strokeWidth="1" />
+                  <rect x="108" y="10" width="44" height="16" fill="#059669" />
+                  <rect x="30" y="66" width="3" height="22" fill="#34D399" opacity="0.8" /><rect x="78" y="66" width="3" height="18" fill="#34D399" opacity="0.8" /><rect x="150" y="58" width="3" height="24" fill="#34D399" opacity="0.8" />
+                  <circle cx="48" cy="86" r="2.5" fill="#FDE047" /><circle cx="96" cy="78" r="3" fill="#FDE047" /><circle cx="142" cy="92" r="2.5" fill="#A3E635" />
+                </>
+              )}
+            </g>
+          )}
+          {/* Stage 3+: Padma Multipurpose Bridge Truss & Sampan Boat */}
+          {buildStage >= 2 && (
+            <g transform="translate(240, 232)">
+              <rect x="20" y="24" width="14" height="42" fill="#475569" /><rect x="150" y="24" width="14" height="42" fill="#475569" /><rect x="280" y="24" width="14" height="42" fill="#475569" />
+              {buildStage >= 3 && (
+                <>
+                  <rect x="0" y="12" width="360" height="6" fill="#94A3B8" /><rect x="0" y="24" width="360" height="5" fill="#64748B" />
+                  <path d="M0,24 L20,12 L40,24 L60,12 L80,24 L100,12 L120,24 L140,12 L160,24 L180,12 L200,24 L220,12 L240,24 L260,12 L280,24 L300,12 L320,24 L340,12 L360,24" fill="none" stroke="#CBD5E1" strokeWidth="2" />
+                </>
+              )}
+              {buildStage >= 4 && (
+                <>
+                  <line x1="0" y1="23" x2="360" y2="23" stroke="#EF4444" strokeWidth="1.8" strokeDasharray="8 6" />
+                  <g transform="translate(82, 54)">
+                    <polygon points="0,12 68,12 56,24 12,24" fill="#78350F" stroke="#451A03" strokeWidth="1" />
+                    <rect x="22" y="2" width="24" height="10" fill="#B45309" stroke="#451A03" strokeWidth="1" />
+                    <rect x="31" y="5" width="6" height="6" fill="#FDE047" />
+                  </g>
+                </>
+              )}
+            </g>
+          )}
           {atmosphere === 'monsoon' && (
             <g stroke="#38BDF8" strokeWidth="1" opacity="0.45" strokeDasharray="6 10">
               <line x1="80" y1="0" x2="20" y2="360" /><line x1="180" y1="0" x2="120" y2="360" /><line x1="280" y1="0" x2="220" y2="360" />
@@ -1449,7 +1719,7 @@ const HeroVoxelBangladeshCanvas = ({ atmosphere, setAtmosphere, lang }) => {
         </svg>
       </div>
 
-      {/* Responsive Hotspot Inspector Dock (Never obscures artwork on mobile!) */}
+      {/* Responsive Hotspot Inspector Dock */}
       <div className="bg-[#070B0A] border-t border-emerald-500/25 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2 text-xs font-mono-code text-emerald-400">
@@ -1457,6 +1727,8 @@ const HeroVoxelBangladeshCanvas = ({ atmosphere, setAtmosphere, lang }) => {
             <span>{activeHotspot.coords}</span>
             <span className="text-slate-600">|</span>
             <span className="text-amber-300">{activeHotspot.biome}</span>
+            <span className="text-slate-600">|</span>
+            <span className="text-cyan-300">Build Stage: {buildStage}/4</span>
           </div>
           <h4 className="text-sm sm:text-base font-display font-bold text-white">
             {lang === 'bn' ? activeHotspot.titleBn : activeHotspot.titleEn}
@@ -1644,7 +1916,7 @@ const VoxelBuildArtwork = ({ artType, realPhotoUrl, onInspectLightbox, title }) 
   );
 };
 
-// Live Server Favicon & Environmental Banner Component
+// Live Server Favicon & Environmental Banner Component (With Evidence-Backed Provenance Labels)
 const ServerVisualHeader = ({ srv, tele }) => {
   const [iconError, setIconError] = useState(false);
   const bannerUrl =
@@ -1668,34 +1940,38 @@ const ServerVisualHeader = ({ srv, tele }) => {
       />
       <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-[#0D1513]/50 to-black/30" />
 
-      {/* Top Security & Latency Telemetry Bar */}
-      <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between gap-2 text-[10px] font-mono-code">
+      {/* Evidence-Backed Verification & API Telemetry Bar */}
+      <div className="absolute top-2.5 left-2.5 right-2.5 flex flex-wrap items-center justify-between gap-1.5 text-[10px] font-mono-code">
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/80 text-emerald-300 border border-emerald-500/30">
-          <ShieldCheck className="w-3 h-3 text-emerald-400" />
-          <span>DDoS + BungeeGuard Verified</span>
+          <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+          <span>
+            {tele?.online
+              ? `Live Query: ${tele.provider || 'mcsrvstat.us'}`
+              : 'Community-Submitted Listing'}
+          </span>
         </span>
         {tele?.rttMs && (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/80 text-cyan-300 border border-cyan-500/30">
-            <Wifi className="w-3 h-3 text-emerald-400" />
-            <span>{tele.rttMs}ms API RTT</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-black/80 text-cyan-300 border border-cyan-500/30">
+            <Wifi className="w-3 h-3 text-emerald-400 shrink-0" />
+            <span>{tele.rttMs}ms API Check</span>
           </span>
         )}
       </div>
 
       {/* Live Server Favicon + Edition Badge */}
-      <div className="absolute bottom-3.5 left-3 right-3 flex items-end justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="absolute bottom-3.5 left-3 right-3 flex items-end justify-between gap-2">
+        <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative shrink-0">
             {!iconError ? (
               <img
                 src={liveIconUrl}
                 alt={`${srv.name} icon`}
                 onError={() => setIconError(true)}
-                className="w-12 h-12 rounded-xl border-2 border-emerald-400/60 bg-slate-950 shadow-lg object-cover"
+                className="w-11 h-11 rounded-xl border-2 border-emerald-400/60 bg-slate-950 shadow-lg object-cover"
               />
             ) : (
-              <div className="w-12 h-12 rounded-xl border-2 border-emerald-400/60 bg-slate-900 flex items-center justify-center">
-                <Server className="w-6 h-6 text-emerald-400" />
+              <div className="w-11 h-11 rounded-xl border-2 border-emerald-400/60 bg-slate-900 flex items-center justify-center">
+                <Server className="w-5 h-5 text-emerald-400" />
               </div>
             )}
             <span
@@ -1708,34 +1984,28 @@ const ServerVisualHeader = ({ srv, tele }) => {
             <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-black/75 text-cyan-300 border border-cyan-500/30">
               {srv.edition}
             </span>
-            <h3 className="text-base sm:text-lg font-display font-bold text-white truncate mt-0.5 drop-shadow">
+            <h3 className="text-sm sm:text-base font-display font-bold text-white truncate mt-0.5 drop-shadow">
               {srv.name}
             </h3>
           </div>
         </div>
 
-        {/* Live Status Pill & Animated 4-Bar Signal */}
+        {/* Live Status Pill */}
         <div className="shrink-0 flex flex-col items-end gap-1">
           {tele?.loading ? (
-            <span className="px-2.5 py-1 rounded-md bg-black/80 text-[11px] font-mono-code text-cyan-300 animate-pulse">
-              Pinging Node...
+            <span className="px-2 py-1 rounded-md bg-black/80 text-[10px] font-mono-code text-cyan-300 animate-pulse">
+              Checking...
             </span>
           ) : tele?.online ? (
-            <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/50 backdrop-blur-md text-[11px] font-mono-code text-emerald-300 font-bold shadow-lg shadow-emerald-950/50">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-400/50 backdrop-blur-md text-[11px] font-mono-code text-emerald-300 font-bold shadow-lg shadow-emerald-950/50">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
               <span>
                 {Number(tele.playersOnline).toLocaleString()} / {Number(tele.playersMax).toLocaleString()}
               </span>
-              <span className="inline-flex items-end gap-0.5 h-3 ml-0.5">
-                <span className="w-0.5 h-1.5 bg-emerald-400 rounded-full" />
-                <span className="w-0.5 h-2 bg-emerald-400 rounded-full" />
-                <span className="w-0.5 h-2.5 bg-emerald-400 rounded-full" />
-                <span className="w-0.5 h-3 bg-emerald-400 rounded-full animate-pulse" />
-              </span>
             </span>
           ) : (
-            <span className="px-2.5 py-1 rounded-md bg-black/75 border border-amber-500/30 text-[11px] font-mono-code text-amber-300">
-              Standby / Querying
+            <span className="px-2 py-1 rounded-md bg-black/75 border border-amber-500/30 text-[10px] font-mono-code text-amber-300">
+              Offline / Stale
             </span>
           )}
         </div>
@@ -2153,6 +2423,15 @@ export default function App() {
     'poll-opt-4': 64
   });
   const [userVotedOption, setUserVotedOption] = useState(null);
+
+  // First-Visit "Find Your Server" Guided Matcher State & Navigation Dropdown State
+  const [matcherDevice, setMatcherDevice] = useState('ALL'); // 'ALL' | 'BEDROCK_MOBILE' | 'JAVA_PC'
+  const [matcherMode, setMatcherMode] = useState('ALL'); // 'ALL' | 'Survival SMP' | 'BedWars / PvP' | 'Skyblock' | 'Lifesteal'
+  const [matcherBeginnerOnly, setMatcherBeginnerOnly] = useState(true);
+  const [exploreDropdownOpen, setExploreDropdownOpen] = useState(false);
+  const [showStatusDisclosure, setShowStatusDisclosure] = useState(false);
+  const [showExtendedHomeLabs, setShowExtendedHomeLabs] = useState(false);
+
   const [communityThreads, setCommunityThreads] = useState([
     {
       id: 'thd-01',
@@ -3125,8 +3404,38 @@ export default function App() {
     return Math.min(32, Math.max(3, Math.ceil(base + smpPlayerCount * perPlayer)));
   }, [smpPlayerCount, smpServerType]);
 
+  // First-Visit Guided Server Matcher Computed Results
+  const guidedMatchedServers = useMemo(() => {
+    return servers
+      .filter((s) => s.classification === 'Bangladesh Community Server')
+      .filter((s) => {
+        if (matcherDevice === 'BEDROCK_MOBILE') {
+          return s.edition.toLowerCase().includes('crossplay') || s.bedrockIp !== 'N/A (Java Only)';
+        }
+        if (matcherDevice === 'JAVA_PC') {
+          return true;
+        }
+        return true;
+      })
+      .filter((s) => {
+        if (matcherMode === 'ALL') return true;
+        return s.modes.some((m) => m.toLowerCase().includes(matcherMode.toLowerCase()));
+      })
+      .filter((s) => {
+        if (!matcherBeginnerOnly) return true;
+        return s.edition.toLowerCase().includes('crossplay');
+      });
+  }, [servers, matcherDevice, matcherMode, matcherBeginnerOnly]);
+
+  const primaryNavItems = navItems.filter((item) =>
+    ['home', 'servers', 'events', 'legacy'].includes(item.id)
+  );
+  const secondaryNavItems = navItems.filter(
+    (item) => !['home', 'servers', 'events', 'legacy'].includes(item.id)
+  );
+
   return (
-    <div className="min-h-screen bg-[#070B0A] bg-voxel-mesh text-slate-100 font-sans-bd pb-20 xl:pb-0 selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#070B0A] bg-voxel-mesh text-slate-100 font-sans-bd pb-20 xl:pb-0 selection:bg-emerald-500 selection:text-slate-950">
       <V2GlobalStyles />
 
       {/* Custom Interactive Dual-Ring Reticle Cursor */}
@@ -3153,7 +3462,7 @@ export default function App() {
           <div className="fixed inset-0 flex items-center justify-center">
             <div className="px-6 py-3 rounded-2xl bg-[#050807]/95 border border-emerald-400/50 shadow-2xl text-center">
               <div className="text-[10px] font-mono-code text-emerald-400 tracking-widest uppercase">
-                BLOCKBANGLA MOTION ENGINE // ROUTE TRANSITION
+                BLOCKBANGLA // ROUTE TRANSITION
               </div>
               <div className="text-2xl font-display font-extrabold text-white tracking-tight mt-0.5">
                 {routeTransitionTitle}
@@ -3163,76 +3472,73 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Telemetry Status Ribbon */}
-      <div className="bg-[#050807] border-b border-emerald-500/20 px-4 py-1.5 text-xs">
+      {/* Top Utility Bar — Strictly Constrained to 390px Mobile Viewport Without Horizontal Cutoff */}
+      <div className="w-full max-w-full bg-[#050807] border-b border-emerald-500/20 px-3 sm:px-4 py-1.5 text-xs">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-emerald-400 font-mono-code">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              BST (Asia/Dhaka): {formatDhakaTime(new Date(nowMs))}
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-emerald-400 font-mono-code text-[11px] truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+              <span className="truncate">BST: {formatDhakaTime(new Date(nowMs))}</span>
             </span>
-            <span className="hidden md:inline text-slate-600">|</span>
-            <span className="hidden md:inline text-xs font-mono-code text-cyan-300">
-              MOTION: {gsapReady ? 'GSAP 3.12 + SCROLLTRIGGER' : 'RAF ENGINE'} •{' '}
-              {threeReady ? 'THREE.JS WEBGL r128' : '3D READY'}
+            <span className="hidden lg:inline text-slate-600">|</span>
+            <span className="hidden lg:inline text-[11px] font-mono-code text-slate-400">
+              Live Status API: <strong className="text-cyan-300">mcsrvstat.us</strong> • Asia/Dhaka (UTC+6)
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setReducedMotion((rm) => !rm)}
-              className={`px-2 py-0.5 rounded font-mono-code text-[11px] border transition ${
-                reducedMotion
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-              }`}
-              title="Toggle Reduced Motion Accessibility"
-            >
-              {reducedMotion ? 'Motion: Reduced' : 'Motion: 60FPS Full'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:border-emerald-500/50 transition font-mono-code"
-            >
-              <Search className="w-3 h-3 text-emerald-400" />
-              <span>{lang === 'bn' ? 'সার্চ (Ctrl+K)' : 'Search (Ctrl+K)'}</span>
-            </button>
+
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {/* Prominent English / বাংলা Language Switch */}
             <button
               type="button"
               onClick={() => setLang((l) => (l === 'en' ? 'bn' : 'en'))}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 font-semibold hover:bg-emerald-500/25 transition"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 transition text-[11px]"
+              aria-label="Switch Language between English and Bangla"
             >
-              <Globe className="w-3 h-3" />
-              <span>{lang === 'en' ? 'বাংলা (BN)' : 'English (EN)'}</span>
+              <Globe className="w-3 h-3 shrink-0" />
+              <span>{lang === 'en' ? 'বাংলা' : 'English'}</span>
             </button>
+
+            {/* Reduced Motion Accessibility Toggle */}
             <button
               type="button"
-              onClick={() => setDeployModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400 transition font-mono-code"
+              onClick={() => setReducedMotion((rm) => !rm)}
+              className={`px-2 py-1 rounded-md font-mono-code text-[11px] border transition ${
+                reducedMotion
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-slate-900 text-slate-300 border-slate-800 hover:text-white'
+              }`}
+              title="Toggle Reduced Motion Accessibility"
             >
-              <UploadCloud className="w-3 h-3" />
-              <span>Deploy (৳0)</span>
+              {reducedMotion ? 'Motion: Off' : 'Motion: On'}
             </button>
+
+            {/* Contribute CTA */}
+            <button
+              type="button"
+              onClick={() => {
+                setFormNotice(null);
+                setActiveModal('submit-server');
+              }}
+              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-900 hover:bg-slate-800 text-emerald-300 border border-emerald-500/30 font-mono-code text-[11px]"
+            >
+              <Plus className="w-3 h-3" />
+              <span>{lang === 'bn' ? 'যুক্ত করুন' : 'Contribute'}</span>
+            </button>
+
+            {/* Login / Free Account Action (Always Reachable on 390px Mobile) */}
             {playerProfile ? (
-              <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-mono-code">
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-emerald-200 font-mono-code text-[11px]"
+              >
                 <img
                   src={playerProfile.skin_url}
                   alt={playerProfile.blockbangla_username}
-                  className="w-4 h-4 rounded-sm"
+                  className="w-3.5 h-3.5 rounded-sm shrink-0"
                 />
-                <span>{playerProfile.blockbangla_username}</span>
-                <span className="text-[10px] px-1 rounded bg-black/50 text-amber-300">
-                  {playerProfile.minecraft_verified ? 'MC VERIFIED' : 'FREE ID'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAuthModalOpen(true)}
-                  className="text-slate-300 hover:text-white underline ml-1"
-                >
-                  Profile
-                </button>
-              </div>
+                <span className="max-w-[85px] truncate">{playerProfile.blockbangla_username}</span>
+              </button>
             ) : (
               <button
                 type="button"
@@ -3240,44 +3546,44 @@ export default function App() {
                   setAuthError(null);
                   setAuthModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 transition"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-500 text-slate-950 font-bold hover:bg-amber-400 transition text-[11px]"
               >
-                <UserCheck className="w-3 h-3" />
-                <span>{lang === 'bn' ? 'লগইন / ফ্রি অ্যাকাউন্ট' : 'Login / Free Account'}</span>
+                <UserCheck className="w-3 h-3 shrink-0" />
+                <span>{lang === 'bn' ? 'লগইন' : 'Login'}</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* Main Sticky Header with Scroll-Adaptive Glass Transformation */}
+      {/* Main Sticky Header — Focused Priorities + Grouped Secondary Dropdown */}
       <header
-        className={`sticky top-0 z-40 transition-all duration-300 ${
+        className={`sticky top-0 z-40 w-full max-w-full transition-all duration-300 ${
           headerScrolled
             ? 'bg-[#060A09]/95 backdrop-blur-2xl border-b border-emerald-500/35 py-2 shadow-2xl shadow-black/80'
-            : 'bg-[#090D0C]/75 backdrop-blur-md border-b border-emerald-500/15 py-3.5'
+            : 'bg-[#090D0C]/85 backdrop-blur-md border-b border-emerald-500/15 py-3'
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 flex items-center justify-between gap-2">
           {/* Brand Identity */}
           <button
             type="button"
             onClick={() => switchTabWithMotion('home', 'HOME // BLOCKBANGLA')}
             onMouseEnter={() => setCursorLabel('HOME')}
             onMouseLeave={() => setCursorLabel(null)}
-            className="flex items-center gap-3 text-left group"
+            className="flex items-center gap-2.5 text-left group min-w-0"
           >
-            <BlockBanglaLogo size={headerScrolled ? 36 : 42} />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg sm:text-xl font-display font-extrabold tracking-tight text-white group-hover:text-emerald-400 transition">
+            <BlockBanglaLogo size={headerScrolled ? 34 : 38} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base sm:text-xl font-display font-extrabold tracking-tight text-white group-hover:text-emerald-400 transition truncate">
                   BLOCK<span className="text-emerald-400">BANGLA</span>
                 </span>
-                <span className="text-[10px] font-mono-code uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  MOTION v4.0
+                <span className="hidden sm:inline-block text-[10px] font-mono-code uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  BD HUB
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] text-slate-400 truncate">
                 {lang === 'bn'
                   ? 'বাংলাদেশের মাইনক্রাফট কমিউনিটির ঘর'
                   : 'The Home of Minecraft in Bangladesh'}
@@ -3285,22 +3591,20 @@ export default function App() {
             </div>
           </button>
 
-          {/* Desktop Navigation with Animated Active Pill */}
-          <nav className="hidden xl:flex items-center gap-1">
-            {navItems.map((item) => {
+          {/* Streamlined Desktop Navigation: 4 Core Priorities + Grouped Secondary Dropdown */}
+          <nav className="hidden lg:flex items-center gap-1.5">
+            {primaryNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onMouseEnter={() => setCursorLabel(item.labelEn)}
-                  onMouseLeave={() => setCursorLabel(null)}
                   onClick={() => switchTabWithMotion(item.id, item.labelEn)}
-                  className={`relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all duration-200 ${
                     isActive
-                      ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25 font-bold scale-105'
-                      : 'text-slate-300 hover:text-white hover:bg-white/5'
+                      ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/25 font-bold'
+                      : 'text-slate-200 hover:text-white hover:bg-white/5'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -3308,54 +3612,143 @@ export default function App() {
                 </button>
               );
             })}
+
+            {/* Secondary Destinations Grouped Dropdown */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setExploreDropdownOpen((o) => !o)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border transition ${
+                  secondaryNavItems.some((s) => s.id === activeTab)
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                    : 'bg-slate-900/90 text-slate-300 border-slate-800 hover:text-white'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{lang === 'bn' ? 'অন্যান্য ও টুলবক্স' : 'Explore & Tools'}</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {exploreDropdownOpen && (
+                <div
+                  onMouseLeave={() => setExploreDropdownOpen(false)}
+                  className="absolute right-0 mt-2 w-64 rounded-2xl bg-[#09110F] border border-emerald-500/35 shadow-2xl p-2 grid grid-cols-1 gap-1 z-50"
+                >
+                  {secondaryNavItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          switchTabWithMotion(item.id, item.labelEn);
+                          setExploreDropdownOpen(false);
+                        }}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition ${
+                          isActive
+                            ? 'bg-emerald-500 text-slate-950 font-bold'
+                            : 'text-slate-200 hover:bg-white/5'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span>{lang === 'bn' ? item.labelBn : item.labelEn}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 hover:border-emerald-500/50 text-xs font-mono-code"
+            >
+              <Search className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Ctrl+K</span>
+            </button>
           </nav>
 
-          {/* Mobile Menu Trigger */}
-          <div className="flex xl:hidden items-center gap-2">
+          {/* Compact Mobile Action Triggers (Fits 390px cleanly) */}
+          <div className="flex lg:hidden items-center gap-1.5 shrink-0">
             <button
               type="button"
               onClick={() => setSearchOpen(true)}
               className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-emerald-400"
               aria-label="Open Global Search"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => setMobileMenuOpen((o) => !o)}
-              className="p-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200"
+              className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 text-xs font-semibold"
               aria-label="Toggle Menu"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              <span>{lang === 'bn' ? 'মেনু' : 'Menu'}</span>
             </button>
           </div>
         </div>
 
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="xl:hidden border-t border-emerald-500/20 bg-[#0B1210] px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    switchTabWithMotion(item.id, item.labelEn);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold ${
-                    isActive
-                      ? 'bg-emerald-500 text-slate-950 font-bold'
-                      : 'bg-slate-900/90 text-slate-200 border border-slate-800'
-                  }`}
-                >
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{lang === 'bn' ? item.labelBn : item.labelEn}</span>
-                </button>
-              );
-            })}
+          <div className="lg:hidden border-t border-emerald-500/20 bg-[#0B1210] px-3 py-3 space-y-3 max-h-[80vh] overflow-y-auto">
+            <div className="text-[10px] font-mono-code text-emerald-400 uppercase px-1">
+              Primary Destinations
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {primaryNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      switchTabWithMotion(item.id, item.labelEn);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold ${
+                      isActive
+                        ? 'bg-emerald-500 text-slate-950 font-bold'
+                        : 'bg-slate-900 text-slate-200 border border-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{lang === 'bn' ? item.labelBn : item.labelEn}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-[10px] font-mono-code text-slate-400 uppercase px-1 pt-1">
+              Community, Tools & Resources
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {secondaryNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      switchTabWithMotion(item.id, item.labelEn);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${
+                      isActive
+                        ? 'bg-emerald-500 text-slate-950 font-bold'
+                        : 'bg-slate-900/70 text-slate-300 border border-slate-800'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">{lang === 'bn' ? item.labelBn : item.labelEn}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </header>
@@ -3363,12 +3756,12 @@ export default function App() {
       {/* ================================================================== */}
       {/* MAIN CONTENT VIEWPORT                                              */}
       {/* ================================================================== */}
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-14">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 space-y-12 overflow-x-hidden">
         {/* ================================================================ */}
         {/* VIEW A: HOME — THE FRONT PAGE                                    */}
         {/* ================================================================ */}
         {activeTab === 'home' && (
-          <div className="space-y-16">
+          <div className="space-y-12">
             {/* 1. Cinematic Hero Section with Full-Bleed Atmospheric Photography Mask & Voxel Canvas */}
             <section className="relative rounded-3xl overflow-hidden border border-emerald-500/25 bg-[#070D0B] p-6 sm:p-10 shadow-2xl">
               {/* Autonomous Atmospheric Background Image Layer with Gradient Mask */}
@@ -3387,12 +3780,12 @@ export default function App() {
 
               <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               <div className="lg:col-span-5 space-y-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono-code animate-float-slow">
-                  <Sparkles className="w-3.5 h-3.5" />
+                <div className="inline-flex flex-wrap items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono-code">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
                   <span>
                     {lang === 'bn'
-                      ? 'জাভা • বেডরক • বিডিআইএক্স এসএমপি • ওয়েবজিএল ৩ডি'
-                      : 'JAVA • BEDROCK • BDIX/SG SMP • WEBGL 3D ARCHIVE'}
+                      ? 'জাভা (PC) • বেডরক (মোবাইল) • বাংলাদেশ কমিউনিটি'
+                      : 'JAVA (PC) • BEDROCK (MOBILE) • BANGLADESH HUB'}
                   </span>
                 </div>
 
@@ -3410,74 +3803,89 @@ export default function App() {
 
                 <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
                   {lang === 'bn'
-                    ? '২০১১ সালের অফলাইন ল্যান ও হামাচি টানেল থেকে শুরু করে আজকের জাভা-বেডরক ক্রসপ্লে নেটওয়ার্ক এবং ৩,৬০০+ বাংলা ইউটিউব চ্যানেল—BLOCKBANGLA হলো বাংলাদেশের সকল মাইনক্রাফট প্লেয়ার, বিল্ডার, সার্ভার ওনার এবং ক্রিয়েটরদের কেন্দ্রীয় ঠিকানা।'
-                    : 'From 2011 cybercafe LAN worlds and Hamachi tunnels to today’s GeyserMC crossplay networks and 3,600+ Bengali creator channels—BLOCKBANGLA is the permanent digital archive, live server directory, and community hub for Minecraft in Bangladesh.'}
+                    ? '২০১১ সালের অফলাইন ল্যান থেকে শুরু করে আজকের পিসি ও মোবাইল ক্রসপ্লে সার্ভার এবং ৩,৬০০+ বাংলা ইউটিউব চ্যানেল—BLOCKBANGLA হলো বাংলাদেশের সকল মাইনক্রাফট প্লেয়ারদের কেন্দ্রীয় ঠিকানা।'
+                    : 'From 2011 LAN worlds to today’s PC & mobile crossplay servers and 3,600+ Bengali creator channels—find a server, join tournaments, or explore our sourced history archive.'}
                 </p>
 
-                {/* 4 Prominent Magnetic Tactile CTA Buttons */}
-                <div className="grid grid-cols-2 gap-3 pt-2">
+                {/* Plain-Language Jargon Helper Pills for Newer Players */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[11px] text-slate-400 mr-1">
+                    {lang === 'bn' ? 'নতুন প্লেয়ার গাইড:' : 'New to these terms?'}
+                  </span>
+                  <TermTooltip term="Geyser" label="Crossplay (Geyser)" lang={lang} />
+                  <TermTooltip term="BDIX" label="BDIX Low Ping" lang={lang} />
+                  <TermTooltip term="SMP" label="What is SMP?" lang={lang} />
+                </div>
+
+                {/* 3 Focused Primary Priority Actions + Contribute */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
                   <MagneticButton
-                    onClick={() => switchTabWithMotion('community', 'COMMUNITY HUB')}
+                    onClick={() => switchTabWithMotion('servers', 'LIVE SERVER DIRECTORY')}
                     onCursorHover={setCursorLabel}
-                    cursorLabel="BUILDS"
+                    cursorLabel="SERVERS"
                     reducedMotion={reducedMotion}
-                    className="tactile-btn flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-sm transition"
+                    className="tactile-btn flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs sm:text-sm transition"
                   >
-                    <Users className="w-4 h-4" />
-                    <span>{lang === 'bn' ? 'কমিউনিটি হাব' : 'Explore the Community'}</span>
+                    <Server className="w-4 h-4 shrink-0" />
+                    <span>{lang === 'bn' ? '১. সার্ভার খুঁজুন' : '1. Find a Server'}</span>
                   </MagneticButton>
                   <MagneticButton
                     onClick={() => switchTabWithMotion('events', 'TOURNAMENT ENGINE')}
                     onCursorHover={setCursorLabel}
                     cursorLabel="EVENTS"
                     reducedMotion={reducedMotion}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-emerald-500/40 font-semibold text-sm transition"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-emerald-500/40 font-semibold text-xs sm:text-sm transition"
                   >
-                    <Calendar className="w-4 h-4 text-emerald-400" />
-                    <span>{lang === 'bn' ? 'ইভেন্ট খুঁজুন' : 'Discover Events'}</span>
+                    <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{lang === 'bn' ? '২. ইভেন্ট ও টুর্নামেন্ট' : '2. Join Events'}</span>
                   </MagneticButton>
                   <MagneticButton
                     onClick={() => switchTabWithMotion('legacy', 'THE LEGACY MUSEUM')}
                     onCursorHover={setCursorLabel}
                     cursorLabel="MUSEUM"
                     reducedMotion={reducedMotion}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-amber-500/40 font-semibold text-sm transition"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-amber-500/40 font-semibold text-xs sm:text-sm transition"
                   >
-                    <History className="w-4 h-4 text-amber-400" />
-                    <span>{lang === 'bn' ? 'ইতিহাস জানুন' : 'Explore the History'}</span>
-                  </MagneticButton>
-                  <MagneticButton
-                    onClick={() => switchTabWithMotion('servers', 'LIVE SERVER PING')}
-                    onCursorHover={setCursorLabel}
-                    cursorLabel="SERVERS"
-                    reducedMotion={reducedMotion}
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-cyan-500/40 font-semibold text-sm transition"
-                  >
-                    <Server className="w-4 h-4 text-cyan-400" />
-                    <span>{lang === 'bn' ? 'সার্ভার খুঁজুন' : 'Find a Server'}</span>
+                    <History className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>{lang === 'bn' ? '৩. ইতিহাস আর্কাইভ' : '3. History Archive'}</span>
                   </MagneticButton>
                 </div>
 
-                {/* Animated Odometer Telemetry Snapshot */}
-                <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-800/80 text-center">
-                  <Tilt3DCard reducedMotion={reducedMotion} className="p-2.5 rounded-lg bg-[#0D1614] border border-emerald-500/25">
-                    <div className="text-lg font-display font-extrabold text-emerald-400">
+                {/* Sourced Metrics Snapshot with Explicit Provenance Links */}
+                <div className="grid grid-cols-3 gap-2.5 pt-3 border-t border-slate-800/80 text-center">
+                  <button
+                    type="button"
+                    onClick={() => switchTabWithMotion('creators', 'CREATORS')}
+                    className="p-2.5 rounded-lg bg-[#0D1614] border border-emerald-500/25 hover:border-emerald-400 transition text-center"
+                  >
+                    <div className="text-base sm:text-lg font-display font-extrabold text-emerald-400">
                       <AnimatedStatCounter targetValue={19000} suffix="+" reducedMotion={reducedMotion} />
                     </div>
-                    <div className="text-[11px] text-slate-400">#minecraftbangla Videos</div>
-                  </Tilt3DCard>
-                  <Tilt3DCard reducedMotion={reducedMotion} className="p-2.5 rounded-lg bg-[#0D1614] border border-amber-500/25">
-                    <div className="text-lg font-display font-extrabold text-amber-400">
-                      <AnimatedStatCounter targetValue={3600} suffix="+" reducedMotion={reducedMotion} />
+                    <div className="text-[10px] text-slate-300">#minecraftbangla Videos</div>
+                    <div className="text-[9px] font-mono-code text-emerald-400/80">Source: YT Index</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchTabWithMotion('servers', 'SERVERS')}
+                    className="p-2.5 rounded-lg bg-[#0D1614] border border-cyan-500/25 hover:border-cyan-400 transition text-center"
+                  >
+                    <div className="text-base sm:text-lg font-display font-extrabold text-cyan-400">
+                      {liveEcosystemStats.onlineNodes}/{servers.length}
                     </div>
-                    <div className="text-[11px] text-slate-400">BD Creator Channels</div>
-                  </Tilt3DCard>
-                  <Tilt3DCard reducedMotion={reducedMotion} className="p-2.5 rounded-lg bg-[#0D1614] border border-cyan-500/25">
-                    <div className="text-lg font-display font-extrabold text-cyan-400">
-                      <AnimatedStatCounter targetValue={16} suffix=" Yrs" reducedMotion={reducedMotion} />
+                    <div className="text-[10px] text-slate-300">Tracked Servers Online</div>
+                    <div className="text-[9px] font-mono-code text-cyan-400/80">Live: mcsrvstat.us</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchTabWithMotion('legacy', 'LEGACY')}
+                    className="p-2.5 rounded-lg bg-[#0D1614] border border-amber-500/25 hover:border-amber-400 transition text-center"
+                  >
+                    <div className="text-base sm:text-lg font-display font-extrabold text-amber-400">
+                      2010–2026
                     </div>
-                    <div className="text-[11px] text-slate-400">2010–2026 Archive</div>
-                  </Tilt3DCard>
+                    <div className="text-[10px] text-slate-300">10 Sourced Eras</div>
+                    <div className="text-[9px] font-mono-code text-amber-400/80">7 Primary Citations</div>
+                  </button>
                 </div>
               </div>
 
@@ -3492,93 +3900,159 @@ export default function App() {
               </div>
             </section>
 
-            {/* 1.5 Infinite Seamless Dual-Direction Kinetic Marquee Ribbon */}
-            <KineticMarqueeRibbon lang={lang} />
-
-            {/* 1.8 Interactive Three.js WebGL 3D Floating Voxel Bangladesh Delta & Pinned Storytelling */}
-            <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-              <div className="lg:col-span-7">
-                <WebGLVoxelBengalScene
-                  atmosphere={atmosphere}
-                  threeReady={threeReady}
-                  reducedMotion={reducedMotion}
-                />
-              </div>
-              <div className="lg:col-span-5 space-y-4 p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/25">
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  SPATIAL WEBGL 3D EXPLORATION (LUSION / BRUNO SIMON REFERENCE)
-                </span>
-                <h2 className="text-2xl font-display font-extrabold text-white">
-                  {lang === 'bn'
-                    ? 'ইন্টারেক্টিভ ৩ডি ভক্সেল বাংলাদেশ দ্বীপ'
-                    : 'Interactive 3D Voxel Bengal Delta & Landmarks'}
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                  Powered by Three.js WebGL with real-time directional lighting and 28 floating firefly particles. Move your pointer or drag across the viewport to inspect Jatiya Sangsad Bhaban, Paharpur Terracotta Stupa, and the Padma River span in 3D space.
-                </p>
-                <div className="grid grid-cols-2 gap-2.5 pt-2 text-xs font-mono-code">
-                  <div className="p-2.5 rounded-lg bg-[#070B0A] border border-slate-800 text-emerald-300">
-                    ● GPU WebGL Orbit
-                  </div>
-                  <div className="p-2.5 rounded-lg bg-[#070B0A] border border-slate-800 text-amber-300">
-                    ● Dynamic Atmosphere Sync
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* 1.9 Pinned Scroll-Synchronized Storytelling Section */}
-            <PinnedBengalStoryScrubber lang={lang} onNavigateTab={switchTabWithMotion} />
-
-            {/* 3. Featured Bangladeshi Servers & Live Status Preview */}
-            <section className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* 2. First-Visit "Find Your Server" Guided Matcher Flow */}
+            <section className="rounded-3xl bg-[#0D1513] border border-emerald-500/35 p-5 sm:p-8 space-y-6 shadow-xl">
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
-                  <span className="text-xs font-mono-code uppercase text-cyan-400">
-                    REAL-TIME SERVER TELEMETRY (MCSRVSTAT.US / MCSTATUS.IO)
+                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
+                    FIRST-TIME VISITOR GUIDE // FIND YOUR BANGLADESHI SERVER IN 10 SECONDS
                   </span>
-                  <h2 className="text-2xl font-display font-bold text-white mt-0.5">
+                  <h2 className="text-xl sm:text-2xl font-display font-extrabold text-white mt-0.5">
                     {lang === 'bn'
-                      ? 'বাংলাদেশের শীর্ষ মাইনক্রাফট সার্ভার'
-                      : 'Verified Bangladesh Minecraft Servers'}
+                      ? 'আপনার ডিভাইস ও পছন্দের গেম মোড অনুযায়ী সার্ভার বেছে নিন'
+                      : 'Find Your Server: Filter by Your Device & Favorite Mode'}
                   </h2>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('servers')}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-400 hover:text-cyan-300"
+                  onClick={() => setShowStatusDisclosure((d) => !d)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 text-xs font-mono-code"
                 >
-                  <span>{lang === 'bn' ? 'সম্পূর্ণ সার্ভার ডিরেক্টরি' : 'Full Server Directory & Live Ping Tool'}</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <Info className="w-3.5 h-3.5" />
+                  <span>{showStatusDisclosure ? 'Hide Verification Info' : 'How We Check Status'}</span>
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {servers.slice(0, 4).map((srv, idx) => {
+              {/* Transparent Data Freshness & Verification Disclosure */}
+              {showStatusDisclosure && (
+                <div className="p-4 rounded-2xl bg-[#070B0A] border border-cyan-500/30 text-xs text-slate-300 space-y-2">
+                  <div className="font-mono-code font-bold text-cyan-300 uppercase">
+                    How BLOCKBANGLA Verifies Server Status & Metadata
+                  </div>
+                  <p>
+                    • <strong>Live Telemetry (Automatic every 45s):</strong> Online/offline status, current player count, version string, and MOTD are queried live from your browser via <code className="text-emerald-300">api.mcsrvstat.us/3</code> (with fallback to <code className="text-emerald-300">api.mcstatus.io/v2</code>).
+                  </p>
+                  <p>
+                    • <strong>Community-Maintained Details:</strong> Founding dates (such as BDZONE on April 9, 2018 and Cyan Plex in June 2021), Bedrock ports (`19132`), and Discord links are maintained by BLOCKBANGLA editors from official server pages and registries. If a server goes offline or changes ports, click <strong>Report Inaccuracy</strong> on any listing.
+                  </p>
+                </div>
+              )}
+
+              {/* 3-Step Beginner-Friendly Filter Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-3.5 rounded-2xl bg-[#070B0A] border border-slate-800 space-y-2">
+                  <label className="text-[11px] font-mono-code text-emerald-400 uppercase block">
+                    Step 1: What Device Do You Play On?
+                  </label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { id: 'ALL', label: 'All Devices' },
+                      { id: 'BEDROCK_MOBILE', label: 'Mobile / Bedrock' },
+                      { id: 'JAVA_PC', label: 'PC / Java' }
+                    ].map((dev) => (
+                      <button
+                        key={dev.id}
+                        type="button"
+                        onClick={() => setMatcherDevice(dev.id)}
+                        className={`py-2 px-2 rounded-lg text-[11px] font-semibold transition ${
+                          matcherDevice === dev.id
+                            ? 'bg-emerald-500 text-slate-950 font-bold'
+                            : 'bg-slate-900 text-slate-300 hover:text-white'
+                        }`}
+                      >
+                        {dev.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#070B0A] border border-slate-800 space-y-2">
+                  <label className="text-[11px] font-mono-code text-cyan-400 uppercase block">
+                    Step 2: Preferred Game Mode
+                  </label>
+                  <select
+                    value={matcherMode}
+                    onChange={(e) => setMatcherMode(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white font-semibold"
+                  >
+                    <option value="ALL">All Game Modes (Survival, PvP, Skyblock)</option>
+                    <option value="Survival SMP">Survival SMP (Towns & Building)</option>
+                    <option value="BedWars / PvP">BedWars & Competitive PvP</option>
+                    <option value="Skyblock">Skyblock & Economy</option>
+                    <option value="Lifesteal">Lifesteal & Clan Wars</option>
+                  </select>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[#070B0A] border border-slate-800 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono-code text-amber-400 uppercase">
+                      Step 3: Beginner Crossplay Filter
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={matcherBeginnerOnly}
+                      onChange={(e) => setMatcherBeginnerOnly(e.target.checked)}
+                      className="w-4 h-4 accent-emerald-500 rounded"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Only show servers supporting both PC Java and Mobile Bedrock (<TermTooltip term="Geyser" label="GeyserMC" lang={lang} />).
+                  </p>
+                </div>
+              </div>
+
+              {/* Matched Bangladeshi Servers Output */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {guidedMatchedServers.slice(0, 3).map((srv) => {
                   const tele = serverTelemetry[srv.id];
                   return (
-                    <Tilt3DCard
+                    <div
                       key={srv.id}
-                      staggerIndex={idx}
-                      reducedMotion={reducedMotion}
-                      className="rounded-2xl bg-[#0D1513] border border-slate-800 hover:border-cyan-500/40 p-3.5 flex flex-col justify-between gap-3.5 transition"
+                      className="rounded-2xl bg-[#070B0A] border border-slate-800 hover:border-emerald-500/40 p-4 flex flex-col justify-between gap-3 transition"
                     >
-                      <div className="space-y-3">
-                        <ServerVisualHeader srv={srv} tele={tele} />
-                        <p className="text-xs font-mono-code text-emerald-300 bg-slate-950 px-2.5 py-1.5 rounded border border-slate-800 truncate">
-                          {srv.ip}
-                        </p>
-                        <p className="text-xs text-slate-400 line-clamp-2 px-1">
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            {srv.edition}
+                          </span>
+                          <span
+                            className={`text-[11px] font-mono-code font-bold ${
+                              tele?.online ? 'text-emerald-400' : 'text-amber-300'
+                            }`}
+                          >
+                            {tele?.loading
+                              ? 'Checking...'
+                              : tele?.online
+                              ? `● Online (${tele.playersOnline}/${tele.playersMax})`
+                              : '○ Standby / Check in Client'}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-display font-bold text-white">{srv.name}</h3>
+                        <p className="text-xs text-slate-400 line-clamp-2">
                           {lang === 'bn' ? srv.descriptionBn : srv.descriptionEn}
                         </p>
+                        <div className="p-2.5 rounded-xl bg-[#0D1513] border border-slate-800 text-[11px] font-mono-code space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">PC Java IP:</span>
+                            <span className="text-emerald-300 font-bold">{srv.ip}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Mobile Bedrock:</span>
+                            <span className="text-amber-300">{srv.bedrockIp}</span>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/80">
+                            <span>Port: {srv.port}</span>
+                            <span>Checked: {tele?.checkedAt || 'Just now'}</span>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 pt-1">
                         <button
                           type="button"
-                          onClick={() => handleCopyText(srv.ip, srv.id)}
-                          className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition"
+                          onClick={() => handleCopyText(srv.ip, `match-${srv.id}`)}
+                          className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition"
                         >
-                          {copiedKey === srv.id ? (
+                          {copiedKey === `match-${srv.id}` ? (
                             <>
                               <Check className="w-3.5 h-3.5" />
                               <span>Copied IP!</span>
@@ -3593,369 +4067,39 @@ export default function App() {
                         <button
                           type="button"
                           onClick={() => setSelectedDetailItem({ type: 'server', data: srv })}
-                          className="px-2.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 text-xs font-mono-code"
-                          title="Connection Guide"
+                          className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 text-xs font-mono-code"
                         >
-                          Guide
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => queryLiveServerStatus(srv.ip, 'java', srv.id)}
-                          className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700"
-                          title="Ping Live API Now"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${tele?.loading ? 'animate-spin' : ''}`} />
+                          How to Join
                         </button>
                       </div>
-                    </Tilt3DCard>
+                    </div>
                   );
                 })}
               </div>
             </section>
 
-            {/* 3.5 Reality vs. Voxel Bengal Asymmetric Split Showcase */}
-            <section className="space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                    REAL PHOTOGRAPHY × VOXEL ARCHITECTURE PAIRING
-                  </span>
-                  <h2 className="text-2xl font-display font-bold text-white mt-0.5">
-                    {lang === 'bn'
-                      ? 'বাস্তব বাংলাদেশ বনাম মাইনক্রাফট ভক্সেল স্থাপত্য'
-                      : 'Bangladesh in Reality & Reconstructed in Voxels'}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => switchTabWithMotion('community', 'COMMUNITY BUILDS')}
-                  className="text-xs font-semibold text-emerald-400 hover:underline"
-                >
-                  Explore Full Build Gallery →
-                </button>
-              </div>
+            {/* 3. Sourced History Journey (Pinned on Desktop, Accessible Stack on Mobile) */}
+            <PinnedBengalStoryScrubber
+              lang={lang}
+              onNavigateTab={switchTabWithMotion}
+              onOpenSubmitMemory={() => {
+                setFormNotice(null);
+                setActiveModal('submit-memory');
+              }}
+            />
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {builds.slice(0, 3).map((b, idx) => {
-                  const refPhoto = SECTION_VISUAL_CURATION.buildsRealPhotos[b.id];
-                  return (
-                    <Tilt3DCard
-                      key={b.id}
-                      staggerIndex={idx}
-                      reducedMotion={reducedMotion}
-                      className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                    >
-                      <div>
-                        <VoxelBuildArtwork
-                          artType={b.artType}
-                          title={b.titleEn}
-                          realPhotoUrl={refPhoto?.photoUrl}
-                          onInspectLightbox={() =>
-                            setLightboxAsset({
-                              title: b.titleEn,
-                              imageUrl: refPhoto?.photoUrl,
-                              subtitle: `${b.coordinates} • Palette: ${b.palette.join(', ')}`,
-                              attribution: refPhoto?.credit || 'Unsplash Verified Archive'
-                            })
-                          }
-                        />
-                        <div className="p-4 space-y-2">
-                          <div className="flex items-center justify-between text-[11px] font-mono-code text-emerald-400">
-                            <span>{b.coordinates}</span>
-                            <span className="text-amber-300">{b.edition}</span>
-                          </div>
-                          <h3 className="text-base font-display font-bold text-white">
-                            {lang === 'bn' ? b.titleBn : b.titleEn}
-                          </h3>
-                          <p className="text-xs text-slate-300 line-clamp-2">
-                            {lang === 'bn' ? b.descriptionBn : b.descriptionEn}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="px-4 py-2.5 bg-[#080D0C] border-t border-slate-800 flex items-center justify-between text-[11px] font-mono-code text-slate-400">
-                        <span>{refPhoto?.caption}</span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDetailItem({ type: 'build', data: b })}
-                          className="text-emerald-400 hover:underline"
-                        >
-                          Blueprint →
-                        </button>
-                      </div>
-                    </Tilt3DCard>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* 4. Historical Timeline Preview & Featured Creators Preview */}
-            <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Historical Preview */}
-              <div className="lg:col-span-7 rounded-2xl bg-[#0D1513] border border-amber-500/25 p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-mono-code text-amber-400 uppercase">
-                      DIGITAL MUSEUM ARCHIVE (2010–2026)
-                    </span>
-                    <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                      {lang === 'bn'
-                        ? 'বাংলাদেশে মাইনক্রাফটের বিবর্তন'
-                        : 'The Evolution of Minecraft in Bangladesh'}
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('legacy')}
-                    className="text-xs font-semibold text-amber-400 hover:underline"
-                  >
-                    Enter Digital Museum →
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {timeline.slice(0, 4).map((era) => (
-                    <div
-                      key={era.id}
-                      className="p-3.5 rounded-xl bg-[#090E0D] border border-slate-800 hover:border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition"
-                    >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono-code font-bold text-amber-400">
-                            {era.period}
-                          </span>
-                          <EpistemicBadge status={era.epistemicStatus} />
-                        </div>
-                        <h4 className="text-sm font-bold text-white mt-1">
-                          {lang === 'bn' ? era.titleBn : era.titleEn}
-                        </h4>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedEraId(era.id);
-                          setActiveTab('legacy');
-                        }}
-                        className="text-xs text-amber-300 hover:underline font-mono-code shrink-0"
-                      >
-                        Inspect Exhibit →
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Creators Preview */}
-              <div className="lg:col-span-5 rounded-2xl bg-[#0D1513] border border-emerald-500/20 p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                        YOUTUBE DATA API V3 CONNECTED
-                      </span>
-                      <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                        {lang === 'bn' ? 'বাংলাদেশি ক্রিয়েটর ও ভিডিও' : 'Bangladeshi Creators & Live Feed'}
-                      </h2>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => switchTabWithMotion('creators', 'CREATORS & YT LIVE')}
-                      className="text-xs font-semibold text-emerald-400 hover:underline"
-                    >
-                      Live YT Feed →
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {creators.slice(0, 4).map((cr, idx) => {
-                      const matchedYtThumb = ytVideos[idx]?.thumbnail;
-                      return (
-                        <div
-                          key={cr.id}
-                          className="p-2.5 rounded-xl bg-[#090E0D] border border-slate-800 flex items-center justify-between gap-3"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            {matchedYtThumb ? (
-                              <img
-                                src={matchedYtThumb}
-                                alt={cr.name}
-                                loading="lazy"
-                                className="w-14 h-10 rounded-lg object-cover border border-emerald-500/30 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-14 h-10 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
-                                <Youtube className="w-4 h-4 text-emerald-400" />
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <div className="font-bold text-sm text-white truncate">{cr.name}</div>
-                              <div className="text-xs text-emerald-400 font-mono-code truncate">
-                                {cr.handle} • {cr.category}
-                              </div>
-                            </div>
-                          </div>
-                          <a
-                            href={cr.channelUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-2.5 py-1.5 rounded-lg bg-slate-900 hover:bg-emerald-500 hover:text-slate-950 text-xs font-mono-code text-slate-300 transition shrink-0"
-                          >
-                            Channel ↗
-                          </a>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormNotice(null);
-                    setActiveModal('submit-creator');
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition"
-                >
-                  + Submit / Claim Creator Profile
-                </button>
-              </div>
-            </section>
-
-            {/* 5. Horizontal Unsplash Real Bangladesh Photography Showcase */}
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <span className="text-xs font-mono-code text-amber-400 uppercase">
-                    UNSPLASH LIVE API (APP ID: {LIVE_API_CONFIG.unsplash.appId}) • HORIZONTAL GALLERY
-                  </span>
-                  <h2 className="text-2xl font-display font-bold text-white mt-0.5">
-                    {lang === 'bn'
-                      ? 'বাংলার প্রকৃতি ও স্থাপত্য: ভক্সেল বিল্ডের অনুপ্রেরণা'
-                      : 'Real Bangladesh Landscapes: Inspiration for Voxel Builders'}
-                  </h2>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
-                    'Bangladesh river landscape',
-                    'Sundarbans forest',
-                    'Dhaka architecture',
-                    'Chittagong hills'
-                  ].map((Preset) => (
-                    <button
-                      key={Preset}
-                      type="button"
-                      onClick={() => {
-                        setUnsplashQuery(Preset);
-                        fetchUnsplashBangladeshPhotos(Preset);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono-code transition ${
-                        unsplashQuery === Preset
-                          ? 'bg-amber-500 text-slate-950 font-bold'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/40'
-                      }`}
-                    >
-                      {Preset}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div
-                ref={horizontalGalleryRef}
-                onWheel={(e) => {
-                  if (horizontalGalleryRef.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                    horizontalGalleryRef.current.scrollLeft += e.deltaY;
-                  }
-                }}
-                className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory"
-              >
-                {unsplashLoading ? (
-                  <div className="w-full py-12 text-center text-sm font-mono-code text-slate-400">
-                    Synchronizing Bangladesh photography from Unsplash API...
-                  </div>
-                ) : unsplashPhotos.length > 0 ? (
-                  unsplashPhotos.map((photo, i) => (
-                    <Tilt3DCard
-                      key={photo.id}
-                      staggerIndex={i}
-                      reducedMotion={reducedMotion}
-                      className="min-w-[290px] sm:min-w-[340px] snap-start rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                    >
-                      <div className="relative h-48 overflow-hidden bg-slate-950">
-                        <img
-                          src={photo.thumbUrl}
-                          alt={photo.title}
-                          loading="lazy"
-                          onClick={() =>
-                            setLightboxAsset({
-                              title: photo.title,
-                              imageUrl: photo.thumbUrl,
-                              subtitle: `Photographer: ${photo.photographer} (${photo.location})`,
-                              attribution: 'Unsplash API Direct Hotlink',
-                              externalUrl: photo.unsplashLink
-                            })
-                          }
-                          className="w-full h-full object-cover hover:scale-105 transition duration-500 cursor-zoom-in"
-                        />
-                        <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded bg-black/75 text-[10px] font-mono-code text-amber-300">
-                          UNSPLASH VERIFIED
-                        </span>
-                      </div>
-                      <div className="p-4 space-y-2">
-                        <h4 className="text-sm font-bold text-white line-clamp-1">{photo.title}</h4>
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                          <span>
-                            Photo by{' '}
-                            <a
-                              href={photo.photographerUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-emerald-400 hover:underline"
-                            >
-                              {photo.photographer}
-                            </a>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              triggerUnsplashDownloadTrack(photo.downloadLocation, photo.unsplashLink)
-                            }
-                            className="text-amber-300 hover:underline font-mono-code"
-                          >
-                            Source ↗
-                          </button>
-                        </div>
-                      </div>
-                    </Tilt3DCard>
-                  ))
-                ) : (
-                  INITIAL_BUILDS.slice(0, 4).map((b) => (
-                    <div
-                      key={b.id}
-                      className="min-w-[290px] rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden"
-                    >
-                      <VoxelBuildArtwork artType={b.artType} />
-                      <div className="p-4">
-                        <h4 className="text-sm font-bold text-white">{b.titleEn}</h4>
-                        <p className="text-xs text-slate-400 mt-1">{b.coordinates}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-
-            {/* 6. Homepage Live Events, Modrinth Resources & Bilingual Academy Preview */}
+            {/* 4. Focused Priority Grid: Upcoming Events & Community Contribution Path */}
             <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Upcoming Tournaments & Events Preview */}
-              <div className="lg:col-span-5 rounded-2xl bg-[#0D1513] border border-emerald-500/25 p-6 space-y-4 flex flex-col justify-between">
+              <div className="lg:col-span-7 rounded-2xl bg-[#0D1513] border border-emerald-500/25 p-6 space-y-4 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                        ASIA/DHAKA (UTC+6) LIVE SCHEDULE
+                        PRIORITY 2 // ASIA/DHAKA (UTC+6) EVENT SCHEDULE
                       </span>
                       <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                        {lang === 'bn' ? 'আসন্ন ইভেন্ট ও টুর্নামেন্ট' : 'Upcoming Tournaments & Events'}
+                        {lang === 'bn' ? 'আসন্ন ইভেন্ট ও টুর্নামেন্ট' : 'Upcoming Tournaments & Community Events'}
                       </h2>
                     </div>
                     <button
@@ -3966,21 +4110,33 @@ export default function App() {
                       All Events →
                     </button>
                   </div>
-                  <div className="space-y-2.5">
-                    {enrichedEvents.slice(0, 3).map((evt) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {enrichedEvents.slice(0, 2).map((evt) => (
                       <div
                         key={evt.id}
-                        className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 hover:border-emerald-500/40 transition space-y-1.5"
+                        className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 hover:border-emerald-500/40 transition space-y-2 flex flex-col justify-between"
                       >
-                        <div className="flex items-center justify-between text-[11px] font-mono-code">
-                          <span className="text-emerald-300">{evt.category}</span>
-                          <span className="text-amber-300 font-bold">{evt.timing.countdownText}</span>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-[11px] font-mono-code">
+                            <span className="text-emerald-300">{evt.category}</span>
+                            <span className="text-amber-300 font-bold">{evt.timing.countdownText}</span>
+                          </div>
+                          <h4 className="text-sm font-bold text-white">
+                            {lang === 'bn' ? evt.titleBn : evt.titleEn}
+                          </h4>
+                          <div className="text-[11px] font-mono-code text-slate-400">
+                            Organizer: {evt.organizer}
+                          </div>
                         </div>
-                        <h4 className="text-sm font-bold text-white">
-                          {lang === 'bn' ? evt.titleBn : evt.titleEn}
-                        </h4>
-                        <div className="text-[11px] font-mono-code text-slate-400">
-                          {evt.organizer} • {evt.edition}
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono-code">
+                          <span className="text-cyan-300">{evt.verifiedStatus}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDetailItem({ type: 'event', data: evt })}
+                            className="text-emerald-400 hover:underline"
+                          >
+                            Details →
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -3991,131 +4147,203 @@ export default function App() {
                   onClick={() => switchTabWithMotion('events', 'EVENTS & BRACKETS')}
                   className="w-full py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition"
                 >
-                  Inspect Tournament Brackets & Register →
+                  Open Full Event Schedule & Download .ICS Calendar →
                 </button>
               </div>
 
-              {/* Popular Modrinth Resources & Bilingual Learning Recommendations */}
-              <div className="lg:col-span-7 rounded-2xl bg-[#0D1513] border border-cyan-500/25 p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                        MODRINTH LIVE HUB + BILINGUAL ACADEMY
-                      </span>
-                      <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                        {lang === 'bn'
-                          ? 'জনপ্রিয় মড, শেডার্স ও বাংলা লার্নিং গাইড'
-                          : 'Essential Mods, Shaders & Bangla Learning Guides'}
-                      </h2>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => switchTabWithMotion('resources', 'MODRINTH HUB')}
-                        className="text-xs font-semibold text-cyan-400 hover:underline"
-                      >
-                        Modrinth Hub →
-                      </button>
-                      <span className="text-slate-600">|</span>
-                      <button
-                        type="button"
-                        onClick={() => switchTabWithMotion('learn', 'LEARN MINECRAFT')}
-                        className="text-xs font-semibold text-amber-400 hover:underline"
-                      >
-                        Academy →
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {LEARNING_GUIDES.slice(0, 4).map((g) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedGuideId(g.id);
-                          switchTabWithMotion('learn', 'LEARN MINECRAFT');
-                        }}
-                        className="text-left p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 hover:border-cyan-500/40 transition space-y-1"
-                      >
-                        <div className="text-[10px] font-mono-code text-cyan-400 uppercase">
-                          {g.category} • {g.readTime}
-                        </div>
-                        <div className="text-xs font-bold text-white line-clamp-1">
-                          {lang === 'bn' ? g.titleBn : g.titleEn}
-                        </div>
-                        <p className="text-[11px] text-slate-400 line-clamp-2">
-                          {lang === 'bn' ? g.summaryBn : g.summaryEn}
-                        </p>
-                      </button>
-                    ))}
+              {/* Visible Community Contribution Hub Card */}
+              <div className="lg:col-span-5 rounded-2xl bg-[#0D1513] border border-amber-500/30 p-6 space-y-4 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <span className="text-xs font-mono-code text-amber-400 uppercase">
+                    OPEN COMMUNITY ARCHIVE // CONTRIBUTE & VERIFY
+                  </span>
+                  <h2 className="text-xl font-display font-bold text-white">
+                    {lang === 'bn'
+                      ? 'আপনার সার্ভার, বিল্ড বা পুরনো স্মৃতি যুক্ত করুন'
+                      : 'Submit a Server, Creator, Build, or Historical Memory'}
+                  </h2>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Every submission passes through our transparent 3-step editorial workflow (<code className="text-emerald-300">Pending Review → Source Checked → Published</code>) and is tagged clearly as community-submitted or primary-sourced.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormNotice(null);
+                        setActiveModal('submit-server');
+                      }}
+                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-emerald-300 text-left"
+                    >
+                      + Submit a Server
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormNotice(null);
+                        setActiveModal('submit-creator');
+                      }}
+                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-cyan-300 text-left"
+                    >
+                      + Submit Creator
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormNotice(null);
+                        setActiveModal('submit-build');
+                      }}
+                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-amber-300 text-left"
+                    >
+                      + Submit Voxel Build
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormNotice(null);
+                        setActiveModal('submit-memory');
+                      }}
+                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-purple-300 text-left"
+                    >
+                      + Historical Memory
+                    </button>
                   </div>
                 </div>
-
-                {/*Latest News Strip */}
-                <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono-code text-[10px] shrink-0">
-                      LATEST DISPATCH
-                    </span>
-                    <span className="text-white font-semibold truncate">
-                      {lang === 'bn' ? NEWS_ARTICLES[0].titleBn : NEWS_ARTICLES[0].titleEn}
-                    </span>
-                  </div>
+                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 flex items-center justify-between text-[11px] font-mono-code text-slate-400">
+                  <span>Queue Status: {moderationQueue.length} items in review</span>
                   <button
                     type="button"
-                    onClick={() => switchTabWithMotion('news', 'NEWSROOM')}
-                    className="text-emerald-400 font-mono-code hover:underline shrink-0"
+                    onClick={() => switchTabWithMotion('admin', 'CMS & STATUS')}
+                    className="text-emerald-400 hover:underline"
                   >
-                    Read News →
+                    Inspect Queue →
                   </button>
                 </div>
               </div>
             </section>
 
-            {/* 7. Spectacular Closing Community Participation Section */}
-            <section className="relative rounded-3xl overflow-hidden border border-emerald-500/40 bg-gradient-to-r from-[#06241C] via-[#0A1815] to-[#081F2C] p-8 sm:p-12 text-center space-y-6 shadow-2xl">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-mono-code">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>ONE COMMUNITY • ONE UNIVERSE • EVERYTHING MINECRAFT BANGLADESH NEEDS</span>
+            {/* 5. Progressive Disclosure Toggle for Extended 3D Labs, Builds & Photography */}
+            <div className="rounded-2xl bg-[#0A110F] border border-slate-800 p-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-display font-bold text-white">
+                  {lang === 'bn'
+                    ? 'অতিরিক্ত সেকশন: ৩ডি ভক্সেল দ্বীপ, ভক্সেল স্থাপত্য ও আনস্প্ল্যাশ গ্যালারি'
+                    : 'Extended Homepage Showcase: 3D WebGL Island, Voxel Builds & Photography'}
+                </div>
+                <p className="text-xs text-slate-400">
+                  Grouped here to keep the main homepage fast and focused for first-time visitors.
+                </p>
               </div>
-              <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-white max-w-3xl mx-auto leading-tight">
-                {lang === 'bn'
-                  ? 'আপনি কি বাংলাদেশের মাইনক্রাফট ইতিহাসের অংশ হতে প্রস্তুত?'
-                  : 'Ready to Shape the Future of Minecraft in Bangladesh?'}
-              </h2>
-              <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto">
-                {lang === 'bn'
-                  ? 'আপনার ফ্রি অথবা মাইক্রোসফট ভেরিফায়েড প্রোফাইল তৈরি করুন, নিজের বিল্ড ও সার্ভার যুক্ত করুন এবং ১৪-ইন-১ মাইনক্রাফট টুলবক্স ব্যবহার করুন।'
-                  : 'Connect your verified Minecraft account or register a free BLOCKBANGLA identity, submit your builds to the Bengal Voxel Gallery, or launch our 14-in-1 engineering toolbox.'}
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAuthModalOpen(true)}
-                  className="tactile-btn px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-sm"
-                >
-                  {playerProfile
-                    ? `Logged in as ${playerProfile.blockbangla_username}`
-                    : 'Create Player Identity (Microsoft / Free)'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchTabWithMotion('toolbox', '14-IN-1 TOOLBOX')}
-                  className="px-6 py-3.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-cyan-300 border border-cyan-500/40 font-mono-code font-bold text-sm"
-                >
-                  Open 14-in-1 MC Toolbox →
-                </button>
-                <button
-                  type="button"
-                  onClick={() => switchTabWithMotion('about', 'FOUNDER TANXIM')}
-                  className="px-6 py-3.5 rounded-xl bg-slate-950/90 hover:bg-slate-900 text-amber-300 border border-amber-500/40 font-mono-code font-bold text-sm"
-                >
-                  About Founder TANXIM →
-                </button>
+              <button
+                type="button"
+                onClick={() => setShowExtendedHomeLabs((prev) => !prev)}
+                className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono-code font-bold transition"
+              >
+                {showExtendedHomeLabs ? 'Hide Extended Showcase ▲' : 'Expand 3D Scene & Galleries ▼'}
+              </button>
+            </div>
+
+            {showExtendedHomeLabs && (
+              <div className="space-y-12">
+                {/* Interactive Three.js WebGL 3D Floating Voxel Bangladesh Delta */}
+                <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                  <div className="lg:col-span-7">
+                    <WebGLVoxelBengalScene
+                      atmosphere={atmosphere}
+                      threeReady={threeReady}
+                      reducedMotion={reducedMotion}
+                    />
+                  </div>
+                  <div className="lg:col-span-5 space-y-4 p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/25">
+                    <span className="text-xs font-mono-code text-emerald-400 uppercase">
+                      INTERACTIVE 3D VOXEL SCENE (AUTO-PAUSES OFF-SCREEN)
+                    </span>
+                    <h2 className="text-2xl font-display font-extrabold text-white">
+                      {lang === 'bn'
+                        ? 'ইন্টারেক্টিভ ৩ডি ভক্সেল বাংলাদেশ দ্বীপ'
+                        : 'Interactive 3D Voxel Bengal Delta & Landmarks'}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      Drag across the viewport to orbit Jatiya Sangsad Bhaban, Paharpur Terracotta Stupa, and the Padma River span in 3D space. Automatically pauses when scrolled out of view.
+                    </p>
+                  </div>
+                </section>
+
+                {/* Reality vs. Voxel Bengal Asymmetric Split Showcase */}
+                <section className="space-y-5">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <span className="text-xs font-mono-code text-emerald-400 uppercase">
+                        REAL PHOTOGRAPHY × VOXEL ARCHITECTURE PAIRING
+                      </span>
+                      <h2 className="text-2xl font-display font-bold text-white mt-0.5">
+                        {lang === 'bn'
+                          ? 'বাস্তব বাংলাদেশ বনাম মাইনক্রাফট ভক্সেল স্থাপত্য'
+                          : 'Bangladesh in Reality & Reconstructed in Voxels'}
+                      </h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => switchTabWithMotion('community', 'COMMUNITY BUILDS')}
+                      className="text-xs font-semibold text-emerald-400 hover:underline"
+                    >
+                      Explore Full Build Gallery →
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    {builds.slice(0, 3).map((b, idx) => {
+                      const refPhoto = SECTION_VISUAL_CURATION.buildsRealPhotos[b.id];
+                      return (
+                        <Tilt3DCard
+                          key={b.id}
+                          staggerIndex={idx}
+                          reducedMotion={reducedMotion}
+                          className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
+                        >
+                          <div>
+                            <VoxelBuildArtwork
+                              artType={b.artType}
+                              title={b.titleEn}
+                              realPhotoUrl={refPhoto?.photoUrl}
+                              onInspectLightbox={() =>
+                                setLightboxAsset({
+                                  title: b.titleEn,
+                                  imageUrl: refPhoto?.photoUrl,
+                                  subtitle: `${b.coordinates} • Palette: ${b.palette.join(', ')}`,
+                                  attribution: refPhoto?.credit || 'Unsplash Verified Archive'
+                                })
+                              }
+                            />
+                            <div className="p-4 space-y-2">
+                              <div className="flex items-center justify-between text-[11px] font-mono-code text-emerald-400">
+                                <span>{b.coordinates}</span>
+                                <span className="text-amber-300">{b.edition}</span>
+                              </div>
+                              <h3 className="text-base font-display font-bold text-white">
+                                {lang === 'bn' ? b.titleBn : b.titleEn}
+                              </h3>
+                              <p className="text-xs text-slate-300 line-clamp-2">
+                                {lang === 'bn' ? b.descriptionBn : b.descriptionEn}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="px-4 py-2.5 bg-[#080D0C] border-t border-slate-800 flex items-center justify-between text-[11px] font-mono-code text-slate-400">
+                            <span>{refPhoto?.caption}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDetailItem({ type: 'build', data: b })}
+                              className="text-emerald-400 hover:underline"
+                            >
+                              Blueprint →
+                            </button>
+                          </div>
+                        </Tilt3DCard>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
-            </section>
+            )}
           </div>
         )}
 
@@ -4485,44 +4713,45 @@ export default function App() {
                   {liveEcosystemStats.onlineNodes} / {liveEcosystemStats.totalTracked}
                 </div>
                 <div className="text-[11px] font-mono-code text-slate-400">
-                  Last Sync: {lastHeartbeatTime}
+                  Last Checked: {lastHeartbeatTime}
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#0D1513] border border-cyan-500/30 space-y-1">
                 <div className="text-[11px] font-mono-code text-cyan-400 uppercase">
-                  TOTAL ONLINE PLAYERS (TRACKED)
+                  TOTAL ONLINE PLAYERS (LIVE API)
                 </div>
                 <div className="text-2xl font-display font-extrabold text-cyan-300">
                   {liveEcosystemStats.totalPlayers.toLocaleString()}
                 </div>
                 <div className="text-[11px] font-mono-code text-slate-400">
-                  Verified via mcsrvstat.us / mcstatus.io
+                  Source: mcsrvstat.us / mcstatus.io
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#0D1513] border border-amber-500/30 space-y-1">
-                <div className="text-[11px] font-mono-code text-amber-400 uppercase">
-                  AVG API TELEMETRY RTT
+                <div className="text-[11px] font-mono-code text-amber-400 uppercase flex items-center gap-1">
+                  <span>STATUS API RTT</span>
+                  <TermTooltip term="API RTT" label="?" lang={lang} />
                 </div>
                 <div className="text-2xl font-display font-extrabold text-amber-300">
                   {liveEcosystemStats.avgRtt ? `${liveEcosystemStats.avgRtt} ms` : 'Measuring...'}
                 </div>
                 <div className="text-[11px] font-mono-code text-slate-400">
-                  BDIX Domestic (&lt;15ms) • SG (~50ms)
+                  <TermTooltip term="BDIX" label="BDIX Info" lang={lang} /> • SG (~50ms)
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-1">
                 <div className="text-[11px] font-mono-code text-emerald-400 uppercase flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>ANTI-SPOOF & WAF SHIELD</span>
+                  <span>DATA VERIFICATION SCOPE</span>
                 </div>
-                <div className="text-2xl font-display font-extrabold text-emerald-300">
-                  ACTIVE
+                <div className="text-base font-display font-extrabold text-emerald-300">
+                  LIVE PING + EDITORIAL
                 </div>
                 <div className="text-[11px] font-mono-code text-slate-400">
-                  Velocity / BungeeGuard + Floodgate Verified
+                  Click &quot;Report&quot; on any stale listing
                 </div>
               </div>
             </div>
@@ -4664,14 +4893,15 @@ export default function App() {
                         {lang === 'bn' ? srv.descriptionBn : srv.descriptionEn}
                       </p>
 
-                      {/* Server Security Posture & Game Modes */}
+                      {/* Transparent Provenance, Last-Checked Timestamp & Game Modes */}
+                      <div className="p-2.5 rounded-xl bg-[#070B0A] border border-slate-800/90 text-[11px] font-mono-code text-slate-400 flex flex-wrap items-center justify-between gap-2">
+                        <span>
+                          Last Checked: <strong className="text-slate-200">{tele?.checkedAt || 'Querying...'}</strong>
+                        </span>
+                        <span className="text-emerald-400">{srv.verifiedSource}</span>
+                      </div>
+
                       <div className="flex flex-wrap gap-1.5">
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-[10px] font-mono-code text-emerald-300">
-                          🛡️ Anti-UUID-Spoof
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30 text-[10px] font-mono-code text-cyan-300">
-                          ⚡ Geyser Floodgate
-                        </span>
                         {srv.modes.map((m) => (
                           <span
                             key={m}
@@ -4684,7 +4914,7 @@ export default function App() {
                     </div>
 
                     <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => handleCopyText(srv.ip, srv.id)}
@@ -4698,25 +4928,22 @@ export default function App() {
                           onClick={() => queryLiveServerStatus(srv.ip, 'java', srv.id)}
                           className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 text-xs font-mono-code"
                         >
-                          Ping API
+                          Refresh Status
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setSavedServerIds((prev) =>
-                              prev.includes(srv.id)
-                                ? prev.filter((id) => id !== srv.id)
-                                : [...prev, srv.id]
-                            )
-                          }
-                          className={`px-2.5 py-2 rounded-xl border text-xs font-mono-code transition ${
-                            savedServerIds.includes(srv.id)
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                              : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-                          }`}
-                          title="Bookmark Server"
+                          onClick={() => {
+                            setFormNotice(null);
+                            setFormData((prev) => ({
+                              ...prev,
+                              title: `Correction Report: ${srv.name} (${srv.ip})`
+                            }));
+                            setActiveModal('report-inaccuracy');
+                          }}
+                          className="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 text-xs font-mono-code"
+                          title="Report outdated IP, port, or status"
                         >
-                          {savedServerIds.includes(srv.id) ? '★ Saved' : '☆ Save'}
+                          Report
                         </button>
                       </div>
                       <button
@@ -4724,7 +4951,7 @@ export default function App() {
                         onClick={() => setSelectedDetailItem({ type: 'server', data: srv })}
                         className="text-xs font-mono-code text-slate-300 hover:text-white underline"
                       >
-                        Join & Security Guide →
+                        How to Join →
                       </button>
                     </div>
                   </Tilt3DCard>
@@ -7811,9 +8038,14 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-lg rounded-2xl bg-[#0D1513] border border-emerald-500/40 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-display font-bold text-white uppercase">
-                {activeModal.replace('-', ' ')}
-              </h3>
+              <div>
+                <span className="text-[10px] font-mono-code text-emerald-400 uppercase block">
+                  COMMUNITY CONTRIBUTION & EDITORIAL REVIEW WORKFLOW
+                </span>
+                <h3 className="text-lg font-display font-bold text-white uppercase">
+                  {activeModal.replace('-', ' ')}
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
@@ -7822,6 +8054,41 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Quick Category Switcher & 3-Step Review Status Disclosure */}
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: 'submit-server', label: 'Server' },
+                { id: 'submit-creator', label: 'Creator' },
+                { id: 'submit-event', label: 'Event' },
+                { id: 'submit-build', label: 'Build' },
+                { id: 'submit-memory', label: 'History Memory' },
+                { id: 'report-inaccuracy', label: 'Report Correction' }
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setActiveModal(m.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-code transition ${
+                    activeModal === m.id
+                      ? 'bg-emerald-500 text-slate-950 font-bold'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 text-[11px] text-slate-300 space-y-1">
+              <div className="font-mono-code text-amber-300 font-bold">
+                Review Pipeline: 1. Submit Entry → 2. Editorial & Source Check → 3. Published with Badge
+              </div>
+              <p className="text-slate-400">
+                Guidelines: Do not include personal phone numbers or private data. Include verifiable links (YouTube, Discord, Server IP, or dated screenshot context).
+              </p>
+            </div>
+
             {formNotice && (
               <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-200">
                 {formNotice.text}
@@ -7832,7 +8099,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 type="text"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Title / Server Name / Channel Name..."
+                placeholder="Title / Server Name / Channel Name / Era..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <input
@@ -7842,18 +8109,25 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 placeholder="Your Username / Organizer Handle..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
+              <input
+                type="text"
+                value={formData.link}
+                onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                placeholder="Source URL / Server IP / YouTube or Discord Link (Optional)..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
+              />
               <textarea
                 rows={3}
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Verification details, coordinates, IP, or historical notes..."
+                placeholder="Verification details, coordinates, edition (Java/Bedrock), or historical notes..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <button
                 type="submit"
                 className="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
               >
-                Submit to Editorial Queue
+                Submit to Editorial Queue (Status: Pending Review)
               </button>
             </form>
           </div>
