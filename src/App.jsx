@@ -98,6 +98,134 @@ function generateSecureVelocitySecret() {
   return Array.from(arr, (v, idx) => chars[(v || idx * 17) % chars.length]).join('');
 }
 
+// Web Audio API Tactile Voxel Sound Synthesizer (Zero external MP3 dependencies)
+function playVoxelSound(type = 'click', enabled = true) {
+  if (!enabled || typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!window.__bbAudioCtx) window.__bbAudioCtx = new AudioCtx();
+    const ctx = window.__bbAudioCtx;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    if (type === 'xp') {
+      // Minecraft XP Orb Chime on IP Copy / Success
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, now); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.09); // A5
+      osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.18); // D6
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    } else if (type === 'portal') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.14);
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } else {
+      // Crisp Voxel UI Click
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.exponentialRampToValueAtTime(160, now + 0.035);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.start(now);
+      osc.stop(now + 0.045);
+    }
+  } catch (e) {}
+}
+
+// ============================================================================
+// 0.04 FORMSPREE REACT INTEGRATION HOOK (ENDPOINT: https://formspree.io/f/xkjjdnpr)
+// ============================================================================
+const FORMSPREE_FORM_ID = 'xkjjdnpr';
+const FORMSPREE_ENDPOINT = `https://formspree.io/f/${FORMSPREE_FORM_ID}`;
+
+function useFormspree(formId = FORMSPREE_FORM_ID) {
+  const [state, setState] = useState({
+    submitting: false,
+    succeeded: false,
+    errors: []
+  });
+
+  const handleSubmit = useCallback(
+    async (eOrPayload) => {
+      if (eOrPayload && typeof eOrPayload.preventDefault === 'function') {
+        eOrPayload.preventDefault();
+      }
+      setState({ submitting: true, succeeded: false, errors: [] });
+
+      let bodyData;
+      const headers = { Accept: 'application/json' };
+
+      if (eOrPayload?.target && eOrPayload.target instanceof HTMLFormElement) {
+        bodyData = new FormData(eOrPayload.target);
+      } else {
+        headers['Content-Type'] = 'application/json';
+        bodyData = JSON.stringify(eOrPayload || {});
+      }
+
+      try {
+        const response = await fetch(`https://formspree.io/f/${formId}`, {
+          method: 'POST',
+          headers,
+          body: bodyData
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+          setState({ submitting: false, succeeded: true, errors: [] });
+          return { ok: true, data };
+        } else {
+          const errList = Array.isArray(data?.errors)
+            ? data.errors
+            : [{ field: 'form', message: data?.error || 'Submission failed. Please check your inputs.' }];
+          setState({ submitting: false, succeeded: false, errors: errList });
+          return { ok: false, errors: errList };
+        }
+      } catch (err) {
+        const netErr = [{ field: 'form', message: 'Network error while reaching Formspree.' }];
+        setState({ submitting: false, succeeded: false, errors: netErr });
+        return { ok: false, errors: netErr };
+      }
+    },
+    [formId]
+  );
+
+  const resetForm = useCallback(() => {
+    setState({ submitting: false, succeeded: false, errors: [] });
+  }, []);
+
+  return [state, handleSubmit, resetForm];
+}
+
+const FormspreeValidationError = ({ prefix = 'Field', field, errors = [] }) => {
+  if (!Array.isArray(errors) || errors.length === 0) return null;
+  const matching = field
+    ? errors.filter((e) => e.field === field)
+    : errors.filter((e) => !e.field || e.field === 'form');
+  if (matching.length === 0) return null;
+  return (
+    <div className="text-[11px] font-mono-code text-rose-400 mt-1 space-y-0.5" role="alert">
+      {matching.map((err, idx) => (
+        <div key={idx}>
+          ▲ {prefix}: {err.message}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 // ============================================================================
 // 0.05 AUTONOMOUS VISUAL ASSET MANIFEST & CURATED MULTI-SOURCE MEDIA REGISTRY
 // ============================================================================
@@ -787,6 +915,1238 @@ const KineticMarqueeRibbon = ({ lang }) => {
   );
 };
 
+// ============================================================================
+// 6.5 VIDEO INSPIRATION MODULES: OPRAAH (3D PANORAMA, SPLIT MANIFESTO, WAVY RIBBON)
+//     & BDZONE (GLYPH SCRAMBLE, IDEA BOARD, 4-STEP JOIN, TEAM & SEASON GALLERY)
+// ============================================================================
+
+// A. Minecraft Enchanting-Glyph Text Scramble Headline (Inspired by BDZONE 00:36)
+const GlyphScrambleHeading = ({ targetText = 'Infinite Adventures.', className = '' }) => {
+  const glyphs = 'ᔑʖᓵ↸ᒷ𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟|_+-*/<>!';
+  const [text, setText] = useState(targetText);
+  const [scrambling, setScrambling] = useState(false);
+
+  const triggerScramble = useCallback(() => {
+    if (scrambling) return;
+    setScrambling(true);
+    let step = 0;
+    const totalSteps = 18;
+    const interval = setInterval(() => {
+      step += 1;
+      const progress = step / totalSteps;
+      const revealedCount = Math.floor(targetText.length * progress);
+      const nextStr = targetText
+        .split('')
+        .map((ch, idx) => {
+          if (ch === ' ') return ' ';
+          if (idx < revealedCount) return ch;
+          return glyphs[Math.floor(Math.random() * glyphs.length)];
+        })
+        .join('');
+      setText(nextStr);
+      if (step >= totalSteps) {
+        clearInterval(interval);
+        setText(targetText);
+        setScrambling(false);
+      }
+    }, 45);
+  }, [scrambling, targetText]);
+
+  useEffect(() => {
+    triggerScramble();
+  }, [targetText]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <span
+      onMouseEnter={triggerScramble}
+      onClick={triggerScramble}
+      title="Hover or click to decode Minecraft Enchanting Table glyphs"
+      className={`cursor-pointer select-none inline-block ${className}`}
+    >
+      {text}
+    </span>
+  );
+};
+
+// B. Opraah-Inspired 3D Curved Cylindrical Panorama Stage Over Perspective Grid Floor (00:56 - 01:03)
+const OpraahCurvedPanoramaStage = ({ lang, onNavigateTab, onInspectLightbox }) => {
+  const [rotationAngle, setRotationAngle] = useState(0);
+
+  const reelPanels = [
+    {
+      id: 'pan-1',
+      title: 'The Bangla Gamer — Survival Ep 8',
+      tag: '3.4M+ Views • #minecraftbangla',
+      img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=700&q=80',
+      tab: 'creators'
+    },
+    {
+      id: 'pan-2',
+      title: 'Jatiya Sangsad Voxel Monument',
+      tag: 'Dhaka Brutalist Build',
+      img: 'https://images.unsplash.com/photo-1624863699622-732076711240?auto=format&fit=crop&w=700&q=80',
+      tab: 'community'
+    },
+    {
+      id: 'pan-3',
+      title: 'BDZONE Season 6 & BedWars',
+      tag: 'Est. 9 April 2018 • 10,000+ Players',
+      img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=700&q=80',
+      tab: 'servers'
+    },
+    {
+      id: 'pan-4',
+      title: 'Sundarbans Mangrove Shader Reel',
+      tag: 'Bengal Delta Biome',
+      img: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=700&q=80',
+      tab: 'community'
+    },
+    {
+      id: 'pan-5',
+      title: 'Maven’s Hive Friday UHC Siege',
+      tag: 'Java + Bedrock Crossplay',
+      img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=700&q=80',
+      tab: 'events'
+    },
+    {
+      id: 'pan-6',
+      title: 'Paharpur Somapura Mahavihara',
+      tag: '8th-Century Terracotta Voxel',
+      img: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=700&q=80',
+      tab: 'legacy'
+    },
+    {
+      id: 'pan-7',
+      title: 'BMS Lifesteal & Clan Tournaments',
+      tag: 'Discord Community Hub',
+      img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=700&q=80',
+      tab: 'servers'
+    }
+  ];
+
+  return (
+    <section className="relative rounded-3xl bg-[#040606] border border-white/10 overflow-hidden pt-8 pb-12 px-4 sm:px-8 shadow-2xl">
+      {/* Perspective Grid Floor (Matching Opraah 00:57 curved horizon grid) */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-60 opacity-45"
+        style={{
+          backgroundImage:
+            'linear-gradient(to right, rgba(16,185,129,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(16,185,129,0.22) 1px, transparent 1px)',
+          backgroundSize: '44px 44px',
+          transform: 'perspective(420px) rotateX(68deg) scale(1.35)',
+          transformOrigin: 'bottom center'
+        }}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#040606] via-[#040606]/70 to-transparent" />
+
+      {/* Top Controls */}
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mb-6">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/40 text-orange-300 text-[11px] font-mono-code font-bold">
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>360° CURVED CREATOR & SERVER SHOWREEL</span>
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setRotationAngle((a) => a - 14)}
+            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-mono-code text-slate-200 border border-white/10"
+          >
+            ← Pan Left
+          </button>
+          <button
+            type="button"
+            onClick={() => setRotationAngle(0)}
+            className="px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-mono-code border border-orange-500/30"
+          >
+            Center
+          </button>
+          <button
+            type="button"
+            onClick={() => setRotationAngle((a) => a + 14)}
+            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-mono-code text-slate-200 border border-white/10"
+          >
+            Pan Right →
+          </button>
+        </div>
+      </div>
+
+      {/* Curved Cylindrical Wall of Vertical Cards */}
+      <div
+        className="relative z-10 flex items-center justify-center gap-3 sm:gap-4 py-4 overflow-x-auto no-scrollbar"
+        style={{ perspective: '1200px' }}
+      >
+        {reelPanels.map((panel, idx) => {
+          const offsetFromCenter = idx - 3 + rotationAngle / 28;
+          const rotateY = offsetFromCenter * -11;
+          const translateZ = Math.abs(offsetFromCenter) * -18;
+          return (
+            <div
+              key={panel.id}
+              onClick={() => onNavigateTab(panel.tab, panel.title)}
+              style={{
+                transform: `rotateY(${rotateY}deg) translateZ(${translateZ}px)`,
+                transition: 'transform 500ms cubic-bezier(0.16, 1, 0.3, 1)'
+              }}
+              className="group relative shrink-0 w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden border border-white/15 bg-slate-950 cursor-pointer shadow-2xl hover:border-orange-400"
+            >
+              <img
+                src={panel.img}
+                alt={panel.title}
+                loading="lazy"
+                className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
+              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
+                <span className="px-2 py-0.5 rounded bg-black/75 text-[9px] font-mono-code text-orange-300 border border-orange-500/30">
+                  {panel.tag}
+                </span>
+              </div>
+              <div className="absolute bottom-3 left-3 right-3 space-y-1">
+                <div className="text-xs sm:text-sm font-display font-bold text-white leading-snug">
+                  {panel.title}
+                </div>
+                <span className="inline-flex items-center gap-1 text-[10px] font-mono-code text-emerald-300">
+                  <span>Open Showcase</span>
+                  <ArrowUpRight className="w-3 h-3" />
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Center Stage Statement (Opraah 01:02 layout) */}
+      <div className="relative z-10 text-center max-w-3xl mx-auto mt-6 space-y-2">
+        <div className="text-xs sm:text-sm font-medium text-orange-300 tracking-wide">
+          {lang === 'bn'
+            ? 'বাংলাদেশের ক্রিয়েটর, সার্ভার ও বিল্ডারদের সম্মিলিত মঞ্চ'
+            : 'Bangladesh’s Unified Creator, Server & Builder Stage'}
+        </div>
+        <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-white tracking-tight leading-none">
+          {lang === 'bn'
+            ? '১৯,০০০+ বাংলা ভিডিও। আমরাই এটি সম্ভব করেছি।'
+            : 'Millions Watched. Bangladesh Made It Happen.'}
+        </h2>
+      </div>
+    </section>
+  );
+};
+
+// C. Opraah-Inspired Split-Screen Manifesto + Wavy SVG Ribbon (01:04 - 01:10 & 01:34)
+const OpraahSplitManifestoAndRibbon = ({ lang, onNavigateTab }) => {
+  const [slideIdx, setSlideIdx] = useState(0);
+  const slides = [
+    {
+      year: 'CHAPTER 01',
+      headlineEn: 'We started in 2011',
+      headlineBn: 'আমাদের যাত্রা শুরু ২০১১ সালে',
+      subEn: 'From university dorm USB drives, cybercafe LANs, and 5-player Hamachi tunnels across Dhaka and Chattogram.'
+    },
+    {
+      year: 'CHAPTER 02',
+      headlineEn: 'With One Belief',
+      headlineBn: 'একটিই বিশ্বাস নিয়ে',
+      subEn: 'That Bangladeshi players deserve low-latency domestic networks, verified history, and world-class community events.'
+    },
+    {
+      year: 'CHAPTER 03',
+      headlineEn: 'Creators & Builders are the strongest storytellers alive.',
+      headlineBn: 'আমাদের ক্রিয়েটর এবং বিল্ডাররাই সবচেয়ে শক্তিশালী গল্পকার।',
+      subEn: 'Over 3,600+ Bengali YouTube channels and dedicated networks like BDZONE, BMS, Cyan Plex, and Maven’s Hive prove it daily.'
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSlideIdx((i) => (i + 1) % slides.length);
+    }, 3800);
+    return () => clearInterval(timer);
+  }, [slides.length]);
+
+  const activeSlide = slides[slideIdx];
+
+  return (
+    <section className="space-y-6">
+      {/* Split-Screen Cream + Vibrant Orange Manifesto (Opraah 01:05 - 01:10) */}
+      <div className="rounded-3xl overflow-hidden border border-white/15 grid grid-cols-1 lg:grid-cols-12 shadow-2xl">
+        {/* Left Half: Warm Studio Cream with Voxel CRT-Head Architect Mascot */}
+        <div className="lg:col-span-5 bg-[#FDF4EB] text-slate-950 p-6 sm:p-10 flex flex-col items-center justify-between relative">
+          <div className="w-full flex items-center justify-between text-[11px] font-mono-code text-slate-600">
+            <span>BLOCKBANGLA MANIFESTO</span>
+            <span>EST. 2011 — 2026</span>
+          </div>
+
+          {/* Original SVG Voxel-Monitor Mascot in Orange Suit (Inspired by Opraah 01:05) */}
+          <svg viewBox="0 0 260 260" className="w-48 h-48 sm:w-56 sm:h-56 my-2 select-none">
+            {/* Shadow */}
+            <ellipse cx="130" cy="242" rx="68" ry="10" fill="#E2D5C8" />
+            {/* Suit Torso & Arms */}
+            <path d="M72,140 L188,140 L208,236 L52,236 Z" fill="#EA580C" stroke="#7C2D12" strokeWidth="2.5" />
+            {/* White Shirt & Black Tie */}
+            <polygon points="112,140 148,140 130,185" fill="#FFFFFF" />
+            <polygon points="126,148 134,148 136,204 130,214 124,204" fill="#0F172A" />
+            {/* Suit Lapels */}
+            <polygon points="98,140 114,140 130,185 88,168" fill="#C2410C" />
+            <polygon points="162,140 146,140 130,185 172,168" fill="#C2410C" />
+            {/* Voxel CRT Monitor Head */}
+            <rect x="74" y="42" width="112" height="88" rx="10" fill="#1E293B" stroke="#0F172A" strokeWidth="4" />
+            <rect x="84" y="52" width="84" height="68" rx="4" fill="#0F172A" />
+            {/* CRT Static / Creeper Voxel Face on Screen */}
+            <rect x="98" y="66" width="14" height="14" fill="#10B981" />
+            <rect x="140" y="66" width="14" height="14" fill="#10B981" />
+            <rect x="116" y="82" width="20" height="18" fill="#10B981" />
+            <rect x="108" y="94" width="10" height="14" fill="#10B981" />
+            <rect x="134" y="94" width="10" height="14" fill="#10B981" />
+            {/* Monitor Knobs */}
+            <circle cx="177" cy="68" r="3.5" fill="#F97316" />
+            <circle cx="177" cy="82" r="3.5" fill="#38BDF8" />
+          </svg>
+
+          <div className="w-full flex items-center justify-between text-xs font-mono-code text-slate-700 border-t border-slate-300 pt-3">
+            <span>VOXEL STORYTELLER</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('creators', 'CREATORS')}
+              className="font-bold text-orange-600 hover:underline"
+            >
+              Meet Creators →
+            </button>
+          </div>
+        </div>
+
+        {/* Right Half: High-Contrast Vibrant Orange Stage (`#FF5500`) */}
+        <div
+          onClick={() => setSlideIdx((i) => (i + 1) % slides.length)}
+          className="lg:col-span-7 bg-[#FF5500] text-white p-8 sm:p-14 flex flex-col justify-between cursor-pointer select-none min-h-[300px]"
+        >
+          <div className="flex items-center justify-between">
+            <span className="px-3 py-1 rounded-full bg-black/20 text-white text-xs font-mono-code font-bold">
+              {activeSlide.year} • CLICK TO ADVANCE
+            </span>
+            <div className="flex items-center gap-1.5">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSlideIdx(idx);
+                  }}
+                  className={`h-2 rounded-full transition-all ${
+                    slideIdx === idx ? 'w-8 bg-white' : 'w-2 bg-white/40'
+                  }`}
+                  aria-label={`Slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="my-auto py-6 space-y-4">
+            <h3 className="text-3xl sm:text-5xl font-display font-extrabold tracking-tight leading-[1.08] drop-shadow-sm">
+              {lang === 'bn' ? activeSlide.headlineBn : activeSlide.headlineEn}
+            </h3>
+            <p className="text-sm sm:text-base text-white/90 max-w-xl leading-relaxed font-medium">
+              {activeSlide.subEn}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/20 text-xs font-mono-code">
+            <span>BANGLADESH MINECRAFT CREATOR & SERVER ARCHIVE</span>
+            <span>0{slideIdx + 1} / 03 →</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Opraah 01:14 - 01:26 Inspired Floating Milestone Cards + "Things We're NOT Good At" Contrast Strip */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="lg:col-span-7 rounded-3xl bg-[#F8FAFC] text-slate-950 p-6 sm:p-8 border border-white/20 shadow-xl flex flex-col justify-between space-y-5">
+          <div className="flex items-center justify-between text-[11px] font-mono-code text-slate-500 uppercase">
+            <span>ECOSYSTEM SCALE (OPRAAH EDITORIAL FORMAT)</span>
+            <span>VERIFIED NOV 2026</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+              <div className="text-3xl sm:text-4xl font-display font-extrabold text-slate-950 tracking-tight">
+                19,000+
+              </div>
+              <div className="text-xs font-bold text-orange-600">#minecraftbangla Videos</div>
+              <p className="text-[11px] text-slate-500">Publicly indexed across YouTube</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+              <div className="text-3xl sm:text-4xl font-display font-extrabold text-slate-950 tracking-tight">
+                3,600+
+              </div>
+              <div className="text-xs font-bold text-emerald-600">Creator Channels</div>
+              <p className="text-[11px] text-slate-500">Bangla Survival, Shorts & Guides</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+              <div className="text-3xl sm:text-4xl font-display font-extrabold text-slate-950 tracking-tight">
+                16+ Yrs
+              </div>
+              <div className="text-xs font-bold text-cyan-600">Community History</div>
+              <p className="text-[11px] text-slate-500">From 2010 Beta LANs to 1.21.4</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Opraah 01:21 "Things we're... ah... not so great at" -> Blackout Reveal */}
+        <div className="lg:col-span-5 rounded-3xl bg-[#050505] border border-white/15 p-6 sm:p-8 flex flex-col justify-between space-y-4">
+          <div className="text-[11px] font-mono-code text-orange-400 uppercase tracking-widest">
+            THINGS WE ARE... AH... NOT SO GREAT AT:
+          </div>
+          <div className="space-y-2.5 text-sm sm:text-base font-display font-bold text-white">
+            <div className="flex items-center gap-2.5">
+              <span className="text-rose-500">✕</span>
+              <span>Inventing fake &ldquo;500/500 online&rdquo; server bots.</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-rose-500">✕</span>
+              <span>Pay-to-Win kits that ruin competitive PvP.</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <span className="text-rose-500">✕</span>
+              <span>Letting Bangladesh’s 2011–2018 server history vanish.</span>
+            </div>
+          </div>
+          <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] font-mono-code text-emerald-400">
+            <span>100% VERIFIED TELEMETRY</span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('legacy', 'THE LEGACY')}
+              className="underline hover:text-white"
+            >
+              Read Our Charter →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Wavy S-Curve SVG Ribbon Banner (Inspired by Opraah 01:34) */}
+      <div className="relative rounded-2xl bg-[#070B0A] border border-white/10 py-6 px-4 overflow-hidden">
+        <svg viewBox="0 0 1200 130" className="w-full h-20 sm:h-28 overflow-visible">
+          <path
+            id="opraahWaveCurve"
+            d="M -40,95 C 260,15 520,145 840,45 C 1020,-5 1140,85 1240,55"
+            fill="none"
+            stroke="#10B981"
+            strokeWidth="28"
+            strokeLinecap="round"
+          />
+          <text className="fill-slate-950 font-mono-code font-extrabold text-[13px] tracking-widest uppercase">
+            <textPath href="#opraahWaveCurve" startOffset="2%">
+              BLOCKBANGLA • ZERO FAKE SERVER STATS • BDIX &amp; SINGAPORE LOW PING • 19,000+ BANGLA VIDEOS • VERIFIED SINCE 2018 •
+            </textPath>
+          </text>
+        </svg>
+      </div>
+    </section>
+  );
+};
+
+// D. BDZONE-Inspired Flagship Network Deep-Dive, 4-Step How-To-Join, Team Roster, Idea Board & Season Gallery
+const BdzoneInspiredNetworkShowcase = ({
+  lang,
+  bdzoneTelemetry,
+  onCopyText,
+  copiedKey,
+  onOpenSubmitModal,
+  devReceiverEndpoint
+}) => {
+  const [activeSubTab, setActiveSubTab] = useState('overview'); // 'overview' | 'ideas' | 'seasons' | 'faq'
+  const [ideaFilter, setIdeaFilter] = useState('All');
+  const [openFaqIdx, setOpenFaqIdx] = useState(0);
+  const [newIdeaAuthor, setNewIdeaAuthor] = useState('');
+  const [newIdeaCategory, setNewIdeaCategory] = useState('In-Game');
+  const [newIdeaText, setNewIdeaText] = useState('');
+  const [ideaNotice, setIdeaNotice] = useState(null);
+
+  const [ideasList, setIdeasList] = useState([
+    {
+      id: 'id-01',
+      author: 'X33R',
+      category: 'Website',
+      status: 'Pending',
+      text: 'Please make the password input on the login screen hidden (showing **** instead of plain text). It is a standard security feature that prevents screen-peeking.',
+      upvotes: 14,
+      downvotes: 0,
+      comments: 3
+    },
+    {
+      id: 'id-02',
+      author: 'mr_69kidding',
+      category: 'In-Game',
+      status: 'Approved',
+      text: 'Add void spawner and skyblock island value leaderboard upgrades for Season 6.',
+      upvotes: 19,
+      downvotes: 1,
+      comments: 5
+    },
+    {
+      id: 'id-03',
+      author: 'SakibSenpai',
+      category: 'Bedrock Crossplay',
+      status: 'Resolved',
+      text: 'Minecraft Bedrock (pe.bdzonemc.com:19132) connection guide for 1.21.4 mobile players added to the main lobby.',
+      upvotes: 22,
+      downvotes: 0,
+      comments: 4
+    },
+    {
+      id: 'id-04',
+      author: 'Synapsees',
+      category: 'Survival (Last/Mini)',
+      status: 'Pending',
+      text: 'I think it would be way more better if there is a feature to toggle PvP on claimed land with clan consent.',
+      upvotes: 11,
+      downvotes: 1,
+      comments: 2
+    },
+    {
+      id: 'id-05',
+      author: 'TormujMia_Gaming',
+      category: 'In-Game',
+      status: 'Approved',
+      text: 'Host a Bangladesh Victory Day & World Cup community tournament event in the main arena!',
+      upvotes: 31,
+      downvotes: 0,
+      comments: 8
+    },
+    {
+      id: 'id-06',
+      author: 'ary2_61',
+      category: 'In-Game',
+      status: 'Pending',
+      text: 'Add Creative plot world for Bangladeshi architectural builders so everyone gets a plot to build.',
+      upvotes: 17,
+      downvotes: 0,
+      comments: 4
+    }
+  ]);
+
+  const bdzoneTeam = [
+    { name: 'JoynalBokhsho', role: 'OWNER & FOUNDER', badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40' },
+    { name: 'RealEsco', role: 'MANAGER', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    { name: 'AZombie_', role: 'MANAGER', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    { name: 'MoinulXD18', role: 'MANAGER', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
+    { name: '6apish_', role: 'DEVELOPER', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    { name: 'N0THINGS', role: 'JR. DEVELOPER', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
+    { name: 'robin_the_noob', role: 'MOD', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    { name: 'Beleamel', role: 'JR. MOD', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
+    { name: 'Tasif27', role: 'MANAGER (Former)', badgeColor: 'bg-slate-800 text-slate-400 border-slate-700' }
+  ];
+
+  const seasonGallery = [
+    {
+      title: 'Season Genesis',
+      count: '7 IMAGES',
+      note: 'Nether Hub & Circular Portal Sanctuary',
+      img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      title: 'Season 6',
+      count: 'ACTIVE ERA',
+      note: 'Grand Spawn Plaza & Custom Economy',
+      img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      title: 'Season 5',
+      count: '4 IMAGES',
+      note: 'Medieval Timber Citadel & Market',
+      img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      title: 'Season 4',
+      count: '10 IMAGES',
+      note: 'Classic BDZONE Monument & Arena',
+      img: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      title: 'Season 3',
+      count: '1 IMAGE',
+      note: 'Isometric Blossom Island Spawn',
+      img: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=900&q=80'
+    },
+    {
+      title: 'Season 1 and 2',
+      count: '10 IMAGES',
+      note: '2018–2019 Founding Survival Worlds',
+      img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80'
+    }
+  ];
+
+  const faqs = [
+    {
+      q: '01. How do I join BD ZONE or other Bangladeshi servers on PC and Mobile?',
+      a: 'On PC (Java Edition 1.8–1.21.x), click Multiplayer → Add Server and enter play.bdzonemc.com. On Mobile/Console/Windows (Bedrock Edition), go to Servers → Add Server, enter IP pe.bdzonemc.com and Port 19132.'
+    },
+    {
+      q: '02. Is the server free to play and cosmetic-friendly?',
+      a: 'Yes! As documented in BD ZONE’s charter, the network is designed around a cosmetic-and-convenience-first philosophy with strict no pay-to-win enforcement across PvP and progression modes.'
+    },
+    {
+      q: '03. What Minecraft versions are supported?',
+      a: 'Java & Bedrock versions from 1.8.x through 1.21.x+ are supported via ViaVersion and GeyserMC crossplay bridges.'
+    },
+    {
+      q: '04. Are hacked clients, autoclickers, or X-ray mods allowed?',
+      a: 'Strictly prohibited. Custom Anti-Cheat and active moderators enforce zero tolerance for cheating, griefing, or exploiting bugs.'
+    }
+  ];
+
+  const handleIdeaSubmit = async (e) => {
+    e.preventDefault();
+    if (!newIdeaText.trim()) return;
+    const item = {
+      id: `id-${Date.now()}`,
+      author: newIdeaAuthor.trim() || 'BDPlayer',
+      category: newIdeaCategory,
+      status: 'Pending',
+      text: newIdeaText.trim(),
+      upvotes: 1,
+      downvotes: 0,
+      comments: 0
+    };
+    setIdeasList((prev) => [item, ...prev]);
+    setNewIdeaText('');
+    setIdeaNotice('✓ Your suggestion has been added to the Idea Board & forwarded to the Dev Inbox!');
+
+    if (devReceiverEndpoint) {
+      try {
+        await fetch(devReceiverEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            project: 'BLOCKBANGLA_IDEA_BOARD',
+            author: item.author,
+            category: item.category,
+            suggestion: item.text
+          })
+        });
+      } catch (err) {}
+    }
+  };
+
+  return (
+    <section className="rounded-3xl bg-[#07080C] border border-red-500/25 p-5 sm:p-8 space-y-8 shadow-2xl">
+      {/* Top Spotlight Header (Inspired by BDZONE 00:00 & 00:37) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center border-b border-white/10 pb-7">
+        <div className="lg:col-span-7 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-mono-code font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>{bdzoneTelemetry?.online ? 'ONLINE NOW' : 'VERIFIED NETWORK'}</span>
+            </span>
+            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs font-mono-code">
+              Java &amp; Bedrock
+            </span>
+            <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-mono-code">
+              Est. 9 April 2018
+            </span>
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-xs font-mono-code text-red-400 uppercase tracking-wider">
+              FLAGSHIP BANGLADESHI NETWORK SPOTLIGHT // BD ZONE
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-white tracking-tight">
+              <GlyphScrambleHeading targetText="Infinite Adventures." />
+            </h2>
+          </div>
+
+          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+            Founded on 9 April 2018 by <strong>Joynal Bokhsho</strong>, BD ZONE is one of Bangladesh’s longest-running Minecraft networks—hosting over <strong>10,000+ registered players</strong> across Survival, SkyBlock, BedWars, and Practice PvP with sub-20ms Bangladesh routing.
+          </p>
+
+          {/* Dual Copy Buttons (Exact match to BDZONE 00:37) */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <button
+              type="button"
+              onClick={() => onCopyText('play.bdzonemc.com', 'bdz-java-hero')}
+              className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-red-600/30 transition"
+            >
+              <span>
+                {copiedKey === 'bdz-java-hero' ? '✓ Copied play.bdzonemc.com!' : 'Copy Java IP →'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onCopyText('pe.bdzonemc.com', 'bdz-bed-hero')}
+              className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/15 font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition"
+            >
+              <span>
+                {copiedKey === 'bdz-bed-hero'
+                  ? '✓ Copied pe.bdzonemc.com (19132)!'
+                  : 'Copy Bedrock IP'}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right Side: Live Network Status Card (BDZONE 00:37) */}
+        <div className="lg:col-span-5 rounded-2xl bg-[#0D0F17] border border-white/10 p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4 text-red-400" />
+              <span className="font-display font-bold text-white text-sm">Network Status</span>
+            </div>
+            <span className="px-2.5 py-1 rounded-md bg-red-500/15 text-red-300 border border-red-500/30 text-xs font-mono-code font-bold">
+              {bdzoneTelemetry?.online
+                ? `${bdzoneTelemetry.playersOnline} / ${bdzoneTelemetry.playersMax} Online`
+                : 'Live API Ready'}
+            </span>
+          </div>
+          <div className="space-y-2 text-xs font-mono-code">
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/50 border border-white/5">
+              <span className="text-slate-400">Java IP:</span>
+              <span className="text-emerald-300 font-bold">play.bdzonemc.com</span>
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/50 border border-white/5">
+              <span className="text-slate-400">Bedrock IP (Port 19132):</span>
+              <span className="text-amber-300 font-bold">pe.bdzonemc.com</span>
+            </div>
+            <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/50 border border-white/5">
+              <span className="text-slate-400">Supported Versions:</span>
+              <span className="text-cyan-300">1.8 — 1.21.x (Crossplay)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-Navigation Pills for BDZONE Showcase Sections */}
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { id: 'overview', label: '🏛️ About, Rules, Team & 4-Step Join' },
+          { id: 'ranks', label: '👑 Server Ranks & Vote Goal (BDZONE)' },
+          { id: 'ideas', label: '💡 Shape the Future (Idea Board)' },
+          { id: 'seasons', label: '🖼️ Season 1–6 & Genesis Gallery' },
+          { id: 'faq', label: '❓ Got Questions? (FAQ)' }
+        ].map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setActiveSubTab(t.id)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+              activeSubTab === t.id
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/25'
+                : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* SUB-TAB 1.5: RANKS & COMMUNITY VOTE GOAL TRACKER (BDZONE 00:28 - 00:35) */}
+      {activeSubTab === 'ranks' && (
+        <div className="space-y-6">
+          {/* Weekly Server Vote Goal Progress Bar (BDZONE 00:29) */}
+          <div className="p-6 rounded-2xl bg-[#0B0D13] border border-emerald-500/30 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-mono-code text-emerald-400 uppercase">
+                  VOTE FOR OUR SERVER • WEEKLY COMMUNITY GOAL (BDZONE ARCHIVE)
+                </span>
+                <h3 className="text-xl font-display font-extrabold text-white mt-0.5">
+                  Weekly Vote Goal — Unlock Community Crate Drop Event
+                </h3>
+              </div>
+              <span className="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 font-mono-code text-xs font-bold">
+                379 / 2,000 Weekly Votes • 166,096 Total Votes
+              </span>
+            </div>
+            <div className="w-full h-3 rounded-full bg-black border border-white/10 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400"
+                style={{ width: '24%' }}
+              />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center font-mono-code text-xs">
+              {[
+                { label: 'TOTAL VOTES', val: '166,096' },
+                { label: 'TOTAL VOTERS', val: '3,282' },
+                { label: "TODAY'S VOTES", val: '202' },
+                { label: "THIS WEEK'S VOTES", val: '379' },
+                { label: "THIS MONTH'S VOTES", val: '1,992' }
+              ].map((stat) => (
+                <div key={stat.label} className="p-3 rounded-xl bg-black/60 border border-white/10">
+                  <div className="text-base font-display font-extrabold text-white">{stat.val}</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">{stat.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Documented BDZONE Rank Tiers (Noble -> Immortal, BDZONE 00:31 - 00:35) */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-mono-code text-red-400 uppercase">
+                  COSMETIC & CONVENIENCE-FIRST RANKS (ZERO PAY-TO-WIN)
+                </span>
+                <h3 className="text-xl font-display font-extrabold text-white">
+                  Documented BD ZONE Server Rank Progression
+                </h3>
+              </div>
+              <a
+                href="https://bdzonemc.com/store/category/ranks"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
+              >
+                Official BD ZONE Store ↗
+              </a>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { name: 'Noble', price: '749 BDT', color: 'border-amber-500/40 text-amber-300', desc: 'Unlock exclusive perks, extra homes, vaults, XP boost & priority queue.' },
+                { name: 'Prime', price: '1,499 BDT', color: 'border-cyan-500/40 text-cyan-300', desc: 'Unlock premium perks, extra homes, pets, trails & particle cosmetics.' },
+                { name: 'Elite', price: '2,499 BDT', color: 'border-emerald-500/40 text-emerald-300', desc: 'Unlock elite perks, advanced utilities, extra homes & custom chat tags.' },
+                { name: 'Reaper', price: '3,749 BDT', color: 'border-purple-500/40 text-purple-300', desc: 'Unlock powerful cosmetic perks, extra vaults & seasonal lobby effects.' },
+                { name: 'Warlord', price: '5,249 BDT', color: 'border-rose-500/40 text-rose-300', desc: 'Unlock top-tier convenience utilities, premium customization & nick.' },
+                { name: 'Master', price: '6,999 BDT', color: 'border-orange-500/40 text-orange-300', desc: 'Master tier cosmetics, lobby flight, and supporter recognition.' },
+                { name: 'GrandMaster', price: '8,999 BDT', color: 'border-yellow-500/40 text-yellow-300', desc: 'Legendary cosmetic perks, massive home/vault capacity & custom gradient.' },
+                { name: 'Immortal', price: '17,999 BDT', color: 'border-red-500/50 text-red-400', desc: 'Ultimate supporter rank — 100% of revenue goes back into server hosting.' }
+              ].map((rk) => (
+                <div
+                  key={rk.name}
+                  className={`p-4 rounded-2xl bg-[#0C0E14] border ${rk.color} flex flex-col justify-between gap-3`}
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono-code uppercase text-slate-400">RANK TIER</span>
+                      <span className="px-2 py-0.5 rounded bg-white/5 text-xs font-mono-code font-bold text-white">
+                        {rk.price}
+                      </span>
+                    </div>
+                    <h4 className="text-lg font-display font-extrabold text-white">{rk.name}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">{rk.desc}</p>
+                  </div>
+                  <div className="pt-2 border-t border-white/10 text-[10px] font-mono-code text-emerald-300">
+                    ✓ Cosmetic & Convenience Only
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB 1: OVERVIEW, 4 GAME MODES, 4-STEP HOW TO JOIN, TEAM & INFRASTRUCTURE */}
+      {activeSubTab === 'overview' && (
+        <div className="space-y-8">
+          {/* 4 Game Modes Grid (BDZONE 00:01) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              {
+                title: 'Survival',
+                color: 'border-t-emerald-500',
+                desc: 'Vanilla-enhanced survival with economy, player shops, land claiming, and custom crafting recipes. The heart of our network.'
+              },
+              {
+                title: 'SkyBlock',
+                color: 'border-t-amber-500',
+                desc: 'Start from a tiny island and expand your empire. Custom generators, island upgrades, and a thriving economy await you.'
+              },
+              {
+                title: 'BedWars',
+                color: 'border-t-rose-500',
+                desc: 'Original BedWars experience with 8 unique maps, seasonal cosmetics, and a fully ranked competitive ladder.'
+              },
+              {
+                title: 'Practice PvP',
+                color: 'border-t-purple-500',
+                desc: 'Sharpen your skills in 1v1 duels, kit-based arenas, and ranked matchmaking. The ultimate training ground for competitive players.'
+              }
+            ].map((gm) => (
+              <div
+                key={gm.title}
+                className={`p-5 rounded-2xl bg-[#0C0E14] border border-white/10 border-t-4 ${gm.color} space-y-2`}
+              >
+                <h4 className="text-base font-display font-bold text-white">{gm.title}</h4>
+                <p className="text-xs text-slate-400 leading-relaxed">{gm.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 4-Step "How to Join" Horizontal Flow + Dual Recommended Cards (BDZONE 00:42) */}
+          <div className="p-6 rounded-2xl bg-[#0B0D13] border border-white/10 space-y-6">
+            <div className="text-center space-y-1">
+              <span className="text-[11px] font-mono-code text-red-400 uppercase">
+                GET STARTED IN 60 SECONDS
+              </span>
+              <h3 className="text-2xl font-display font-extrabold text-white">How to Join</h3>
+              <p className="text-xs text-slate-400">
+                Connect to our Bangladeshi crossplay servers in four simple steps
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                {
+                  step: '1',
+                  title: 'Copy Server IP',
+                  desc: 'Click the copy button below to copy the Java or Bedrock server address.'
+                },
+                {
+                  step: '2',
+                  title: 'Launch Minecraft',
+                  desc: 'Open your Minecraft Java Edition (PC) or Bedrock Edition (Mobile/Win10).'
+                },
+                {
+                  step: '3',
+                  title: 'Add Server',
+                  desc: 'Go to Multiplayer → Add Server and paste the IP address (Port 19132 on mobile).'
+                },
+                {
+                  step: '4',
+                  title: 'Join & Play!',
+                  desc: 'Connect and start your adventure with thousands of Bangladeshi players.'
+                }
+              ].map((st) => (
+                <div
+                  key={st.step}
+                  className="p-4 rounded-xl bg-black/50 border border-white/10 space-y-2"
+                >
+                  <span className="w-7 h-7 rounded-lg bg-red-600 text-white font-mono-code font-bold text-xs inline-flex items-center justify-center">
+                    {st.step}
+                  </span>
+                  <h4 className="text-sm font-display font-bold text-white">{st.title}</h4>
+                  <p className="text-xs text-slate-400">{st.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-black/60 border border-emerald-500/30 flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">Java Edition</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono-code font-bold">
+                      RECOMMENDED
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">For PC, Mac &amp; Linux</div>
+                  <code className="text-xs font-mono-code text-emerald-400 font-bold block mt-2">
+                    play.bdzonemc.com
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onCopyText('play.bdzonemc.com', 'join-java-card')}
+                  className="p-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs"
+                >
+                  {copiedKey === 'join-java-card' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl bg-black/60 border border-amber-500/30 flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-white">Bedrock Edition</span>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono-code font-bold">
+                      PORT: 19132
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">For Mobile, Console &amp; Windows 10/11</div>
+                  <code className="text-xs font-mono-code text-amber-300 font-bold block mt-2">
+                    pe.bdzonemc.com
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onCopyText('pe.bdzonemc.com', 'join-bed-card')}
+                  className="p-2.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
+                >
+                  {copiedKey === 'join-bed-card' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Meet the Team Roster + Infrastructure Grid (BDZONE 00:04 - 00:05) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-7 p-5 rounded-2xl bg-[#0B0D13] border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-display font-bold text-white">
+                  Meet the Documented BD ZONE Team
+                </h3>
+                <span className="text-[11px] font-mono-code text-slate-400">
+                  Source: bdzonemc.com/about
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {bdzoneTeam.map((member) => (
+                  <div
+                    key={member.name}
+                    className="p-3 rounded-xl bg-black/50 border border-white/10 flex flex-col items-center text-center gap-2"
+                  >
+                    <img
+                      src={`https://mc-heads.net/avatar/${encodeURIComponent(member.name)}/64`}
+                      alt={member.name}
+                      loading="lazy"
+                      className="w-12 h-12 rounded-lg border border-white/15 bg-slate-900"
+                    />
+                    <div className="text-xs font-bold text-white truncate max-w-full">
+                      {member.name}
+                    </div>
+                    <span
+                      className={`px-2 py-0.5 rounded text-[9px] font-mono-code font-bold border ${member.badgeColor}`}
+                    >
+                      {member.role}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="lg:col-span-5 p-5 rounded-2xl bg-[#0B0D13] border border-white/10 space-y-3">
+              <h3 className="text-lg font-display font-bold text-white">
+                Infrastructure &amp; Features
+              </h3>
+              <div className="space-y-2.5 text-xs">
+                {[
+                  {
+                    t: 'Custom Anti-Cheat',
+                    d: 'Proprietary system trained to catch cheaters without false positives.'
+                  },
+                  {
+                    t: 'High-Clock Ryzen 9 CPUs',
+                    d: 'Ryzen 9 series processors running at maximum single-core frequencies for smooth 20 TPS.'
+                  },
+                  {
+                    t: 'NVMe SSD Storage',
+                    d: 'Ultra-fast storage arrays for instant chunk loading and zero I/O lag.'
+                  },
+                  {
+                    t: 'Low Latency BD Network',
+                    d: 'Dedicated fiber lines with Bangladesh-optimized routing for sub-20ms local ping.'
+                  }
+                ].map((inf) => (
+                  <div
+                    key={inf.t}
+                    className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1"
+                  >
+                    <div className="font-bold text-emerald-300">{inf.t}</div>
+                    <p className="text-slate-400">{inf.d}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB 2: "SHAPE THE SERVER'S FUTURE" IDEA BOARD (BDZONE 00:08 - 00:12) */}
+      {activeSubTab === 'ideas' && (
+        <div className="space-y-6">
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-mono-code font-bold">
+              💡 COMMUNITY IDEA &amp; SUGGESTION BOARD
+            </span>
+            <h3 className="text-2xl sm:text-4xl font-display font-extrabold text-white">
+              Shape the Community’s Future
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-400">
+              Got a feature idea, server improvement, or archive request? Submit suggestions, vote for your favorites, and watch the best ideas come to life.
+            </p>
+          </div>
+
+          {/* Submit New Idea Form */}
+          <form
+            onSubmit={handleIdeaSubmit}
+            className="p-4 rounded-2xl bg-[#0C0E14] border border-white/10 space-y-3"
+          >
+            {ideaNotice && (
+              <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-300">
+                {ideaNotice}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <input
+                type="text"
+                value={newIdeaAuthor}
+                onChange={(e) => setNewIdeaAuthor(e.target.value)}
+                placeholder="Your Minecraft Username..."
+                className="px-3 py-2 rounded-xl bg-black/60 border border-slate-700 text-xs text-white"
+              />
+              <select
+                value={newIdeaCategory}
+                onChange={(e) => setNewIdeaCategory(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-black/60 border border-slate-700 text-xs font-mono-code text-amber-300"
+              >
+                <option value="In-Game">In-Game</option>
+                <option value="Website">Website</option>
+                <option value="Survival (Last/Mini)">Survival (Last/Mini)</option>
+                <option value="Bedrock Crossplay">Bedrock Crossplay</option>
+              </select>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs"
+              >
+                + Submit Idea (Forwards to Dev Inbox)
+              </button>
+            </div>
+            <input
+              type="text"
+              value={newIdeaText}
+              onChange={(e) => setNewIdeaText(e.target.value)}
+              placeholder="Describe your feature idea or server suggestion..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-slate-700 text-xs text-white"
+            />
+          </form>
+
+          {/* Filter Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            {['All', 'Website', 'In-Game', 'Survival (Last/Mini)', 'Bedrock Crossplay'].map(
+              (cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setIdeaFilter(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono-code ${
+                    ideaFilter === cat
+                      ? 'bg-red-600 text-white font-bold'
+                      : 'bg-white/5 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {cat}
+                </button>
+              )
+            )}
+          </div>
+
+          {/* 3-Column Suggestion Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {ideasList
+              .filter((item) => ideaFilter === 'All' || item.category === ideaFilter)
+              .map((idea) => (
+                <div
+                  key={idea.id}
+                  className="p-4 rounded-2xl bg-[#0C0E14] border border-white/10 flex flex-col justify-between gap-3"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={`https://mc-heads.net/avatar/${encodeURIComponent(idea.author)}/32`}
+                          alt={idea.author}
+                          className="w-6 h-6 rounded"
+                        />
+                        <span className="text-xs font-bold text-white">{idea.author}</span>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono-code font-bold ${
+                          idea.status === 'Approved'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : idea.status === 'Resolved'
+                            ? 'bg-cyan-500/20 text-cyan-300'
+                            : 'bg-amber-500/20 text-amber-300'
+                        }`}
+                      >
+                        ● {idea.status}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{idea.text}</p>
+                    <span className="inline-block px-2 py-0.5 rounded bg-white/5 text-[10px] font-mono-code text-cyan-300">
+                      {idea.category}
+                    </span>
+                  </div>
+
+                  <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs font-mono-code">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIdeasList((prev) =>
+                            prev.map((x) =>
+                              x.id === idea.id ? { ...x, upvotes: x.upvotes + 1 } : x
+                            )
+                          )
+                        }
+                        className="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"
+                      >
+                        👍 {idea.upvotes}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setIdeasList((prev) =>
+                            prev.map((x) =>
+                              x.id === idea.id ? { ...x, downvotes: x.downvotes + 1 } : x
+                            )
+                          )
+                        }
+                        className="px-2.5 py-1 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30"
+                      >
+                        👎 {idea.downvotes}
+                      </button>
+                    </div>
+                    <span className="text-slate-400">💬 {idea.comments}</span>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* SUB-TAB 3: SEASONAL GALLERY (BDZONE 00:13 - 00:15) */}
+      {activeSubTab === 'seasons' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {seasonGallery.map((s) => (
+            <div
+              key={s.title}
+              className="group relative h-52 rounded-2xl overflow-hidden border border-white/15 bg-slate-950"
+            >
+              <img
+                src={s.img}
+                alt={s.title}
+                loading="lazy"
+                className="w-full h-full object-cover opacity-75 group-hover:scale-105 group-hover:opacity-95 transition duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+              <div className="absolute bottom-4 left-4 right-4 space-y-0.5">
+                <h4 className="text-lg font-display font-extrabold text-white">{s.title}</h4>
+                <div className="text-[11px] font-mono-code text-amber-300">{s.count}</div>
+                <p className="text-xs text-slate-300">{s.note}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* SUB-TAB 4: FAQ ACCORDION ("GOT QUESTIONS?" BDZONE 00:43) */}
+      {activeSubTab === 'faq' && (
+        <div className="max-w-3xl mx-auto space-y-3">
+          {faqs.map((f, i) => (
+            <div
+              key={f.q}
+              className="rounded-2xl bg-[#0C0E14] border border-white/10 overflow-hidden"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenFaqIdx(openFaqIdx === i ? -1 : i)}
+                className="w-full px-5 py-4 text-left flex items-center justify-between gap-3"
+              >
+                <span className="text-sm font-display font-bold text-white">{f.q}</span>
+                <ChevronDown
+                  className={`w-4 h-4 text-red-400 transition-transform ${
+                    openFaqIdx === i ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {openFaqIdx === i && (
+                <div className="px-5 pb-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 pt-3">
+                  {f.a}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+};
+
 // 7. Real Three.js WebGL / Interactive 3D Voxel Bangladesh Floating Island (With Offscreen Pause & Mobile Guardrails)
 const WebGLVoxelBengalScene = ({ atmosphere = 'dusk', threeReady, reducedMotion }) => {
   const mountRef = useRef(null);
@@ -1421,7 +2781,8 @@ const NEWS_ARTICLES = [
   { id: 'news-01', stream: 'BANGLADESH COMMUNITY', badge: 'ARCHIVAL INITIATIVE', date: 'November 8, 2026', titleEn: 'BLOCKBANGLA Launches Open Oral History Vault for 2011–2016 Bangladeshi Minecraft Screenshots', titleBn: '২০১১–২০১৬ সালের পুরনো মাইনক্রাফট স্মৃতি ও স্ক্রিনশট সংরক্ষণে ব্লকবাংলার বিশেষ উদ্যোগ', author: 'BLOCKBANGLA Digital History Desk', sourceName: 'BLOCKBANGLA Archival Charter', sourceUrl: 'INTERNAL:legacy', summaryEn: 'As part of our commitment to strict historical accuracy, BLOCKBANGLA invites veteran Bangladeshi players from the early Beta, Hamachi, and first Facebook group eras to submit dated screenshots, server logs, and memories.', summaryBn: 'বাংলাদেশের মাইনক্রাফট ইতিহাসের প্রামাণ্য দলিল সংরক্ষণের লক্ষ্যে ২০১১-২০১৬ সালের পুরনো প্লেয়ারদের কাছ থেকে স্ক্রিনশট ও স্মৃতিকথা আহ্বান করা হচ্ছে।', fullBodyEn: 'Many of the earliest chapters of Minecraft in Bangladesh happened inside ephemeral Hamachi networks, university dorm LANs, and early Facebook groups between 2011 and 2016. Rather than inventing founding dates or crowning unverified "firsts", BLOCKBANGLA’s Digital Museum tags every claim with its exact epistemic confidence level.' },
   { id: 'news-02', stream: 'BANGLADESH COMMUNITY', badge: 'ECOSYSTEM MILESTONE', date: 'November 2026', titleEn: '#minecraftbangla Surpasses 19,000 Videos Across 3,600+ YouTube Channels', titleBn: 'ইউটিউবে #minecraftbangla হ্যাশট্যাগে ৩,৬০০+ চ্যানেলে ১৯ হাজার ভিডিওর মাইলফলক', author: 'Creator Telemetry Report', sourceName: 'YouTube Public Hashtag Index (#minecraftbangla)', sourceUrl: 'https://www.youtube.com/hashtag/minecraftbangla', summaryEn: 'Public YouTube hashtag aggregation in November 2026 confirms over 19K videos under #minecraftbangla and 4.9K+ videos under #minecraftbangladesh, reflecting vibrant grassroots content creation across Bangladesh.', summaryBn: 'নভেম্বর ২০২৬-এর পাবলিক ইউটিউব পরিসংখ্যান অনুযায়ী #minecraftbangla হ্যাশট্যাগে ১৯ হাজারেরও বেশি এবং #minecraftbangladesh হ্যাশট্যাগে ৪.৯ হাজারেরও বেশি ভিডিও প্রকাশিত হয়েছে।', fullBodyEn: 'From early Bandicam survival episodes recorded on dual-core PCs a decade ago to high-production Hardcore challenges, GeyserMC server events, and annual community rewinds in 2025–2026, Bengali-language Minecraft content creation continues to expand rapidly.' },
   { id: 'news-03', stream: 'BANGLADESH COMMUNITY', badge: 'INFRASTRUCTURE STANDARD', date: 'October 28, 2026', titleEn: 'Real-Time Server Telemetry Standard: Ending Fake Player Counts in Directory Listings', titleBn: 'সার্ভার ডিরেক্টরিতে রিয়েল-টাইম এপিআই যাচাইকরণ: ভুয়া প্লেয়ার কাউন্টের অবসান', author: 'BLOCKBANGLA Engineering Team', sourceName: 'mcsrvstat.us & mcstatus.io Protocol', sourceUrl: 'INTERNAL:servers', summaryEn: 'Every server in the BLOCKBANGLA Directory connects directly to live public Minecraft query APIs so players can inspect real-time online status, version compatibility, and MOTD before joining.', summaryBn: 'ব্লকবাংলার সার্ভার ডিরেক্টরিতে যুক্ত করা হয়েছে সরাসরি লাইভ স্ট্যাটাস ইন্সপেক্টর, যা কোনো অনুমান ছাড়াই সার্ভারের প্রকৃত অনলাইন স্ট্যাটাস ও প্লেয়ার সংখ্যা প্রদর্শন করে।', fullBodyEn: 'Static server lists often leave stale or inflated player numbers up for months. BLOCKBANGLA enforces strict separation between community directory metadata and live network telemetry.' },
-  { id: 'news-04', stream: 'OFFICIAL GLOBAL MINECRAFT', badge: 'MOJANG STUDIOS DISPATCH', date: '2025 – 2026 Cadence', titleEn: 'Minecraft Game Drops, Bundles of Bravery, The Garden Awakens & Cross-Edition Parity', titleBn: 'মাইনক্রাফট অফিশিয়াল আপডেট: গেম ড্রপস, বান্ডেল ও জাভা-বেডরক প্যারিটি', author: 'Mojang Studios (Official Global Reference)', sourceName: 'Minecraft.net Official Newsroom', sourceUrl: 'https://www.minecraft.net/en-us/articles', summaryEn: 'Mojang Studios’ shift toward more frequent thematic Game Drops throughout the year brings steady blocks, Pale Garden atmosphere, Crafter automation, and deeper parity between Java and Bedrock.', summaryBn: 'মোজ্যাং স্টুডিওসের নিয়মিত গেম ড্রপ আপডেটের মাধ্যমে নতুন ব্লক, পেল গার্ডেন বায়োম, বান্ডেল এবং জাভা ও বেডরক সংস্করণের মধ্যে আরও সামঞ্জস্য যুক্ত হয়েছে।', fullBodyEn: 'Official global Minecraft updates are tracked separately from Bangladesh community announcements to maintain clear provenance.' }
+  { id: 'news-04', stream: 'OFFICIAL GLOBAL MINECRAFT', badge: 'MOJANG STUDIOS DISPATCH', date: '2025 – 2026 Cadence', titleEn: 'Minecraft Game Drops, Bundles of Bravery, The Garden Awakens & Cross-Edition Parity', titleBn: 'মাইনক্রাফট অফিশিয়াল আপডেট: গেম ড্রপস, বান্ডেল ও জাভা-বেডরক প্যারিটি', author: 'Mojang Studios (Official Global Reference)', sourceName: 'Minecraft.net Official Newsroom', sourceUrl: 'https://www.minecraft.net/en-us/articles', summaryEn: 'Mojang Studios’ shift toward more frequent thematic Game Drops throughout the year brings steady blocks, Pale Garden atmosphere, Crafter automation, and deeper parity between Java and Bedrock.', summaryBn: 'মোজ্যাং স্টুডিওসের নিয়মিত গেম ড্রপ আপডেটের মাধ্যমে নতুন ব্লক, পেল গার্ডেন বায়োম, বান্ডেল এবং জাভা ও বেডরক সংস্করণের মধ্যে আরও সামঞ্জস্য যুক্ত হয়েছে।', fullBodyEn: 'Official global Minecraft updates are tracked separately from Bangladesh announcements to maintain clear provenance.' },
+  { id: 'news-05', stream: 'BANGLADESH COMMUNITY', badge: 'CULTURAL & SERVER MILESTONE', date: 'October 23, 2026', titleEn: 'BD ZONE Survival Season 6, Shuvo Noboborsho १४३३ & International Mother Language Day Tributes', titleBn: 'বিডিজোন সিজন ৬, শুভ নববর্ষ ১৪৩৩ এবং আন্তর্জাতিক মাতৃভাষা দিবস ও বিজয় দিবস উদযাপন', author: 'BD ZONE & Community Cultural Desk', sourceName: 'bdzonemc.com/blog', sourceUrl: 'https://bdzonemc.com/blog', summaryEn: 'Documenting how Bangladeshi servers celebrate national cultural milestones—including 21 February (International Mother Language Day), Pohela Boishakh (Shuvo Noboborsho), 16 December Victory Day, and BD ZONE’s 8th Anniversary.', summaryBn: '২১শে ফেব্রুয়ারি আন্তর্জাতিক মাতৃভাষা দিবস, পহেলা বৈশাখ (শুভ নববর্ষ ১৪৩৩), ১৬ই ডিসেম্বর মহান বিজয় দিবস এবং BD ZONE-এর ৮ম বর্ষপূর্তি উদযাপনের প্রামাণ্য আর্কাইভ।', fullBodyEn: 'Bangladeshi Minecraft communities uniquely blend global sandbox gameplay with national heritage—hosting in-game Shaheed Minar tributes on 21 February, Boishakhi fairs in April, and Victory Day build events every December.' }
 ];
 
 // ============================================================================
@@ -2208,6 +3569,8 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Full Visual Redesign Direction: 'editorial' (Digital Museum default) | 'technical' (Studio Dashboard)
   const [designMode, setDesignMode] = useState('editorial');
+  // Web Audio Voxel SFX State
+  const [sfxEnabled, setSfxEnabled] = useState(true);
 
   // ==========================================================================
   // MOTION ENGINE, SCROLL PROGRESS, CUSTOM CURSOR & ROUTE CURTAIN STATE
@@ -2241,6 +3604,7 @@ export default function App() {
   const switchTabWithMotion = useCallback(
     (nextTab, labelText = '') => {
       if (nextTab === activeTab) return;
+      playVoxelSound('portal', sfxEnabled);
       if (!reducedMotion) {
         setRouteTransitionTitle(labelText || nextTab.toUpperCase());
         setTimeout(() => {
@@ -2255,7 +3619,7 @@ export default function App() {
         window.scrollTo({ top: 0, behavior: 'auto' });
       }
     },
-    [activeTab, reducedMotion]
+    [activeTab, reducedMotion, sfxEnabled]
   );
 
   // ==========================================================================
@@ -2318,6 +3682,15 @@ export default function App() {
   const [apiDiagnostics, setApiDiagnostics] = useState({});
   const [runningDiagnostics, setRunningDiagnostics] = useState(false);
   const [deployModalOpen, setDeployModalOpen] = useState(false);
+  // Developer Remote Submission Receiver (Pre-wired to user's Formspree endpoint https://formspree.io/f/xkjjdnpr)
+  const [devReceiverEndpoint, setDevReceiverEndpoint] = useState(() => {
+    try {
+      return localStorage.getItem('bb_dev_receiver_url') || 'https://formspree.io/f/xkjjdnpr';
+    } catch (e) {
+      return 'https://formspree.io/f/xkjjdnpr';
+    }
+  });
+  const [remoteForwardStatus, setRemoteForwardStatus] = useState(null);
 
   // ==========================================================================
   // LIVE SERVER HEARTBEAT & ADVANCED SECURITY HARDENING STATE
@@ -2501,26 +3874,40 @@ export default function App() {
   const [builds, setBuilds] = useState(INITIAL_BUILDS);
   const [timeline] = useState(HISTORICAL_TIMELINE);
   const [selectedEraId, setSelectedEraId] = useState(HISTORICAL_TIMELINE[4].id); // Default spotlight on 2018 BDZONE era
-  const [moderationQueue, setModerationQueue] = useState([
-    {
-      id: 'mod-101',
-      type: 'Historical Memory',
-      title: '2013 Chittagong Hamachi Survival Screenshot & World Seed',
-      submittedBy: 'Rafiq_MCBD (Chattogram)',
-      timestamp: '2026-11-07 19:40 BST',
-      details: 'Beta 1.7.3 & 1.5.2 LAN screenshots from university hostel network.',
-      status: 'Pending Review'
-    },
-    {
-      id: 'mod-102',
-      type: 'Community Build',
-      title: 'Ahsan Manzil Pink Palace — 1:1 Scale Voxel Replica',
-      submittedBy: 'BurigangaBuilder',
-      timestamp: '2026-11-08 11:15 BST',
-      details: 'Built with Stripped Cherry Wood, Pink Terracotta, and Smooth Quartz.',
-      status: 'Pending Review'
+  const [moderationQueue, setModerationQueue] = useState(() => {
+    const defaultQueue = [
+      {
+        id: 'mod-101',
+        type: 'Historical Memory',
+        title: '2013 Chittagong Hamachi Survival Screenshot & World Seed',
+        submittedBy: 'Rafiq_MCBD (Chattogram)',
+        timestamp: '2026-11-07 19:40 BST',
+        details: 'Beta 1.7.3 & 1.5.2 LAN screenshots from university hostel network.',
+        status: 'Pending Review'
+      },
+      {
+        id: 'mod-102',
+        type: 'Community Build',
+        title: 'Ahsan Manzil Pink Palace — 1:1 Scale Voxel Replica',
+        submittedBy: 'BurigangaBuilder',
+        timestamp: '2026-11-08 11:15 BST',
+        details: 'Built with Stripped Cherry Wood, Pink Terracotta, and Smooth Quartz.',
+        status: 'Pending Review'
+      }
+    ];
+    try {
+      const saved = localStorage.getItem('bb_moderation_queue_v1');
+      return saved ? JSON.parse(saved) : defaultQueue;
+    } catch (e) {
+      return defaultQueue;
     }
-  ]);
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('bb_moderation_queue_v1', JSON.stringify(moderationQueue));
+    } catch (e) {}
+  }, [moderationQueue]);
 
   // Live Server Status Telemetry State
   const [serverTelemetry, setServerTelemetry] = useState({});
@@ -2536,12 +3923,13 @@ export default function App() {
   // Clipboard Feedback State
   const [copiedKey, setCopiedKey] = useState(null);
   const handleCopyText = useCallback((text, key) => {
+    playVoxelSound('xp', sfxEnabled);
     if (navigator?.clipboard) {
       navigator.clipboard.writeText(text).catch(() => {});
     }
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
-  }, []);
+  }, [sfxEnabled]);
 
   // Smart Navigation Helper (Fixes #hash links from V1)
   const navigateSmart = useCallback(
@@ -2596,6 +3984,7 @@ export default function App() {
   const [selectedDetailItem, setSelectedDetailItem] = useState(null); // { type: 'event'|'server'|'era'|'build', data: {...} }
   const [formNotice, setFormNotice] = useState(null);
   const [formData, setFormData] = useState({
+    email: '',
     title: '',
     subtitle: '',
     edition: 'Crossplay Java + Bedrock',
@@ -2603,6 +3992,10 @@ export default function App() {
     description: '',
     link: ''
   });
+  // Formspree React Hooks (`xkjjdnpr`) for Modal & Direct Contact Form
+  const [fsModalState, submitToFormspreeModal, resetFsModal] = useFormspree('xkjjdnpr');
+  const [fsContactState, submitToFormspreeContact, resetFsContact] = useFormspree('xkjjdnpr');
+  const [contactRole, setContactRole] = useState('Creator / Builder');
 
   // Live Minecraft Server Status Query Function with Timeout & Roundtrip Timing
   const queryLiveServerStatus = useCallback(async (ipAddress, edition = 'java', serverId = null) => {
@@ -3228,7 +4621,7 @@ export default function App() {
   }, [globalQuery, servers, timeline, creators]);
 
   // Handle Community Submissions with WAF Sanitizer & Rate-Limiting Guard
-  const handleSubmission = (e) => {
+  const handleSubmission = async (e) => {
     e.preventDefault();
     const nowTime = Date.now();
     if (nowTime - lastSubmissionTimeMs < 4000) {
@@ -3257,13 +4650,40 @@ export default function App() {
       id: `mod-${Date.now()}`,
       type: activeModal || 'Community Submission',
       title: secCheck.sanitizedTitle,
-      submittedBy: secCheck.sanitizedSubtitle || 'Community Contributor',
+      submittedBy: secCheck.sanitizedSubtitle || playerProfile?.blockbangla_username || 'Community Contributor',
       timestamp: formatDhakaTime(new Date()),
-      details: `${secCheck.sanitizedDescription} ${formData.link ? `| Ref: ${formData.link}` : ''} [WAF: CLEAN]`,
-      status: 'Pending Review'
+      details: `${secCheck.sanitizedDescription} ${formData.link ? `| Ref: ${formData.link}` : ''}`
     };
 
     setModerationQueue((prev) => [newModItem, ...prev]);
+
+    if (devReceiverEndpoint.trim()) {
+      try {
+        setRemoteForwardStatus('Sending to Formspree (xkjjdnpr)...');
+        const fsRes = await submitToFormspreeModal({
+          email: formData.email.trim() || playerProfile?.email || 'community@blockbangla.bd',
+          _replyto: formData.email.trim() || playerProfile?.email || 'community@blockbangla.bd',
+          _subject: `[BLOCKBANGLA ${newModItem.type}] ${newModItem.title}`,
+          message: `${secCheck.sanitizedDescription}\n\nSubmitted By: ${newModItem.submittedBy}\nEdition: ${formData.edition}\nReference Link/IP: ${formData.link || 'N/A'}\nTimestamp: ${newModItem.timestamp}`,
+          project: 'BLOCKBANGLA',
+          submissionType: newModItem.type,
+          title: newModItem.title,
+          submittedBy: newModItem.submittedBy,
+          edition: formData.edition,
+          referenceLink: formData.link || 'N/A',
+          details: newModItem.details,
+          timestamp: newModItem.timestamp
+        });
+        if (fsRes.ok) {
+          playVoxelSound('xp', sfxEnabled);
+          setRemoteForwardStatus('✓ Delivered to Formspree (xkjjdnpr)');
+        } else {
+          setRemoteForwardStatus('Formspree validation warning — check fields');
+        }
+      } catch (err) {
+        setRemoteForwardStatus('Saved locally (Remote endpoint unreachable)');
+      }
+    }
 
     if (activeModal === 'submit-build') {
       setBuilds((prev) => [
@@ -3289,9 +4709,12 @@ export default function App() {
 
     setFormNotice({
       type: 'success',
-      text: 'Passed WAF Security Scan & Submitted to BLOCKBANGLA Editorial Queue!'
+      text: devReceiverEndpoint.trim()
+        ? '✓ Passed WAF Scan & Delivered to Your Formspree Inbox (https://formspree.io/f/xkjjdnpr)!'
+        : 'Passed WAF Security Scan & Saved to Local Moderation Queue!'
     });
     setFormData({
+      email: '',
       title: '',
       subtitle: '',
       edition: 'Crossplay Java + Bedrock',
@@ -3530,6 +4953,24 @@ export default function App() {
               title="Toggle Reduced Motion Accessibility"
             >
               {reducedMotion ? 'Motion: Off' : 'Motion: On'}
+            </button>
+
+            {/* Voxel Web Audio SFX Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !sfxEnabled;
+                setSfxEnabled(next);
+                if (next) playVoxelSound('xp', true);
+              }}
+              className={`px-2 py-1 rounded-md text-[11px] border transition ${
+                sfxEnabled
+                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+              title="Toggle Minecraft XP & Voxel Click Sound Effects"
+            >
+              {sfxEnabled ? '🔊 SFX' : '🔇 Mute'}
             </button>
 
             {/* Contribute CTA */}
@@ -4032,7 +5473,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Matched Bangladeshi Servers Output */}
+              {/*Matched Bangladeshi Servers Output */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {guidedMatchedServers.slice(0, 3).map((srv) => {
                   const tele = serverTelemetry[srv.id];
@@ -4108,6 +5549,32 @@ export default function App() {
                 })}
               </div>
             </section>
+
+            {/* 2.5 OPRAAH-INSPIRED 3D CURVED CREATOR & BUILD PANORAMA STAGE */}
+            <OpraahCurvedPanoramaStage
+              lang={lang}
+              onNavigateTab={switchTabWithMotion}
+              onInspectLightbox={setLightboxAsset}
+            />
+
+            {/* 2.6 BDZONE-INSPIRED FLAGSHIP NETWORK HUB, IDEA BOARD, 4-STEP JOIN & SEASON GALLERY */}
+            <BdzoneInspiredNetworkShowcase
+              lang={lang}
+              bdzoneTelemetry={serverTelemetry['srv-bdzone']}
+              onCopyText={handleCopyText}
+              copiedKey={copiedKey}
+              onOpenSubmitModal={(m) => {
+                setFormNotice(null);
+                setActiveModal(m);
+              }}
+              devReceiverEndpoint={devReceiverEndpoint}
+            />
+
+            {/* 2.7 OPRAAH-INSPIRED SPLIT-SCREEN MANIFESTO & WAVY SVG RIBBON */}
+            <OpraahSplitManifestoAndRibbon
+              lang={lang}
+              onNavigateTab={switchTabWithMotion}
+            />
 
             {/* 3. Sourced History Journey (Pinned on Desktop, Accessible Stack on Mobile) */}
             <PinnedBengalStoryScrubber
@@ -7220,6 +8687,198 @@ proxies:
                 </button>
               </div>
             </div>
+
+            {/* Opraah 01:39 Inspired Direct Contact & Formspree (`xkjjdnpr`) Form */}
+            <div className="rounded-3xl bg-[#050606] border border-white/15 p-6 sm:p-10 space-y-6 shadow-2xl">
+              <div className="text-center max-w-2xl mx-auto space-y-1.5">
+                <span className="text-[11px] font-mono-code text-orange-400 uppercase tracking-widest">
+                  DIRECT FORMSPREE REACT INBOX // ENDPOINT: XKJJDNPR
+                </span>
+                <h2 className="text-2xl sm:text-4xl font-display font-extrabold text-white tracking-tight uppercase">
+                  Let&apos;s Make Something Worth Talking About.
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  Connected directly to <code className="text-emerald-300">https://formspree.io/f/xkjjdnpr</code>. Messages submitted here arrive immediately in your Formspree Submissions tab.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+                {/* Left Info Column */}
+                <div className="lg:col-span-5 rounded-2xl bg-[#0B0E0D] border border-white/10 p-6 flex flex-col justify-between space-y-6">
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-display font-bold text-white">
+                      Have a server, tournament, or build in mind?
+                    </h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      Whether you are a Bangladeshi SMP owner, YouTuber, builder, or player reporting a historical screenshot, use this verified Formspree form to message TANXIM directly.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 text-xs font-mono-code border-t border-white/10 pt-4">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">FORMSPREE ENDPOINT</span>
+                      <span className="text-emerald-400 font-bold">{FORMSPREE_ENDPOINT}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">PLATFORM LOCATION</span>
+                      <span className="text-white">Dhaka &amp; Chattogram, Bangladesh (UTC+6)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right React Formspree Form (`useForm('xkjjdnpr')`) */}
+                <div className="lg:col-span-7 rounded-2xl bg-[#F8FAFC] text-slate-950 p-6 sm:p-8">
+                  {fsContactState.succeeded ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center py-8 space-y-3">
+                      <CheckCircle2 className="w-12 h-12 text-emerald-600" />
+                      <h4 className="text-2xl font-display font-extrabold text-slate-950">
+                        Thanks! Message Delivered to Formspree (`xkjjdnpr`).
+                      </h4>
+                      <p className="text-xs sm:text-sm text-slate-600 max-w-md">
+                        Open your Formspree dashboard under the <strong>Submissions</strong> tab to view this entry.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={resetFsContact}
+                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-mono-code font-bold"
+                      >
+                        Send Another Message
+                      </button>
+                    </div>
+                  ) : (
+                    <form
+                      action={FORMSPREE_ENDPOINT}
+                      method="POST"
+                      onSubmit={submitToFormspreeContact}
+                      className="space-y-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-sm font-display font-extrabold text-slate-900">
+                          Choose Your Role
+                        </span>
+                        <div className="inline-flex rounded-xl bg-slate-200 p-1">
+                          {['Creator / Builder', 'Server / Brand'].map((role) => (
+                            <button
+                              key={role}
+                              type="button"
+                              onClick={() => setContactRole(role)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                                contactRole === role
+                                  ? 'bg-[#FF5500] text-white shadow'
+                                  : 'text-slate-700 hover:text-slate-950'
+                              }`}
+                            >
+                              {role}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <input type="hidden" name="role" value={contactRole} />
+                      <input
+                        type="hidden"
+                        name="_subject"
+                        value={`[BLOCKBANGLA Contact — ${contactRole}] New Message`}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label
+                            htmlFor="fs-name"
+                            className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
+                          >
+                            Your Name / Minecraft IGN
+                          </label>
+                          <input
+                            id="fs-name"
+                            type="text"
+                            name="name"
+                            required
+                            placeholder="e.g. Tanxim / BDPlayer"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
+                          />
+                        </div>
+                        <div>
+                          <label
+                            htmlFor="fs-email"
+                            className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
+                          >
+                            Your Email (Required by Formspree)
+                          </label>
+                          <input
+                            id="fs-email"
+                            type="email"
+                            name="email"
+                            required
+                            placeholder="you@example.com"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
+                          />
+                          <FormspreeValidationError
+                            prefix="Email"
+                            field="email"
+                            errors={fsContactState.errors}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="fs-link"
+                          className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
+                        >
+                          Server IP / YouTube Channel / Discord Link (Optional)
+                        </label>
+                        <input
+                          id="fs-link"
+                          type="text"
+                          name="link"
+                          placeholder="play.example.com or https://youtube.com/@..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="fs-message"
+                          className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
+                        >
+                          Your Message / Brief
+                        </label>
+                        <textarea
+                          id="fs-message"
+                          name="message"
+                          rows={3}
+                          required
+                          placeholder="Tell us about your server, build, tournament, or feedback..."
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
+                        />
+                        <FormspreeValidationError
+                          prefix="Message"
+                          field="message"
+                          errors={fsContactState.errors}
+                        />
+                      </div>
+
+                      <FormspreeValidationError
+                        prefix="Form"
+                        field="form"
+                        errors={fsContactState.errors}
+                      />
+
+                      <button
+                        type="submit"
+                        disabled={fsContactState.submitting}
+                        className="w-full py-3 rounded-xl bg-[#FF5500] hover:bg-[#E04800] disabled:opacity-50 text-white font-display font-extrabold text-sm transition shadow-lg"
+                      >
+                        {fsContactState.submitting
+                          ? 'Sending to Formspree (xkjjdnpr)...'
+                          : "Let's Talk — Send to Formspree"}
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -7350,9 +9009,81 @@ proxies:
 
             {/* Moderation Queue */}
             <div className="p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-              <h2 className="text-lg font-display font-bold text-white">
-                Editorial & Community Submission Moderation Queue ({moderationQueue.length})
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
+                    DEVELOPER SUBMISSION RECEIVER & MODERATION QUEUE ({moderationQueue.length})
+                  </span>
+                  <h2 className="text-lg font-display font-bold text-white mt-0.5">
+                    How You (As the Developer) Receive & Publish Visitor Uploads
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleCopyText(
+                      JSON.stringify(moderationQueue, null, 2),
+                      'export-mod-json'
+                    )
+                  }
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
+                >
+                  {copiedKey === 'export-mod-json'
+                    ? '✓ Copied Queue JSON!'
+                    : 'Copy Queue JSON for GitHub'}
+                </button>
+              </div>
+
+              {/* Developer Webhook / Formspree Receiver Configuration Box */}
+              <div className="p-4 rounded-xl bg-[#070B0A] border border-cyan-500/30 space-y-3 text-xs">
+                <div className="font-mono-code font-bold text-cyan-300">
+                  Connect Your Free Developer Inbox (Formspree / Web3Forms / Cloudflare Worker / Supabase)
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  Because static websites run in each visitor&apos;s own browser, connect a free receiver URL below (such as <code className="text-emerald-300">https://formspree.io/f/your_id</code> or a Supabase table URL). Every time any player in Bangladesh submits a server, build, or screenshot, BLOCKBANGLA will automatically <code className="text-amber-300">POST</code> the submission straight to your email/Discord!
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    value={devReceiverEndpoint}
+                    onChange={(e) => {
+                      setDevReceiverEndpoint(e.target.value);
+                      try {
+                        localStorage.setItem('bb_dev_receiver_url', e.target.value);
+                      } catch (err) {}
+                    }}
+                    placeholder="Paste your Formspree URL (https://formspree.io/f/...) or Webhook URL..."
+                    className="flex-1 px-3 py-2 rounded-lg bg-[#0D1513] border border-slate-700 font-mono-code text-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setRemoteForwardStatus('Sending test ping to Formspree...');
+                      const res = await submitToFormspreeModal({
+                        email: 'admin@blockbangla.bd',
+                        _subject: '[BLOCKBANGLA TEST] Formspree Endpoint Verification',
+                        message: `Live test submission from BLOCKBANGLA Admin CMS at ${formatDhakaTime(
+                          new Date()
+                        )}. Your Formspree endpoint (${FORMSPREE_ENDPOINT}) is working!`
+                      });
+                      setRemoteForwardStatus(
+                        res.ok
+                          ? '✓ Test Ping Received by Formspree (Check Submissions Tab!)'
+                          : 'Test failed — check network or confirm Formspree email'
+                      );
+                    }}
+                    className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono-code font-bold text-xs shrink-0"
+                  >
+                    Send Test Ping to Formspree
+                  </button>
+                  {remoteForwardStatus && (
+                    <span className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 font-mono-code self-center">
+                      {remoteForwardStatus}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <div className="space-y-3">
                 {moderationQueue.map((item) => (
                   <div
@@ -8125,9 +9856,30 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 {formNotice.text}
               </div>
             )}
-            <form onSubmit={handleSubmission} className="space-y-3">
+            <form
+              action={FORMSPREE_ENDPOINT}
+              method="POST"
+              onSubmit={handleSubmission}
+              className="space-y-3"
+            >
+              <input
+                type="email"
+                name="email"
+                required
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="Your Email (Required by Formspree for verification/reply)..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
+              />
+              <FormspreeValidationError
+                prefix="Email"
+                field="email"
+                errors={fsModalState.errors}
+              />
               <input
                 type="text"
+                name="title"
+                required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Title / Server Name / Channel Name / Era..."
@@ -8135,13 +9887,15 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
               />
               <input
                 type="text"
+                name="subtitle"
                 value={formData.subtitle}
                 onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                placeholder="Your Username / Organizer Handle..."
+                placeholder="Your Minecraft Username / Organizer Handle..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <input
                 type="text"
+                name="link"
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="Source URL / Server IP / YouTube or Discord Link (Optional)..."
@@ -8149,16 +9903,26 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
               />
               <textarea
                 rows={3}
+                name="message"
+                required
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Verification details, coordinates, edition (Java/Bedrock), or historical notes..."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
+              <FormspreeValidationError
+                prefix="Message"
+                field="message"
+                errors={fsModalState.errors}
+              />
               <button
                 type="submit"
-                className="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
+                disabled={fsModalState.submitting}
+                className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs"
               >
-                Submit to Editorial Queue (Status: Pending Review)
+                {fsModalState.submitting
+                  ? 'Sending to Formspree (xkjjdnpr)...'
+                  : 'Submit to Formspree & Editorial Queue'}
               </button>
             </form>
           </div>
