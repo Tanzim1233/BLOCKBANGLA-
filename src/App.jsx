@@ -1,153 +1,14 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Compass, Calendar, History, Server, Video, Users, BookOpen, Newspaper,
-  ShieldCheck, Search, Globe, Clock, Copy, Check, ExternalLink, RefreshCw,
-  Sparkles, Award, MapPin, Layers, Terminal, ChevronRight, ChevronDown,
-  Plus, Filter, AlertCircle, CheckCircle2, Info, Play, Radio, Cpu, Wifi,
-  Download, Flag, Eye, Heart, Share2, Menu, X, Sliders, Database, Code2,
-  FileText, HelpCircle, CloudRain, Sun, Moon, Zap, Sword, Hammer, Box,
-  MessageSquare, Lock, ArrowUpRight, UserCheck, LogOut, Package, Wrench,
-  Camera, UploadCloud, Youtube
+  Award, Check, Clock, Compass, Copy, Menu, Plus, Radio, RefreshCw, Search, Server, Wrench, X
 } from 'lucide-react';
 
 // ============================================================================
-// 0. ENVIRONMENT-SAFE API CONFIGURATION & CLOUDFLARE PAGES PROXY ARCHITECTURE
+// 0. Formspree contact integration
 // ============================================================================
-const getEnvVar = (key, fallback = '') => {
-  try {
-    if (typeof window !== 'undefined' && window.__BLOCKBANGLA_ENV__?.[key]) return window.__BLOCKBANGLA_ENV__[key];
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) return import.meta.env[key];
-  } catch (e) {}
-  return fallback;
-};
-
-const LIVE_API_CONFIG = {
-  youtube: {
-    get apiKey() { return getEnvVar('VITE_YOUTUBE_API_KEY', 'AIzaSyCjUaazl0OQkbdCeL6A1GR5sJYyXoo9SuM'); },
-    baseUrl: 'https://www.googleapis.com/youtube/v3',
-    proxyEndpoint: '/api/youtube',
-    defaultQueries: ['Minecraft Bangla Survival', 'Minecraft Bangladesh Server', 'The Bangla Gamer Minecraft']
-  },
-  unsplash: {
-    appId: '1127489',
-    get accessKey() { return getEnvVar('VITE_UNSPLASH_ACCESS_KEY', 'lWTJXyAy6Z9i8g_PvSwqoTQGeNNsyTG6OTNom_efUSc'); },
-    secretKeyDigest: 'SHA256:WbJlZi...LWko (Server-Side Protected)',
-    secretKeyConfigured: true,
-    baseUrl: 'https://api.unsplash.com',
-    proxyEndpoint: '/api/unsplash'
-  },
-  cloudinary: {
-    credentialTokenConfigured: true,
-    tokenFingerprint: 'V7T7Dy_lUg-ITm1Uo2yV8rG9RBU',
-    defaultCloudName: getEnvVar('VITE_CLOUDINARY_CLOUD_NAME', 'blockbangla-media'),
-    transformationPreset: 'f_auto,q_auto,w_900,c_fill'
-  }
-};
-
+// Submission text checks
 // ============================================================================
-// 0.02 ADVANCED SECURITY FIREWALL, WAF SANITIZER & CRYPTOGRAPHIC UTILITIES
-// ============================================================================
-const SECURITY_FIREWALL_RULES = {
-  blockedExtensions: ['.exe', '.bat', '.cmd', '.scr', '.msi', '.vbs', '.ps1'],
-  suspiciousPatterns: [
-    /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-    /javascript:/gi,
-    /onerror\s*=/gi,
-    /onload\s*=/gi,
-    /discord\.com\/api\/webhooks\//gi,
-    /free-nitro|token-grabber|session-stealer|cracked-exe/gi
-  ]
-};
-
-function inspectSubmissionSecurity(payload) {
-  const combined = `${payload.title || ''} ${payload.subtitle || ''} ${payload.description || ''} ${payload.link || ''}`;
-  for (const pattern of SECURITY_FIREWALL_RULES.suspiciousPatterns) {
-    if (pattern.test(combined)) {
-      return { safe: false, reason: 'WAF Security Block: Detected prohibited script injection, webhook, or token-logger signature.' };
-    }
-  }
-  const lowerLink = String(payload.link || '').toLowerCase();
-  for (const ext of SECURITY_FIREWALL_RULES.blockedExtensions) {
-    if (lowerLink.endsWith(ext) || combined.toLowerCase().includes(`${ext} `)) {
-      return { safe: false, reason: `Anti-Malware Shield: Direct executable links (${ext}) are strictly forbidden to protect Bangladeshi players.` };
-    }
-  }
-  return {
-    safe: true,
-    sanitizedTitle: String(payload.title || '').replace(/[<>]/g, '').trim(),
-    sanitizedSubtitle: String(payload.subtitle || '').replace(/[<>]/g, '').trim(),
-    sanitizedDescription: String(payload.description || '').replace(/[<>]/g, '').trim()
-  };
-}
-
-async function computeSha256Hex(inputString) {
-  try {
-    if (typeof window !== 'undefined' && window.crypto?.subtle) {
-      const msgBuffer = new TextEncoder().encode(inputString);
-      const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
-      return Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
-    }
-  } catch (e) {}
-  return `bb-sha256-${Math.abs(Array.from(inputString).reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) | 0, 7)).toString(16)}`;
-}
-
-function generateSecureVelocitySecret() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
-  const arr = new Uint32Array(32);
-  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) window.crypto.getRandomValues(arr);
-  return Array.from(arr, (v, idx) => chars[(v || idx * 17) % chars.length]).join('');
-}
-
-// Web Audio API Tactile Voxel Sound Synthesizer (Zero external MP3 dependencies)
-function playVoxelSound(type = 'click', enabled = true) {
-  if (!enabled || typeof window === 'undefined') return;
-  try {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) return;
-    if (!window.__bbAudioCtx) window.__bbAudioCtx = new AudioCtx();
-    const ctx = window.__bbAudioCtx;
-    if (ctx.state === 'suspended') ctx.resume();
-
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    const now = ctx.currentTime;
-    if (type === 'xp') {
-      // Minecraft XP Orb Chime on IP Copy / Success
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, now); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, now + 0.09); // A5
-      osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.18); // D6
-      gain.gain.setValueAtTime(0.08, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
-      osc.start(now);
-      osc.stop(now + 0.25);
-    } else if (type === 'portal') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(220, now);
-      osc.frequency.exponentialRampToValueAtTime(440, now + 0.14);
-      gain.gain.setValueAtTime(0.05, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-      osc.start(now);
-      osc.stop(now + 0.16);
-    } else {
-      // Crisp Voxel UI Click
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.exponentialRampToValueAtTime(160, now + 0.035);
-      gain.gain.setValueAtTime(0.03, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
-      osc.start(now);
-      osc.stop(now + 0.045);
-    }
-  } catch (e) {}
-}
-
-// ============================================================================
-// 0.04 FORMSPREE REACT INTEGRATION HOOK (ENDPOINT: https://formspree.io/f/xkjjdnpr)
-// ============================================================================
+// Formspree contact integration.
 const FORMSPREE_FORM_ID = 'xkjjdnpr';
 const FORMSPREE_ENDPOINT = `https://formspree.io/f/${FORMSPREE_FORM_ID}`;
 
@@ -219,7 +80,7 @@ const FormspreeValidationError = ({ prefix = 'Field', field, errors = [] }) => {
     <div className="text-[11px] font-mono-code text-rose-400 mt-1 space-y-0.5" role="alert">
       {matching.map((err, idx) => (
         <div key={idx}>
-          ▲ {prefix}: {err.message}
+          Error: {prefix}: {err.message}
         </div>
       ))}
     </div>
@@ -227,3742 +88,253 @@ const FormspreeValidationError = ({ prefix = 'Field', field, errors = [] }) => {
 };
 
 // ============================================================================
-// 0.05 AUTONOMOUS VISUAL ASSET MANIFEST & CURATED MULTI-SOURCE MEDIA REGISTRY
+// 0.05 Brand styles
 // ============================================================================
-const VISUAL_ASSET_MANIFEST = [
-  { assetId: 'AST-BD-HERO-01', title: 'Riverine Bengal Delta & Misty Mangrove Horizon', source: 'Unsplash API (Verified Direct Hotlink)', originalUrl: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=1600&q=80', photographerOrCreator: 'Unsplash Bangladesh Nature Collection', photographerUrl: 'https://unsplash.com/s/photos/bangladesh-nature?utm_source=blockbangla&utm_medium=referral', attribution: 'Photo via Unsplash (Bangladesh Delta Series)', licenseTerms: 'Unsplash License (Direct Hotlink + UTM Attribution)', intendedPage: 'Home (Hero Atmospheric Backdrop & Split Showcase)', dimensions: '1600x900 (16:9)', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-BD-SANGSAD-02', title: 'Jatiya Sangsad Bhaban (National Parliament House, Dhaka)', source: 'Wikimedia Commons / Unsplash Architecture Pool', originalUrl: 'https://images.unsplash.com/photo-1624863699622-732076711240?auto=format&fit=crop&w=1200&q=80', photographerOrCreator: 'Dhaka Architectural Heritage Contributors', photographerUrl: 'https://unsplash.com/s/photos/dhaka?utm_source=blockbangla&utm_medium=referral', attribution: 'Dhaka Brutalist Monument Reference via Unsplash', licenseTerms: 'Unsplash License / Public Architectural View', intendedPage: 'Home, Community Builds & Legacy Museum', dimensions: '1200x800 (3:2)', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-BD-SUNDARBANS-03', title: 'Sundarbans Tropical Mangrove Canopy & Waterways', source: 'Unsplash API (Tropical Forest & Delta Pool)', originalUrl: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80', photographerOrCreator: 'Unsplash Nature & Waterway Archive', photographerUrl: 'https://unsplash.com/s/photos/mangrove-forest?utm_source=blockbangla&utm_medium=referral', attribution: 'Mangrove & River Delta Atmosphere via Unsplash', licenseTerms: 'Unsplash License', intendedPage: 'Community Builds, Home & Learn Biome Reference', dimensions: '1200x800 (3:2)', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-BD-CHATTOGRAM-04', title: 'Chattogram & Sylhet Lush Green Highlands & Waterfalls', source: 'Unsplash API (Bangladesh Countryside Pool)', originalUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=80', photographerOrCreator: 'Unsplash Landscape Curators', photographerUrl: 'https://unsplash.com/s/photos/green-mountains-river?utm_source=blockbangla&utm_medium=referral', attribution: 'Lush Highland & River Valley via Unsplash', licenseTerms: 'Unsplash License', intendedPage: 'Home, SMP Hub & Background Environments', dimensions: '1200x800 (3:2)', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-GAMING-ESPORTS-05', title: 'RGB Competitive Gaming Setup & Tournament Desk Environment', source: 'Unsplash API (Gaming & Esports Pool)', originalUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=1200&q=80', photographerOrCreator: 'Esports & Gaming Environment Collection', photographerUrl: 'https://unsplash.com/s/photos/esports-gaming?utm_source=blockbangla&utm_medium=referral', attribution: 'Esports Tournament Arena Lighting via Unsplash', licenseTerms: 'Unsplash License', intendedPage: 'Events, Legacy Museum & News', dimensions: '1200x800 (3:2)', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-GAMING-RIG-06', title: 'Late-Night Developer & Minecraft Server Operations Workstation', source: 'Unsplash API (Gaming Setup Pool)', originalUrl: 'https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=1200&q=80', photographerOrCreator: 'Gaming Desk & Hardware Contributors', photographerUrl: 'https://unsplash.com/s/photos/gaming-setup?utm_source=blockbangla&utm_medium=referral', attribution: 'Gaming Workstation Reference via Unsplash', licenseTerms: 'Unsplash License', intendedPage: 'Servers, Learn Academy & About', dimensions: '1200x800 (3:2)', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-SRV-LIVE-ICONS-07', title: 'Real-Time Minecraft Server Favicons (BDZONE, Cyan Plex, BMS, Maven’s Hive)', source: 'MCSRVStat Public Icon Endpoint (https://api.mcsrvstat.us/icon/{ip})', originalUrl: 'https://api.mcsrvstat.us/icon/play.bdzonemc.com', photographerOrCreator: 'Respective Verified Server Owners', photographerUrl: 'https://api.mcsrvstat.us', attribution: 'Live Server Favicon Retrieved Directly from Server MOTD Packet', licenseTerms: 'Public Server Query Protocol', intendedPage: 'Servers Directory, SMP Hub & Homepage', dimensions: '64x64 Pixel PNG', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-MODRINTH-GALLERY-08', title: 'Live Modrinth Shader, Mod & Resource Pack Screenshots', source: 'Modrinth v2 Public API (featured_gallery & icon_url)', originalUrl: 'https://docs.modrinth.com/api/', photographerOrCreator: 'Verified Modrinth Open-Source Authors', photographerUrl: 'https://modrinth.com', attribution: 'Live Project Media via Modrinth CDN', licenseTerms: 'Modrinth Public API Terms', intendedPage: 'Modrinth Resource Hub', dimensions: 'Variable 16:9 HD', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-YT-THUMBS-09', title: 'Verified Bangladeshi Creator Video Thumbnails (#minecraftbangla)', source: 'YouTube Data API v3 (snippet.thumbnails.high)', originalUrl: 'https://www.youtube.com/hashtag/minecraftbangla', photographerOrCreator: 'Bangladeshi Minecraft YouTube Creators', photographerUrl: 'https://www.youtube.com/hashtag/minecraftbangla', attribution: 'Synchronized via Official YouTube Data API v3', licenseTerms: 'YouTube API Services Terms of Service', intendedPage: 'Creators Network & Homepage', dimensions: '480x360 / 1280x720', lastVerificationDate: '2026-11-09' },
-  { assetId: 'AST-TANXIM-CREST-10', title: 'TANXIM — Founder & Chief Platform Architect Geometric Voxel Emblem', source: 'BLOCKBANGLA Original Creative Studio Artwork', originalUrl: 'INTERNAL:about', photographerOrCreator: 'BLOCKBANGLA Design Studio for TANXIM', photographerUrl: 'INTERNAL:about', attribution: 'Original Non-Fabricated Founder Crest (Zero Fake Personal Photos)', licenseTerms: 'BLOCKBANGLA Original Asset', intendedPage: 'About & Founder Identity Section', dimensions: 'Vector SVG (Scalable)', lastVerificationDate: '2026-11-09' }
-];
-
-const SECTION_VISUAL_CURATION = {
-  buildsRealPhotos: {
-    'bld-01': { photoUrl: 'https://images.unsplash.com/photo-1624863699622-732076711240?auto=format&fit=crop&w=1000&q=80', caption: 'Dhaka Brutalist Concrete & Water Basin Inspiration', credit: 'Unsplash Bangladesh Architecture' },
-    'bld-02': { photoUrl: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=1000&q=80', caption: 'Ancient South Asian Terracotta & Brick Monastery Relief', credit: 'Unsplash Heritage Collection' },
-    'bld-03': { photoUrl: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1000&q=80', caption: 'Sundarbans Tidal Mangrove Forest & Waterway Canopy', credit: 'Unsplash Nature Archive' },
-    'bld-04': { photoUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1000&q=80', caption: 'Modern Multi-Span River Bridge Engineering Reference', credit: 'Unsplash Infrastructure Reference' },
-    'bld-05': { photoUrl: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?auto=format&fit=crop&w=1000&q=80', caption: 'Dense Heritage Urban Rooftops & Twilight Festival Glow', credit: 'Unsplash Urban Twilight' }
-  },
-  newsThumbnails: {
-    'news-01': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80',
-    'news-02': 'https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=900&q=80',
-    'news-03': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=900&q=80',
-    'news-04': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80'
-  },
-  eraVisuals: {
-    'ERA-01': 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=900&q=80',
-    'ERA-02': 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=900&q=80',
-    'ERA-03': 'https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=900&q=80',
-    'ERA-04': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&w=900&q=80',
-    'ERA-05': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80',
-    'ERA-06': 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?auto=format&fit=crop&w=900&q=80',
-    'ERA-07': 'https://images.unsplash.com/photo-1624863699622-732076711240?auto=format&fit=crop&w=900&q=80',
-    'ERA-08': 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?auto=format&fit=crop&w=900&q=80',
-    'ERA-09': 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=900&q=80',
-    'ERA-10': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80'
-  },
-  serverBanners: {
-    'srv-bdzone': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80',
-    'srv-cyanplex': 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=900&q=80',
-    'srv-bms': 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=900&q=80',
-    'srv-mavenshive': 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=900&q=80',
-    'srv-bongocraft': 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=900&q=80',
-    'srv-royalsmp': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80',
-    'srv-hypixel-ref': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80'
-  }
-};
-
-// ============================================================================
-// 0.1 V3 TYPOGRAPHY, CUSTOM PIXEL TEXTURES & MICRO-INTERACTION STYLES
-// ============================================================================
-
 const V2GlobalStyles = () => (
   <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
     :root {
-      color-scheme: dark;
-      --font-display: 'Manrope', 'Noto Sans Bengali', sans-serif;
-      --font-sans: 'DM Sans', 'Noto Sans Bengali', sans-serif;
-      --font-mono: 'DM Mono', monospace;
-      --bb-bg: #0b1510;
-      --bb-surface: #111d16;
-      --bb-surface-raised: #17251c;
-      --bb-line: rgba(203, 220, 205, 0.13);
-      --bb-text: #f3f5f0;
-      --bb-muted: #a9b5aa;
-      --bb-green: #a3d9ae;
-      --bb-green-strong: #78c58c;
-      --bb-amber: #e2c78c;
-      --bb-radius: 20px;
-      --bb-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+      color-scheme: light;
+      --font-display: 'Space Grotesk', 'Noto Sans Bengali', sans-serif;
+      --font-sans: 'Noto Sans Bengali', 'Space Grotesk', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --bb-paper: #f3efe4;
+      --bb-surface: #fbf9f2;
+      --bb-raised: #e8e4d8;
+      --bb-ink: #183326;
+      --bb-muted: #59695d;
+      --bb-forest: #1e5138;
+      --bb-clay: #a94f32;
+      --bb-rule: #c9d0c4;
     }
 
     html, body {
-      max-width: 100%;
+      margin: 0;
       min-height: 100%;
+      max-width: 100%;
       overflow-x: hidden;
-      background: var(--bb-bg);
-      color: var(--bb-text);
+      background: var(--bb-paper);
+      color: var(--bb-ink);
       scroll-behavior: smooth;
     }
-
-    body { margin: 0; }
     button, input, textarea, select { font: inherit; }
-    button { -webkit-tap-highlight-color: transparent; }
-
+    button, a { -webkit-tap-highlight-color: transparent; }
     .font-display { font-family: var(--font-display); }
     .font-sans-bd { font-family: var(--font-sans); }
-    .font-mono-code { font-family: var(--font-mono); }
-    .font-pixel-hud { font-family: var(--font-mono); letter-spacing: 0.08em; }
+    .font-mono-code, .font-pixel-hud { font-family: var(--font-mono); letter-spacing: 0.02em; }
 
     .bb-app {
       isolation: isolate;
-      color: var(--bb-text);
-      background-color: var(--bb-bg);
-      background-image:
-        radial-gradient(ellipse at 7% 0%, rgba(82, 143, 96, 0.16), transparent 38rem),
-        radial-gradient(ellipse at 100% 34%, rgba(133, 119, 79, 0.09), transparent 34rem),
-        linear-gradient(180deg, #0b1510 0%, #0d1712 55%, #0b1510 100%);
+      color: var(--bb-ink);
+      background: var(--bb-paper);
     }
-
     .bb-app h1, .bb-app h2, .bb-app h3, .bb-app h4 {
-      color: var(--bb-text);
+      color: var(--bb-ink);
       font-family: var(--font-display);
       letter-spacing: -0.035em;
       text-wrap: balance;
     }
-    .bb-app main h1 { font-size: clamp(2.65rem, 5.4vw, 5rem); line-height: 1.04; }
-    .bb-app main h2 { font-size: clamp(1.65rem, 3vw, 2.45rem); line-height: 1.13; }
-    .bb-app main h3 { line-height: 1.22; }
+    .bb-app main h1 { font-size: clamp(2.65rem, 5.7vw, 5.35rem); line-height: 1.02; }
+    .bb-app main h2 { font-size: clamp(1.65rem, 3vw, 2.45rem); line-height: 1.12; }
     .bb-app p { line-height: 1.7; }
     .bb-app img { max-width: 100%; }
-
-    .shader-void-bg { background-color: transparent; }
-    .perspective-iso-floor {
-      opacity: 0.12;
-      background-image:
-        linear-gradient(to right, rgba(163, 217, 174, 0.08) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(163, 217, 174, 0.08) 1px, transparent 1px);
-      background-size: 72px 72px;
-    }
+    .shader-void-bg { background: var(--bb-paper) !important; }
+    .perspective-iso-floor { display: none !important; }
 
     .bb-header {
       top: 0 !important;
       max-width: none !important;
-      padding-inline: clamp(12px, 3vw, 40px) !important;
+      padding: 0 clamp(12px, 3vw, 40px) !important;
     }
     .bb-header > div:first-child {
       max-width: 1440px;
-      margin-inline: auto;
-      border: 1px solid var(--bb-line) !important;
-      border-top: 0 !important;
-      border-radius: 0 0 22px 22px !important;
-      background: rgba(12, 22, 16, 0.94) !important;
-      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2) !important;
-      backdrop-filter: blur(18px);
+      margin: 0 auto;
+      border: 0 !important;
+      border-bottom: 1px solid var(--bb-rule) !important;
+      border-radius: 0 !important;
+      background: var(--bb-paper) !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
     }
-    .bb-header [class*="border-white/10"] { border-color: var(--bb-line) !important; }
-    .bb-header [class*="bg-white/5"] { background-color: rgba(255, 255, 255, 0.045) !important; }
-    .bb-header [class*="bg-black/55"] { background-color: rgba(12, 22, 16, 0.94) !important; }
+    .bb-header [class*="border-white/"], .bb-header [class*="border-slate-"] { border-color: var(--bb-rule) !important; }
+    .bb-header [class*="bg-white/"] { background: rgba(30, 81, 56, 0.06) !important; }
+    .bb-header [class*="bg-black/"] { background: var(--bb-paper) !important; }
+    .bb-header [class*="text-white"], .bb-header [class*="text-slate-100"], .bb-header [class*="text-slate-200"] { color: var(--bb-ink) !important; }
+    .bb-header [class*="text-slate-400"], .bb-header [class*="text-slate-500"] { color: var(--bb-muted) !important; }
 
     .bb-main {
       max-width: 1440px !important;
-      padding-inline: clamp(16px, 4vw, 56px) !important;
-      padding-top: clamp(32px, 5vw, 64px) !important;
+      padding: clamp(30px, 5vw, 64px) clamp(16px, 4vw, 56px) !important;
     }
     .bb-main > * { min-width: 0; }
-    .bb-main section { scroll-margin-top: 120px; }
-
-    .bb-hero { padding-top: clamp(12px, 3vw, 34px) !important; }
-    .bb-hero h1 { max-width: 13ch; }
-    .bb-hero [class*="blur-["] { opacity: 0.13 !important; }
-    .bb-hero [class*="shadow-[0_0_25px"] { box-shadow: none !important; }
-
-    /* Dark surfaces used throughout all views now share the same quiet system. */
-    .bb-app [class*="bg-[#040606]"],
-    .bb-app [class*="bg-[#040807]"],
-    .bb-app [class*="bg-[#050505]"],
-    .bb-app [class*="bg-[#050606]"],
-    .bb-app [class*="bg-[#050807]"],
-    .bb-app [class*="bg-[#050908]"],
-    .bb-app [class*="bg-[#050A09]"],
-    .bb-app [class*="bg-[#060A09]"],
-    .bb-app [class*="bg-[#060B09]"],
-    .bb-app [class*="bg-[#062E22]"],
-    .bb-app [class*="bg-[#07080C]"],
-    .bb-app [class*="bg-[#070B0A]"],
-    .bb-app [class*="bg-[#070C0B]"],
-    .bb-app [class*="bg-[#070D0B]"],
-    .bb-app [class*="bg-[#080D0C]"],
-    .bb-app [class*="bg-[#09110E]"],
-    .bb-app [class*="bg-[#09110F]"],
-    .bb-app [class*="bg-[#091412]"],
-    .bb-app [class*="bg-[#0A110F]"],
-    .bb-app [class*="bg-[#0B0D13]"],
-    .bb-app [class*="bg-[#0B0E0D]"],
-    .bb-app [class*="bg-[#0C0E14]"],
-    .bb-app [class*="bg-[#0C1311]"],
-    .bb-app [class*="bg-[#0D0F17]"],
-    .bb-app [class*="bg-[#0D1513]"],
-    .bb-app [class*="bg-slate-950"],
-    .bb-app [class*="bg-slate-900"],
-    .bb-app [class*="bg-slate-800"],
-    .bb-app [class*="bg-black/55"] {
-      background-color: var(--bb-surface) !important;
+    .bb-main section { scroll-margin-top: 100px; }
+    .bb-app main [class*="rounded-2xl"][class*="border"],
+    .bb-app main [class*="rounded-3xl"][class*="border"] {
+      border-color: var(--bb-rule) !important;
+      border-radius: 10px !important;
+      box-shadow: none !important;
     }
-    .bb-app [class*="border-slate-800"],
-    .bb-app [class*="border-slate-700"],
-    .bb-app [class*="border-white/10"] { border-color: var(--bb-line) !important; }
-    .bb-app [class*="border-emerald-500/20"],
-    .bb-app [class*="border-emerald-500/30"],
-    .bb-app [class*="border-emerald-500/40"],
-    .bb-app [class*="border-emerald-500/50"] { border-color: rgba(163, 217, 174, 0.24) !important; }
-    .bb-app [class*="bg-white/5"] { background-color: rgba(255, 255, 255, 0.045) !important; }
-    .bb-app [class*="bg-emerald-500/10"],
-    .bb-app [class*="bg-emerald-500/15"],
-    .bb-app [class*="bg-emerald-500/20"] { background-color: rgba(120, 197, 140, 0.1) !important; }
+    .bb-app main [class*="shadow-"] { box-shadow: none !important; }
+    .bb-app main [style*="perspective"] { transform: none !important; transition: none !important; }
+    .bb-app [class*="blur-["], .bb-app [class*="shadow-[0_0_"] { filter: none !important; box-shadow: none !important; }
 
-    .bb-app main [class*="rounded-2xl"][class*="border"] {
-      border-radius: var(--bb-radius);
+    .bb-home-intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.75fr);
+      align-items: stretch;
+      gap: clamp(28px, 7vw, 100px);
+      padding: clamp(24px, 5vw, 64px) 0 clamp(32px, 6vw, 76px);
+      border-bottom: 1px solid var(--bb-rule);
     }
-    .bb-app main [class*="shadow-2xl"] { box-shadow: var(--bb-shadow) !important; }
-    .bb-app main [class*="shadow-[0_0_"] { box-shadow: none !important; }
+    .bb-home-copy { max-width: 760px; }
+    .bb-home-copy h1 { max-width: 12ch; margin: 16px 0 20px; }
+    .bb-home-copy > p { max-width: 58ch; color: var(--bb-muted); font-size: clamp(1rem, 1.4vw, 1.18rem); }
+    .bb-kicker { color: var(--bb-clay); font: 600 0.72rem/1.4 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+    .bb-home-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-top: 28px; }
+    .bb-home-actions button { padding: 10px 0; border: 0; border-bottom: 1px solid var(--bb-forest); background: transparent; color: var(--bb-forest); font-weight: 700; cursor: pointer; }
+    .bb-home-actions button:first-child { padding: 12px 18px; border: 0; background: var(--bb-forest); color: var(--bb-paper); }
+    .bb-home-index { align-self: end; padding: 24px; background: var(--bb-forest); color: var(--bb-paper); border-top: 4px solid var(--bb-clay); }
+    .bb-home-index .bb-kicker, .bb-home-index h2, .bb-home-index p { color: var(--bb-paper) !important; }
+    .bb-index-row { display: grid; grid-template-columns: 2.5rem 1fr; gap: 10px; width: 100%; padding: 14px 0; border: 0; border-bottom: 1px solid rgba(243, 239, 228, 0.28); background: transparent; color: var(--bb-paper); text-align: left; cursor: pointer; }
+    .bb-index-row:last-child { border-bottom: 0; }
+    .bb-index-row > span:first-child { color: #e6aa83; font: 500 0.75rem var(--font-mono); }
+    .bb-index-row strong { display: block; font-size: 1rem; }
+    .bb-index-row small { display: block; margin-top: 3px; color: rgba(243, 239, 228, 0.78); font-size: 0.78rem; line-height: 1.45; }
+    .bb-home-note { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 24px; padding: 18px 0; border-bottom: 1px solid var(--bb-rule); }
+    .bb-home-note strong { color: var(--bb-clay); font: 600 0.74rem var(--font-mono); text-transform: uppercase; }
+    .bb-home-note p { margin: 0; color: var(--bb-muted); }
+
+    /* Retheme the former dark HUD utilities as paper, forest and clay. */
+    .bb-app [class*="bg-[#040606]"], .bb-app [class*="bg-[#040807]"],
+    .bb-app [class*="bg-[#050505]"], .bb-app [class*="bg-[#050606]"],
+    .bb-app [class*="bg-[#050807]"], .bb-app [class*="bg-[#050908]"],
+    .bb-app [class*="bg-[#050A09]"], .bb-app [class*="bg-[#060A09]"],
+    .bb-app [class*="bg-[#060B09]"], .bb-app [class*="bg-[#062E22]"],
+    .bb-app [class*="bg-[#07080C]"], .bb-app [class*="bg-[#070B0A]"],
+    .bb-app [class*="bg-[#070C0B]"], .bb-app [class*="bg-[#070D0B]"],
+    .bb-app [class*="bg-[#080D0C]"], .bb-app [class*="bg-[#09110E]"],
+    .bb-app [class*="bg-[#09110F]"], .bb-app [class*="bg-[#091412]"],
+    .bb-app [class*="bg-[#0A110F]"], .bb-app [class*="bg-[#0B0D13]"],
+    .bb-app [class*="bg-[#0B0E0D]"], .bb-app [class*="bg-[#0C0E14]"],
+    .bb-app [class*="bg-[#0C1311]"], .bb-app [class*="bg-[#0D0F17]"],
+    .bb-app [class*="bg-[#0D1513]"], .bb-app [class*="bg-slate-950"],
+    .bb-app [class*="bg-slate-900"], .bb-app [class*="bg-slate-800"] { background-color: var(--bb-surface) !important; }
+    .bb-app [class~="bg-emerald-500"], .bb-app [class~="bg-cyan-500"], .bb-app [class~="bg-sky-500"] { background-color: var(--bb-forest) !important; }
+    .bb-app [class~="bg-amber-500"], .bb-app [class~="bg-orange-500"] { background-color: var(--bb-clay) !important; }
+    .bb-app [class*="bg-emerald-500/"], .bb-app [class*="bg-cyan-500/"], .bb-app [class*="bg-sky-500/"] { background-color: rgba(30, 81, 56, 0.1) !important; }
+    .bb-app [class*="bg-amber-500/"], .bb-app [class*="bg-orange-500/"] { background-color: rgba(169, 79, 50, 0.1) !important; }
+    .bb-app [class*="bg-white/5"], .bb-app [class*="bg-white/10"] { background-color: rgba(30, 81, 56, 0.05) !important; }
+    .bb-app [class*="border-slate-"], .bb-app [class*="border-white/"] { border-color: var(--bb-rule) !important; }
+    .bb-app [class*="border-cyan-"], .bb-app [class*="border-sky-"] { border-color: rgba(30, 81, 56, 0.28) !important; }
+    .bb-app [class*="border-emerald-"] { border-color: rgba(30, 81, 56, 0.28) !important; }
+    .bb-app [class*="border-amber-"], .bb-app [class*="border-orange-"] { border-color: rgba(169, 79, 50, 0.3) !important; }
+    .bb-app [class~="text-white"], .bb-app [class~="text-slate-100"], .bb-app [class~="text-slate-200"], .bb-app [class~="text-slate-950"], .bb-app [class~="text-slate-900"] { color: var(--bb-ink) !important; }
+    .bb-app [class*="text-white/"] { color: var(--bb-ink) !important; }
+    .bb-app [class~="text-slate-300"], .bb-app [class~="text-slate-400"], .bb-app [class~="text-slate-500"], .bb-app [class~="text-slate-600"] { color: var(--bb-muted) !important; }
+    .bb-app [class*="text-emerald-"], .bb-app [class*="text-cyan-"], .bb-app [class*="text-sky-"], .bb-app [class*="text-blue-"], .bb-app [class*="text-purple-"] { color: var(--bb-forest) !important; }
+    .bb-app [class*="text-amber-"], .bb-app [class*="text-orange-"] { color: var(--bb-clay) !important; }
+    .bb-app [class*="absolute"] [class~="text-white"] { color: #fff !important; }
 
     .bevel-emerald-btn, .bevel-amber-btn, .bevel-cyan-btn, .tactile-btn {
-      border-radius: 12px;
+      border-radius: 4px !important;
       box-shadow: none !important;
-      transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+      transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
     }
-    .bevel-emerald-btn {
-      background: var(--bb-green) !important;
-      color: #102018 !important;
-    }
-    .bevel-emerald-btn:hover { background: #b7e6c0 !important; transform: translateY(-1px); }
-    .bevel-amber-btn, .bevel-cyan-btn {
-      background: rgba(255, 255, 255, 0.055) !important;
-      border: 1px solid var(--bb-line);
-      color: var(--bb-text) !important;
-    }
-    .bevel-amber-btn:hover, .bevel-cyan-btn:hover { background: rgba(255, 255, 255, 0.09) !important; }
-    .tactile-btn:hover { transform: translateY(-1px); }
-
+    .bevel-emerald-btn { background: var(--bb-forest) !important; color: var(--bb-paper) !important; }
+    .bevel-amber-btn, .bevel-cyan-btn { background: transparent !important; border: 1px solid var(--bb-rule); color: var(--bb-ink) !important; }
     .bb-app input, .bb-app textarea, .bb-app select {
-      max-width: 100%;
-      border-color: var(--bb-line) !important;
-      border-radius: 12px !important;
-      background-color: #0c1711 !important;
-      color: var(--bb-text) !important;
-      transition: border-color 160ms ease, box-shadow 160ms ease;
+      max-width: 100%; border-color: var(--bb-rule) !important; border-radius: 4px !important;
+      background: var(--bb-surface) !important; color: var(--bb-ink) !important;
     }
-    .bb-app input::placeholder, .bb-app textarea::placeholder { color: #7f9082; }
-    .bb-app input:focus, .bb-app textarea:focus, .bb-app select:focus {
-      border-color: rgba(163, 217, 174, 0.65) !important;
-      box-shadow: 0 0 0 3px rgba(120, 197, 140, 0.13);
-      outline: none;
-    }
-    .bb-app button:focus-visible, .bb-app a:focus-visible {
-      outline: 2px solid var(--bb-green);
-      outline-offset: 3px;
-    }
-    .bb-app button { transition-duration: 180ms; }
-    .bb-app button:not(:disabled):hover { filter: brightness(1.06); }
-    .bb-app button:disabled { cursor: not-allowed; }
+    .bb-app input::placeholder, .bb-app textarea::placeholder { color: #778278; }
+    .bb-app input:focus, .bb-app textarea:focus, .bb-app select:focus { outline: 2px solid var(--bb-forest); outline-offset: 2px; }
+    .bb-app button:focus-visible, .bb-app a:focus-visible { outline: 2px solid var(--bb-clay); outline-offset: 3px; }
+    .bb-app button { transition-duration: 150ms; }
     .bb-app table { width: 100%; border-collapse: collapse; }
-    .bb-app th { color: #d8e2d9; font-weight: 600; }
-    .bb-app td, .bb-app th { border-color: var(--bb-line); }
-
-    .bb-app footer {
-      border-color: var(--bb-line) !important;
-      background: rgba(7, 15, 10, 0.72) !important;
-    }
-    .bb-app > nav[class*="fixed"][class*="bottom-0"] {
-      border-color: var(--bb-line) !important;
-      background: rgba(10, 19, 13, 0.96) !important;
-      backdrop-filter: blur(16px);
-      padding-bottom: max(8px, env(safe-area-inset-bottom));
-    }
-    .bb-app ::selection { color: #102018; background: #a3d9ae; }
+    .bb-app th { color: var(--bb-ink); font-weight: 600; }
+    .bb-app td, .bb-app th { border-color: var(--bb-rule); }
+    .bb-app footer { border-color: var(--bb-rule) !important; background: #e9e4d8 !important; }
+    .bb-app > nav[class*="fixed"][class*="bottom-0"] { border-color: var(--bb-rule) !important; background: var(--bb-paper) !important; backdrop-filter: none !important; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+    .bb-app > nav[class*="fixed"][class*="bottom-0"] [class~="text-white"], .bb-app > nav[class*="fixed"][class*="bottom-0"] [class*="text-slate-"] { color: var(--bb-ink) !important; }
+    .bb-app ::selection { color: var(--bb-paper); background: var(--bb-forest); }
     .bb-app ::-webkit-scrollbar { width: 10px; height: 10px; }
-    .bb-app ::-webkit-scrollbar-track { background: #0b1510; }
-    .bb-app ::-webkit-scrollbar-thumb { border: 2px solid #0b1510; border-radius: 999px; background: #34483a; }
+    .bb-app ::-webkit-scrollbar-track { background: var(--bb-paper); }
+    .bb-app ::-webkit-scrollbar-thumb { border: 2px solid var(--bb-paper); border-radius: 0; background: #879689; }
 
-    @keyframes charRevealUp {
-      from { opacity: 0; transform: translate3d(0, 24px, 0); filter: blur(3px); }
-      to { opacity: 1; transform: translate3d(0, 0, 0); filter: blur(0); }
-    }
-    .animate-char-reveal {
-      display: inline-block;
-      transform-origin: 50% 100%;
-      animation: charRevealUp 650ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-      will-change: transform, opacity;
-    }
-    @keyframes marqueeLeft {
-      from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(-50%, 0, 0); }
-    }
-    .marquee-track-left { display: flex; width: max-content; animation: marqueeLeft 36s linear infinite; }
-    .marquee-track-left:hover { animation-play-state: paused; }
-    .text-stroke-emerald { -webkit-text-stroke: 1px rgba(163, 217, 174, 0.5); color: transparent; }
-    .text-stroke-emerald:hover { color: var(--bb-green); -webkit-text-stroke-color: var(--bb-green); }
-    @keyframes clipRevealPolygon {
-      from { opacity: 0; transform: translateY(14px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-clip-reveal { animation: clipRevealPolygon 560ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-    @keyframes voxelTilePulse {
-      0% { transform: scaleY(0); transform-origin: bottom; }
-      45%, 55% { transform: scaleY(1); }
-      100% { transform: scaleY(0); transform-origin: top; }
-    }
-    .animate-voxel-curtain { animation: voxelTilePulse 620ms cubic-bezier(0.76, 0, 0.24, 1) forwards; }
-    @keyframes beaconBeamPulse {
-      0%, 100% { opacity: 0.45; transform: scaleX(0.96); }
-      50% { opacity: 0.78; transform: scaleX(1.04); }
-    }
-    .animate-beacon-beam { animation: beaconBeamPulse 3s ease-in-out infinite; }
-
-    @media (max-width: 640px) {
+    @media (max-width: 760px) {
       .bb-header { padding-inline: 8px !important; }
-      .bb-header > div:first-child { border-radius: 0 0 16px 16px !important; }
-      .bb-main { padding-inline: 16px !important; padding-top: 30px !important; }
-      .bb-app main h1 { font-size: clamp(2.25rem, 11vw, 3.3rem); }
+      .bb-main { padding: 28px 16px !important; }
+      .bb-home-intro { grid-template-columns: 1fr; gap: 30px; }
+      .bb-home-index { max-width: none; }
+      .bb-app main h1 { font-size: clamp(2.35rem, 11vw, 3.5rem); }
       .bb-app main h2 { font-size: clamp(1.55rem, 8vw, 2rem); }
-      .bb-app [class*="grid-cols-"] { min-width: 0; }
-      .bb-app pre { max-width: 100%; white-space: pre; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
-        transition-duration: 0.01ms !important;
-      }
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
     }
   `}</style>
 );
 
+// Simple card wrapper for editorial directory entries.
 // ============================================================================
-// 0.12 HTML5 CANVAS SHADER PARTICLE & WEATHER ENGINE (DUSK / NIGHT / MONSOON)
-// ============================================================================
-const ShaderAtmosphereParticleCanvas = ({ atmosphere = 'dusk', reducedMotion = false }) => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || reducedMotion) return undefined;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return undefined;
-
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
-
-    const onResize = () => {
-      if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', onResize, { passive: true });
-
-    const count = atmosphere === 'monsoon' ? 95 : 58;
-    const particles = Array.from({ length: count }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      size: atmosphere === 'monsoon' ? 1.5 + Math.random() * 1.5 : 2 + Math.random() * 3.5,
-      vx: atmosphere === 'monsoon' ? -3.2 - Math.random() * 1.8 : (Math.random() - 0.5) * 0.45,
-      vy:
-        atmosphere === 'monsoon'
-          ? 9 + Math.random() * 6
-          : atmosphere === 'midnight'
-          ? -0.25 - Math.random() * 0.45
-          : -0.18 - Math.random() * 0.35,
-      phase: Math.random() * Math.PI * 2,
-      color:
-        atmosphere === 'dusk'
-          ? Math.random() > 0.45
-            ? '#F59E0B'
-            : '#10B981'
-          : atmosphere === 'monsoon'
-          ? '#38BDF8'
-          : Math.random() > 0.5
-          ? '#A855F7'
-          : '#06B6D4'
-    }));
-
-    let lightningAlpha = 0;
-    let rafId;
-
-    const render = (time) => {
-      ctx.clearRect(0, 0, width, height);
-
-      // Subtle Monsoon Lightning Flash
-      if (atmosphere === 'monsoon') {
-        if (Math.random() < 0.0035 && lightningAlpha <= 0.02) {
-          lightningAlpha = 0.22;
-        }
-        if (lightningAlpha > 0) {
-          ctx.fillStyle = `rgba(186, 230, 253, ${lightningAlpha})`;
-          ctx.fillRect(0, 0, width, height);
-          lightningAlpha *= 0.88;
-        }
-      }
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (atmosphere !== 'monsoon') {
-          p.x += Math.sin(time * 0.0012 + p.phase) * 0.25;
-        }
-
-        if (p.y > height + 20) {
-          p.y = -15;
-          p.x = Math.random() * width;
-        } else if (p.y < -20) {
-          p.y = height + 15;
-          p.x = Math.random() * width;
-        }
-        if (p.x < -20) p.x = width + 15;
-        if (p.x > width + 20) p.x = -15;
-
-        const pulse = 0.45 + 0.55 * Math.sin(time * 0.003 + p.phase);
-
-        if (atmosphere === 'monsoon') {
-          // Diagonal Pixel Rain Streaks
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.38)';
-          ctx.lineWidth = 1.4;
-          ctx.beginPath();
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x + p.vx * 1.9, p.y + p.vy * 1.9);
-          ctx.stroke();
-        } else {
-          // Voxel Firefly / Ender Cube Particle with Shader Bloom
-          ctx.save();
-          ctx.globalAlpha = pulse * 0.85;
-          ctx.shadowBlur = 14;
-          ctx.shadowColor = p.color;
-          ctx.fillStyle = p.color;
-          ctx.fillRect(p.x, p.y, p.size, p.size);
-          ctx.restore();
-        }
-      }
-
-      rafId = requestAnimationFrame(render);
-    };
-
-    rafId = requestAnimationFrame(render);
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', onResize);
-    };
-  }, [atmosphere, reducedMotion]);
-
-  if (reducedMotion) return null;
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-[1] w-full h-full opacity-80"
-      aria-hidden="true"
-    />
-  );
-};
-
-// Interactive Spotlight Bento Card with Mouse-Tracking Radial Shader Border
-const ShaderBentoCard = ({
-  children,
-  onClick,
-  className = '',
-  glowColor = 'rgba(16, 185, 129, 0.22)'
-}) => {
-  const cardRef = useRef(null);
-  const [spot, setSpot] = useState({ x: 50, y: 50, active: false });
-
-  const onMove = (e) => {
-    if (!cardRef.current) return;
-    const r = cardRef.current.getBoundingClientRect();
-    setSpot({
-      x: e.clientX - r.left,
-      y: e.clientY - r.top,
-      active: true
-    });
-  };
-
-  return (
-    <div
-      ref={cardRef}
-      onClick={onClick}
-      onMouseMove={onMove}
-      onMouseLeave={() => setSpot((s) => ({ ...s, active: false }))}
-      className={`group relative rounded-2xl bg-[#09110E]/85 backdrop-blur-xl border border-white/10 hover:border-emerald-400/45 transition-all duration-300 overflow-hidden shadow-[0_16px_40px_-12px_rgba(0,0,0,0.85)] ${
-        onClick ? 'cursor-pointer hover:-translate-y-1' : ''
-      } ${className}`}
-    >
-      {spot.active && (
-        <div
-          className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(280px circle at ${spot.x}px ${spot.y}px, ${glowColor}, transparent 75%)`
-          }}
-        />
-      )}
-      <div className="relative z-10 h-full">{children}</div>
-    </div>
-  );
-};
-
-// 3D Isometric Voxel Inventory Block Swatch (Top, Left & Right Shaded Faces)
-const VoxelBlockSwatch3D = ({ label, colors = ['#F8FAFC', '#CBD5E1', '#94A3B8'] }) => (
-  <div className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-black/65 border border-white/10 hover:border-emerald-400/50 transition group">
-    <svg width="22" height="24" viewBox="0 0 24 26" className="shrink-0 group-hover:scale-110 transition-transform">
-      {/* Top Face */}
-      <polygon points="12,2 22,7.5 12,13 2,7.5" fill={colors[0]} />
-      {/* Left Face */}
-      <polygon points="2,7.5 12,13 12,24 2,18.5" fill={colors[1]} />
-      {/* Right Face */}
-      <polygon points="12,13 22,7.5 22,18.5 12,24" fill={colors[2]} />
-      <polygon
-        points="12,2 22,7.5 22,18.5 12,24 2,18.5 2,7.5"
-        fill="none"
-        stroke="rgba(0,0,0,0.45)"
-        strokeWidth="0.9"
-      />
-    </svg>
-    <span className="text-[11px] font-mono-code text-slate-200 font-medium">{label}</span>
+const EditorialCard = ({ children, className = '', onClick }) => (
+  <div className={className} onClick={onClick}>
+    {children}
   </div>
 );
 
-// ============================================================================
-// 0.15 PLAIN-LANGUAGE GLOSSARY & BEGINNER-FRIENDLY JARGON TOOLTIP COMPONENT
-// ============================================================================
-const PLAIN_LANGUAGE_GLOSSARY = {
-  BDIX: {
-    short: 'Local Bangladesh Internet Exchange',
-    en: 'BDIX connects Bangladeshi ISPs directly inside the country. Servers on BDIX give 5–15ms ping in Bangladesh instead of 50–180ms international ping.',
-    bn: 'বিডিআইএক্স (BDIX) বাংলাদেশের অভ্যন্তরীণ নেটওয়ার্ক এক্সচেঞ্জ। এতে যুক্ত সার্ভারে বাংলাদেশ থেকে মাত্র ৫-১৫ পিং পাওয়া যায়।'
-  },
-  Geyser: {
-    short: 'Java + Mobile Bedrock Crossplay Bridge',
-    en: 'GeyserMC is an open-source plugin that lets Android, iOS, and Console (Bedrock Edition) players join PC (Java Edition) servers using Port 19132.',
-    bn: 'GeyserMC এমন একটি প্রযুক্তি যার মাধ্যমে মোবাইল (Bedrock) এবং পিসি (Java) প্লেয়াররা একই সার্ভারে একসাথে খেলতে পারে।'
-  },
-  'API RTT': {
-    short: 'Status API Check Time (Not In-Game Ping)',
-    en: 'API RTT measures how fast your browser reached the public server-status checker (mcsrvstat.us). Your actual in-game ping inside Bangladesh will usually be much lower.',
-    bn: 'এটি ব্রাউজার থেকে স্ট্যাটাস চেকার এপিআই-এর রেসপন্স সময় নির্দেশ করে; গেমের ভেতরের আসল পিং সাধারণত আরও কম হয়।'
-  },
-  PBR: {
-    short: 'Physically Based Rendering (Realistic Lighting)',
-    en: 'PBR is a graphics technique used by Minecraft shaders and 3D scenes so water, gold, and wet mud reflect sunlight realistically.',
-    bn: 'পিবিআর (PBR) হলো আধুনিক গ্রাফিক্স প্রযুক্তি যা মাইনক্রাফটের পানি, ধাতু ও ব্লকের ওপর বাস্তবসম্মত আলোর প্রতিফলন তৈরি করে।'
-  },
-  SMP: {
-    short: 'Survival Multiplayer Server',
-    en: 'A shared multiplayer survival world where players gather resources, build towns, trade, and collaborate or compete together.',
-    bn: 'সারভাইভাল মাল্টিপ্লেয়ার ওয়ার্ল্ড—যেখানে অনেক প্লেয়ার একসাথে ঘর বানায়, রিসোর্স সংগ্রহ করে এবং দলবদ্ধভাবে খেলে।'
-  }
-};
-
-const TermTooltip = ({ term, label, lang = 'en' }) => {
-  const [open, setOpen] = useState(false);
-  const entry = PLAIN_LANGUAGE_GLOSSARY[term] || {
-    short: term,
-    en: label || term,
-    bn: label || term
-  };
-
-  return (
-    <span className="relative inline-flex items-center">
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((o) => !o);
-        }}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono-code underline decoration-dotted underline-offset-2 transition"
-        aria-label={`Explain ${term}`}
-      >
-        <span>{label || term}</span>
-        <HelpCircle className="w-3 h-3 text-emerald-400 shrink-0" />
-      </button>
-      {open && (
-        <span
-          role="tooltip"
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 rounded-xl bg-[#060A09] border border-emerald-400/50 shadow-2xl text-left z-50 pointer-events-none"
-        >
-          <span className="block text-[10px] font-mono-code font-bold text-emerald-400 uppercase">
-            {term} — {entry.short}
-          </span>
-          <span className="block text-[11px] font-sans-bd text-slate-200 leading-relaxed mt-1">
-            {lang === 'bn' ? entry.bn : entry.en}
-          </span>
-        </span>
-      )}
-    </span>
-  );
-};
-
-// ============================================================================
-// 0.2 PROFESSIONAL MOTION & WEBGL ENGINE COMPONENTS (GSAP + THREE.JS + R3F/CSS3D)
-// ============================================================================
-
-// Hook to dynamically load GSAP + ScrollTrigger & Three.js r128 from CDN and report engine readiness
-function useExternalMotionEngines() {
-  const [enginesStatus, setEnginesStatus] = useState({
-    gsapReady: typeof window !== 'undefined' && Boolean(window.gsap),
-    threeReady: typeof window !== 'undefined' && Boolean(window.THREE)
-  });
-
-  useEffect(() => {
-    let mounted = true;
-    const loadScript = (src, id) =>
-      new Promise((resolve) => {
-        if (document.getElementById(id)) {
-          resolve(true);
-          return;
-        }
-        const s = document.createElement('script');
-        s.id = id;
-        s.src = src;
-        s.async = true;
-        s.onload = () => resolve(true);
-        s.onerror = () => resolve(false);
-        document.head.appendChild(s);
-      });
-
-    async function boot() {
-      await Promise.all([
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js', 'gsap-core-cdn'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js', 'gsap-st-cdn'),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', 'three-r128-cdn')
-      ]);
-      if (window.gsap && window.ScrollTrigger) {
-        try {
-          window.gsap.registerPlugin(window.ScrollTrigger);
-        } catch (e) {
-          // Plugin already registered
-        }
-      }
-      if (mounted) {
-        setEnginesStatus({
-          gsapReady: Boolean(window.gsap),
-          threeReady: Boolean(window.THREE)
-        });
-      }
-    }
-    boot();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  return enginesStatus;
-}
-
-// 1. Character-by-Character & Word-by-Word Kinetic Split Typography (UNCLIPPED LINE-HEIGHT FIX)
-const KineticSplitText = ({ text, className = '', highlightWords = [], reducedMotion = false }) => {
-  const words = useMemo(() => String(text || '').split(' '), [text]);
-
-  if (reducedMotion) {
-    return <span className={className}>{text}</span>;
-  }
-
-  let charCounter = 0;
-  return (
-    <span className={`inline-block leading-[1.16] py-1 ${className}`} style={{ perspective: '900px' }}>
-      {words.map((word, wIdx) => {
-        const cleanWord = word.replace(/[^a-zA-Z0-9\u0980-\u09FF]/g, '');
-        const isHighlighted = highlightWords.some(
-          (hw) => hw.toLowerCase() === cleanWord.toLowerCase()
-        );
-        return (
-          <span
-            key={wIdx}
-            className={`inline-block whitespace-nowrap mr-[0.26em] py-1 -my-1 overflow-visible align-baseline ${
-              isHighlighted
-                ? 'text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-teal-200 to-cyan-300 drop-shadow-[0_0_24px_rgba(16,185,129,0.45)]'
-                : ''
-            }`}
-          >
-            {Array.from(word).map((ch, cIdx) => {
-              const delayMs = Math.min(900, charCounter * 16);
-              charCounter += 1;
-              return (
-                <span
-                  key={cIdx}
-                  className="animate-char-reveal"
-                  style={{
-                    animationDelay: `${delayMs}ms`,
-                    color: isHighlighted ? '#34D399' : undefined
-                  }}
-                >
-                  {ch}
-                </span>
-              );
-            })}
-          </span>
-        );
-      })}
-    </span>
-  );
-};
-
-// 2. Cryptographic Scramble & Animated Odometer Counter (Opraah / Active Theory Style)
-const AnimatedStatCounter = ({ targetValue = 19000, suffix = '+', duration = 1400, reducedMotion = false }) => {
-  const [displayVal, setDisplayVal] = useState(reducedMotion ? targetValue : 0);
-  const containerRef = useRef(null);
-  const hasAnimatedRef = useRef(false);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      setDisplayVal(targetValue);
-      return;
-    }
-    const el = containerRef.current;
-    if (!el) return;
-
-    const runCount = () => {
-      if (hasAnimatedRef.current) return;
-      hasAnimatedRef.current = true;
-      const start = performance.now();
-      const step = (now) => {
-        const progress = Math.min(1, (now - start) / duration);
-        // EaseOutExpo
-        const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-        setDisplayVal(Math.round(targetValue * eased));
-        if (progress < 1) {
-          requestAnimationFrame(step);
-        }
-      };
-      requestAnimationFrame(step);
-    };
-
-    if ('IntersectionObserver' in window) {
-      const io = new IntersectionObserver(
-        (entries) => {
-          if (entries[0]?.isIntersecting) {
-            runCount();
-            io.disconnect();
-          }
-        },
-        { threshold: 0.2 }
-      );
-      io.observe(el);
-      return () => io.disconnect();
-    } else {
-      runCount();
-    }
-  }, [targetValue, duration, reducedMotion]);
-
-  return (
-    <span ref={containerRef} className="tabular-nums">
-      {displayVal.toLocaleString()}
-      {suffix}
-    </span>
-  );
-};
-
-// 3. Magnetic Tactile Button (Lusion / Unseen Studio Style)
-const MagneticButton = ({
-  children,
-  onClick,
-  className = '',
-  cursorLabel = 'EXPLORE',
-  onCursorHover,
-  reducedMotion = false,
-  type = 'button',
-  title
-}) => {
-  const btnRef = useRef(null);
-  const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = (e) => {
-    if (reducedMotion || !btnRef.current) return;
-    const rect = btnRef.current.getBoundingClientRect();
-    const relX = e.clientX - (rect.left + rect.width / 2);
-    const relY = e.clientY - (rect.top + rect.height / 2);
-    setOffset({ x: relX * 0.24, y: relY * 0.28 });
-  };
-
-  const handleMouseLeave = () => {
-    setOffset({ x: 0, y: 0 });
-    if (onCursorHover) onCursorHover(null);
-  };
-
-  const handleMouseEnter = () => {
-    if (onCursorHover) onCursorHover(cursorLabel);
-  };
-
-  return (
-    <button
-      ref={btnRef}
-      type={type}
-      title={title}
-      onClick={onClick}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onMouseEnter={handleMouseEnter}
-      style={{
-        transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
-        transition:
-          offset.x === 0 && offset.y === 0
-            ? 'transform 450ms cubic-bezier(0.16, 1, 0.3, 1)'
-            : 'transform 60ms linear'
-      }}
-      className={className}
-    >
-      {children}
-    </button>
-  );
-};
-
-// 4. 3D Perspective Tilt Card with Specular Glare & Scroll-Reveal Entrance
-const Tilt3DCard = ({
-  children,
-  className = '',
-  onClick,
-  glareColor = 'rgba(16, 185, 129, 0.16)',
-  reducedMotion = false,
-  staggerIndex = 0
-}) => {
-  const cardRef = useRef(null);
-  const [tilt, setTilt] = useState({ rx: 0, ry: 0, gx: 50, gy: 50, hovered: false });
-  const [revealed, setRevealed] = useState(reducedMotion);
-
-  useEffect(() => {
-    if (reducedMotion) {
-      setRevealed(true);
-      return;
-    }
-    const el = cardRef.current;
-    if (!el || !('IntersectionObserver' in window)) {
-      setRevealed(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setRevealed(true);
-          io.disconnect();
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -30px 0px' }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [reducedMotion]);
-
-  const handleMove = (e) => {
-    if (reducedMotion || !cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
-    const ry = (px - 0.5) * 9;
-    const rx = (0.5 - py) * 9;
-    setTilt({ rx, ry, gx: Math.round(px * 100), gy: Math.round(py * 100), hovered: true });
-  };
-
-  const handleLeave = () => {
-    setTilt({ rx: 0, ry: 0, gx: 50, gy: 50, hovered: false });
-  };
-
-  return (
-    <div
-      ref={cardRef}
-      onClick={onClick}
-      onMouseMove={handleMove}
-      onMouseLeave={handleLeave}
-      style={{
-        transform: !revealed
-          ? 'translate3d(0, 36px, 0) scale(0.96)'
-          : tilt.hovered
-          ? `perspective(1000px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translate3d(0, -4px, 0)`
-          : 'perspective(1000px) rotateX(0deg) rotateY(0deg) translate3d(0, 0px, 0)',
-        opacity: revealed ? 1 : 0,
-        transition: tilt.hovered
-          ? 'transform 90ms linear, opacity 600ms cubic-bezier(0.16, 1, 0.3, 1)'
-          : `transform 650ms cubic-bezier(0.16, 1, 0.3, 1) ${Math.min(
-              staggerIndex * 60,
-              300
-            )}ms, opacity 650ms cubic-bezier(0.16, 1, 0.3, 1) ${Math.min(staggerIndex * 60, 300)}ms`
-      }}
-      className={`relative overflow-hidden ${className}`}
-    >
-      {/* Dynamic Specular Cursor Glare */}
-      {tilt.hovered && !reducedMotion && (
-        <div
-          className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(360px circle at ${tilt.gx}% ${tilt.gy}%, ${glareColor}, transparent 70%)`
-          }}
-        />
-      )}
-      {children}
-    </div>
-  );
-};
-
-// 5. Custom Interactive Dual-Ring Reticle Cursor (Lusion / Resn Reference)
-const BlockBanglaCustomCursor = ({ cursorLabel, reducedMotion }) => {
-  const dotRef = useRef(null);
-  const ringRef = useRef(null);
-  const pos = useRef({ x: -100, y: -100, rx: -100, ry: -100 });
-  const [isTouch, setIsTouch] = useState(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (window.matchMedia('(pointer: coarse)').matches || reducedMotion) {
-      setIsTouch(true);
-      return;
-    }
-    setIsTouch(false);
-
-    const onMove = (e) => {
-      pos.current.x = e.clientX;
-      pos.current.y = e.clientY;
-      if (dotRef.current) {
-        dotRef.current.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
-      }
-    };
-    window.addEventListener('mousemove', onMove, { passive: true });
-
-    let rafId;
-    const updateRing = () => {
-      pos.current.rx += (pos.current.x - pos.current.rx) * 0.18;
-      pos.current.ry += (pos.current.y - pos.current.ry) * 0.18;
-      if (ringRef.current) {
-        ringRef.current.style.transform = `translate3d(${pos.current.rx}px, ${pos.current.ry}px, 0)`;
-      }
-      rafId = requestAnimationFrame(updateRing);
-    };
-    rafId = requestAnimationFrame(updateRing);
-
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      cancelAnimationFrame(rafId);
-    };
-  }, [reducedMotion]);
-
-  if (isTouch || reducedMotion) return null;
-
-  return (
-    <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden hidden lg:block">
-      {/* Crisp Inner Voxel Square */}
-      <div
-        ref={dotRef}
-        className="fixed top-0 left-0 -ml-1.5 -mt-1.5 w-3 h-3 bg-emerald-400 rotate-45 shadow-[0_0_12px_#10B981] transition-transform duration-75"
-      />
-      {/* Trailing Spring Outer Reticle */}
-      <div
-        ref={ringRef}
-        className={`fixed top-0 left-0 flex items-center justify-center rounded-full border transition-all duration-200 ${
-          cursorLabel
-            ? '-ml-12 -mt-12 w-24 h-24 bg-emerald-500/20 border-emerald-400 backdrop-blur-sm'
-            : '-ml-5 -mt-5 w-10 h-10 border-emerald-400/50 bg-emerald-500/5'
-        }`}
-      >
-        {cursorLabel && (
-          <span className="text-[9px] font-mono-code font-bold text-emerald-200 tracking-wider uppercase text-center px-1">
-            {cursorLabel}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// 6. Infinite Seamless Dual-Direction Kinetic Marquee Ribbon (Opraah / Webflow GSAP Reference)
-const KineticMarqueeRibbon = ({ lang }) => {
-  const itemsEn = [
-    'MINECRAFT BANGLADESH',
-    'BUILT BY THE COMMUNITY',
-    'ONE BLOCK AT A TIME',
-    'JAVA & BEDROCK CROSSPLAY',
-    'BDIX LOW-LATENCY ROUTING',
-    '2010–2026 SOURCED ARCHIVE',
-    '19,000+ #MINECRAFTBANGLA VIDEOS',
-    'LIVE MCSRVSTAT.US STATUS QUERIES'
-  ];
-  const itemsBn = [
-    'মাইনক্রাফট বাংলাদেশ',
-    'কমিউনিটির নিজের ঘর',
-    'জাভা ও বেডরক ক্রসপ্লে',
-    'বিডিআইএক্স লো-পিং সার্ভার',
-    '২০১০–২০২৬ প্রামাণ্য আর্কাইভ',
-    '১৯,০০০+ বাংলা মাইনক্রাফট ভিডিও'
-  ];
-  const list = lang === 'bn' ? itemsBn : itemsEn;
-
-  return (
-    <div className="relative w-full max-w-full py-4 bg-[#050908] border-y border-emerald-500/25 overflow-hidden select-none space-y-2">
-      {/* Row 1: Leftward Kinetic Stream */}
-      <div className="marquee-track-left">
-        {[...list, ...list].map((item, idx) => (
-          <div key={idx} className="flex items-center gap-4 mx-4">
-            <span
-              className={`text-lg sm:text-2xl font-display font-extrabold tracking-tight uppercase transition ${
-                idx % 2 === 0 ? 'text-white' : 'text-stroke-emerald'
-              }`}
-            >
-              {item}
-            </span>
-            <span className="w-2 h-2 rotate-45 bg-emerald-400 shadow-[0_0_12px_#10B981]" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// ============================================================================
-// 6.5 VIDEO INSPIRATION MODULES: OPRAAH (3D PANORAMA, SPLIT MANIFESTO, WAVY RIBBON)
-//     & BDZONE (GLYPH SCRAMBLE, IDEA BOARD, 4-STEP JOIN, TEAM & SEASON GALLERY)
-// ============================================================================
-
-// A. Minecraft Enchanting-Glyph Text Scramble Headline (Inspired by BDZONE 00:36)
-const GlyphScrambleHeading = ({ targetText = 'Infinite Adventures.', className = '' }) => {
-  const glyphs = 'ᔑʖᓵ↸ᒷ𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟|_+-*/<>!';
-  const [text, setText] = useState(targetText);
-  const [scrambling, setScrambling] = useState(false);
-
-  const triggerScramble = useCallback(() => {
-    if (scrambling) return;
-    setScrambling(true);
-    let step = 0;
-    const totalSteps = 18;
-    const interval = setInterval(() => {
-      step += 1;
-      const progress = step / totalSteps;
-      const revealedCount = Math.floor(targetText.length * progress);
-      const nextStr = targetText
-        .split('')
-        .map((ch, idx) => {
-          if (ch === ' ') return ' ';
-          if (idx < revealedCount) return ch;
-          return glyphs[Math.floor(Math.random() * glyphs.length)];
-        })
-        .join('');
-      setText(nextStr);
-      if (step >= totalSteps) {
-        clearInterval(interval);
-        setText(targetText);
-        setScrambling(false);
-      }
-    }, 45);
-  }, [scrambling, targetText]);
-
-  useEffect(() => {
-    triggerScramble();
-  }, [targetText]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return (
-    <span
-      onMouseEnter={triggerScramble}
-      onClick={triggerScramble}
-      title="Hover or click to decode Minecraft Enchanting Table glyphs"
-      className={`cursor-pointer select-none inline-block ${className}`}
-    >
-      {text}
-    </span>
-  );
-};
-
-// B. Opraah-Inspired 3D Curved Cylindrical Panorama Stage Over Perspective Grid Floor (00:56 - 01:03)
-const OpraahCurvedPanoramaStage = ({ lang, onNavigateTab, onInspectLightbox }) => {
-  const [rotationAngle, setRotationAngle] = useState(0);
-
-  const reelPanels = [
-    {
-      id: 'pan-1',
-      title: 'The Bangla Gamer — Survival Ep 8',
-      tag: '3.4M+ Views • #minecraftbangla',
-      img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=700&q=80',
-      tab: 'creators'
-    },
-    {
-      id: 'pan-2',
-      title: 'Jatiya Sangsad Voxel Monument',
-      tag: 'Dhaka Brutalist Build',
-      img: 'https://images.unsplash.com/photo-1624863699622-732076711240?auto=format&fit=crop&w=700&q=80',
-      tab: 'community'
-    },
-    {
-      id: 'pan-3',
-      title: 'BDZONE Season 6 & BedWars',
-      tag: 'Est. 9 April 2018 • 10,000+ Players',
-      img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=700&q=80',
-      tab: 'servers'
-    },
-    {
-      id: 'pan-4',
-      title: 'Sundarbans Mangrove Shader Reel',
-      tag: 'Bengal Delta Biome',
-      img: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=700&q=80',
-      tab: 'community'
-    },
-    {
-      id: 'pan-5',
-      title: 'Maven’s Hive Friday UHC Siege',
-      tag: 'Java + Bedrock Crossplay',
-      img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=700&q=80',
-      tab: 'events'
-    },
-    {
-      id: 'pan-6',
-      title: 'Paharpur Somapura Mahavihara',
-      tag: '8th-Century Terracotta Voxel',
-      img: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?auto=format&fit=crop&w=700&q=80',
-      tab: 'legacy'
-    },
-    {
-      id: 'pan-7',
-      title: 'BMS Lifesteal & Clan Tournaments',
-      tag: 'Discord Community Hub',
-      img: 'https://images.unsplash.com/photo-1596895111956-bf1cf0599ce5?auto=format&fit=crop&w=700&q=80',
-      tab: 'servers'
-    }
-  ];
-
-  return (
-    <section className="relative rounded-3xl bg-[#040606] border border-white/10 overflow-hidden pt-8 pb-12 px-4 sm:px-8 shadow-2xl">
-      {/* Perspective Grid Floor (Matching Opraah 00:57 curved horizon grid) */}
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-60 opacity-45"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, rgba(16,185,129,0.22) 1px, transparent 1px), linear-gradient(to bottom, rgba(16,185,129,0.22) 1px, transparent 1px)',
-          backgroundSize: '44px 44px',
-          transform: 'perspective(420px) rotateX(68deg) scale(1.35)',
-          transformOrigin: 'bottom center'
-        }}
-      />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#040606] via-[#040606]/70 to-transparent" />
-
-      {/* Top Controls */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mb-6">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/40 text-orange-300 text-[11px] font-mono-code font-bold">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>360° CURVED CREATOR & SERVER SHOWREEL</span>
-        </span>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setRotationAngle((a) => a - 14)}
-            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-mono-code text-slate-200 border border-white/10"
-          >
-            ← Pan Left
-          </button>
-          <button
-            type="button"
-            onClick={() => setRotationAngle(0)}
-            className="px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-300 text-xs font-mono-code border border-orange-500/30"
-          >
-            Center
-          </button>
-          <button
-            type="button"
-            onClick={() => setRotationAngle((a) => a + 14)}
-            className="px-3 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-mono-code text-slate-200 border border-white/10"
-          >
-            Pan Right →
-          </button>
-        </div>
-      </div>
-
-      {/* Curved Cylindrical Wall of Vertical Cards */}
-      <div
-        className="relative z-10 flex items-center justify-center gap-3 sm:gap-4 py-4 overflow-x-auto no-scrollbar"
-        style={{ perspective: '1200px' }}
-      >
-        {reelPanels.map((panel, idx) => {
-          const offsetFromCenter = idx - 3 + rotationAngle / 28;
-          const rotateY = offsetFromCenter * -11;
-          const translateZ = Math.abs(offsetFromCenter) * -18;
-          return (
-            <div
-              key={panel.id}
-              onClick={() => onNavigateTab(panel.tab, panel.title)}
-              style={{
-                transform: `rotateY(${rotateY}deg) translateZ(${translateZ}px)`,
-                transition: 'transform 500ms cubic-bezier(0.16, 1, 0.3, 1)'
-              }}
-              className="group relative shrink-0 w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden border border-white/15 bg-slate-950 cursor-pointer shadow-2xl hover:border-orange-400"
-            >
-              <img
-                src={panel.img}
-                alt={panel.title}
-                loading="lazy"
-                className="w-full h-full object-cover opacity-80 group-hover:scale-110 group-hover:opacity-100 transition duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent" />
-              <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between">
-                <span className="px-2 py-0.5 rounded bg-black/75 text-[9px] font-mono-code text-orange-300 border border-orange-500/30">
-                  {panel.tag}
-                </span>
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 space-y-1">
-                <div className="text-xs sm:text-sm font-display font-bold text-white leading-snug">
-                  {panel.title}
-                </div>
-                <span className="inline-flex items-center gap-1 text-[10px] font-mono-code text-emerald-300">
-                  <span>Open Showcase</span>
-                  <ArrowUpRight className="w-3 h-3" />
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Center Stage Statement (Opraah 01:02 layout) */}
-      <div className="relative z-10 text-center max-w-3xl mx-auto mt-6 space-y-2">
-        <div className="text-xs sm:text-sm font-medium text-orange-300 tracking-wide">
-          {lang === 'bn'
-            ? 'বাংলাদেশের ক্রিয়েটর, সার্ভার ও বিল্ডারদের সম্মিলিত মঞ্চ'
-            : 'Bangladesh’s Unified Creator, Server & Builder Stage'}
-        </div>
-        <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-white tracking-tight leading-none">
-          {lang === 'bn'
-            ? '১৯,০০০+ বাংলা ভিডিও। আমরাই এটি সম্ভব করেছি।'
-            : 'Millions Watched. Bangladesh Made It Happen.'}
-        </h2>
-      </div>
-    </section>
-  );
-};
-
-// C. Opraah-Inspired Split-Screen Manifesto + Wavy SVG Ribbon (01:04 - 01:10 & 01:34)
-const OpraahSplitManifestoAndRibbon = ({ lang, onNavigateTab }) => {
-  const [slideIdx, setSlideIdx] = useState(0);
-  const slides = [
-    {
-      year: 'CHAPTER 01',
-      headlineEn: 'We started in 2011',
-      headlineBn: 'আমাদের যাত্রা শুরু ২০১১ সালে',
-      subEn: 'From university dorm USB drives, cybercafe LANs, and 5-player Hamachi tunnels across Dhaka and Chattogram.'
-    },
-    {
-      year: 'CHAPTER 02',
-      headlineEn: 'With One Belief',
-      headlineBn: 'একটিই বিশ্বাস নিয়ে',
-      subEn: 'That Bangladeshi players deserve low-latency domestic networks, verified history, and world-class community events.'
-    },
-    {
-      year: 'CHAPTER 03',
-      headlineEn: 'Creators & Builders are the strongest storytellers alive.',
-      headlineBn: 'আমাদের ক্রিয়েটর এবং বিল্ডাররাই সবচেয়ে শক্তিশালী গল্পকার।',
-      subEn: 'Over 3,600+ Bengali YouTube channels and dedicated networks like BDZONE, BMS, Cyan Plex, and Maven’s Hive prove it daily.'
-    }
-  ];
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSlideIdx((i) => (i + 1) % slides.length);
-    }, 3800);
-    return () => clearInterval(timer);
-  }, [slides.length]);
-
-  const activeSlide = slides[slideIdx];
-
-  return (
-    <section className="space-y-6">
-      {/* Split-Screen Cream + Vibrant Orange Manifesto (Opraah 01:05 - 01:10) */}
-      <div className="rounded-3xl overflow-hidden border border-white/15 grid grid-cols-1 lg:grid-cols-12 shadow-2xl">
-        {/* Left Half: Warm Studio Cream with Voxel CRT-Head Architect Mascot */}
-        <div className="lg:col-span-5 bg-[#FDF4EB] text-slate-950 p-6 sm:p-10 flex flex-col items-center justify-between relative">
-          <div className="w-full flex items-center justify-between text-[11px] font-mono-code text-slate-600">
-            <span>BLOCKBANGLA MANIFESTO</span>
-            <span>EST. 2011 — 2026</span>
-          </div>
-
-          {/* Original SVG Voxel-Monitor Mascot in Orange Suit (Inspired by Opraah 01:05) */}
-          <svg viewBox="0 0 260 260" className="w-48 h-48 sm:w-56 sm:h-56 my-2 select-none">
-            {/* Shadow */}
-            <ellipse cx="130" cy="242" rx="68" ry="10" fill="#E2D5C8" />
-            {/* Suit Torso & Arms */}
-            <path d="M72,140 L188,140 L208,236 L52,236 Z" fill="#EA580C" stroke="#7C2D12" strokeWidth="2.5" />
-            {/* White Shirt & Black Tie */}
-            <polygon points="112,140 148,140 130,185" fill="#FFFFFF" />
-            <polygon points="126,148 134,148 136,204 130,214 124,204" fill="#0F172A" />
-            {/* Suit Lapels */}
-            <polygon points="98,140 114,140 130,185 88,168" fill="#C2410C" />
-            <polygon points="162,140 146,140 130,185 172,168" fill="#C2410C" />
-            {/* Voxel CRT Monitor Head */}
-            <rect x="74" y="42" width="112" height="88" rx="10" fill="#1E293B" stroke="#0F172A" strokeWidth="4" />
-            <rect x="84" y="52" width="84" height="68" rx="4" fill="#0F172A" />
-            {/* CRT Static / Creeper Voxel Face on Screen */}
-            <rect x="98" y="66" width="14" height="14" fill="#10B981" />
-            <rect x="140" y="66" width="14" height="14" fill="#10B981" />
-            <rect x="116" y="82" width="20" height="18" fill="#10B981" />
-            <rect x="108" y="94" width="10" height="14" fill="#10B981" />
-            <rect x="134" y="94" width="10" height="14" fill="#10B981" />
-            {/* Monitor Knobs */}
-            <circle cx="177" cy="68" r="3.5" fill="#F97316" />
-            <circle cx="177" cy="82" r="3.5" fill="#38BDF8" />
-          </svg>
-
-          <div className="w-full flex items-center justify-between text-xs font-mono-code text-slate-700 border-t border-slate-300 pt-3">
-            <span>VOXEL STORYTELLER</span>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('creators', 'CREATORS')}
-              className="font-bold text-orange-600 hover:underline"
-            >
-              Meet Creators →
-            </button>
-          </div>
-        </div>
-
-        {/* Right Half: High-Contrast Vibrant Orange Stage (`#FF5500`) */}
-        <div
-          onClick={() => setSlideIdx((i) => (i + 1) % slides.length)}
-          className="lg:col-span-7 bg-[#FF5500] text-white p-8 sm:p-14 flex flex-col justify-between cursor-pointer select-none min-h-[300px]"
-        >
-          <div className="flex items-center justify-between">
-            <span className="px-3 py-1 rounded-full bg-black/20 text-white text-xs font-mono-code font-bold">
-              {activeSlide.year} • CLICK TO ADVANCE
-            </span>
-            <div className="flex items-center gap-1.5">
-              {slides.map((_, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSlideIdx(idx);
-                  }}
-                  className={`h-2 rounded-full transition-all ${
-                    slideIdx === idx ? 'w-8 bg-white' : 'w-2 bg-white/40'
-                  }`}
-                  aria-label={`Slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="my-auto py-6 space-y-4">
-            <h3 className="text-3xl sm:text-5xl font-display font-extrabold tracking-tight leading-[1.08] drop-shadow-sm">
-              {lang === 'bn' ? activeSlide.headlineBn : activeSlide.headlineEn}
-            </h3>
-            <p className="text-sm sm:text-base text-white/90 max-w-xl leading-relaxed font-medium">
-              {activeSlide.subEn}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-white/20 text-xs font-mono-code">
-            <span>BANGLADESH MINECRAFT CREATOR & SERVER ARCHIVE</span>
-            <span>0{slideIdx + 1} / 03 →</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Opraah 01:14 - 01:26 Inspired Floating Milestone Cards + "Things We're NOT Good At" Contrast Strip */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 rounded-3xl bg-[#F8FAFC] text-slate-950 p-6 sm:p-8 border border-white/20 shadow-xl flex flex-col justify-between space-y-5">
-          <div className="flex items-center justify-between text-[11px] font-mono-code text-slate-500 uppercase">
-            <span>ECOSYSTEM SCALE (OPRAAH EDITORIAL FORMAT)</span>
-            <span>VERIFIED NOV 2026</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <div className="text-3xl sm:text-4xl font-display font-extrabold text-slate-950 tracking-tight">
-                19,000+
-              </div>
-              <div className="text-xs font-bold text-orange-600">#minecraftbangla Videos</div>
-              <p className="text-[11px] text-slate-500">Publicly indexed across YouTube</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <div className="text-3xl sm:text-4xl font-display font-extrabold text-slate-950 tracking-tight">
-                3,600+
-              </div>
-              <div className="text-xs font-bold text-emerald-600">Creator Channels</div>
-              <p className="text-[11px] text-slate-500">Bangla Survival, Shorts & Guides</p>
-            </div>
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
-              <div className="text-3xl sm:text-4xl font-display font-extrabold text-slate-950 tracking-tight">
-                16+ Yrs
-              </div>
-              <div className="text-xs font-bold text-cyan-600">Community History</div>
-              <p className="text-[11px] text-slate-500">From 2010 Beta LANs to 1.21.4</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Opraah 01:21 "Things we're... ah... not so great at" -> Blackout Reveal */}
-        <div className="lg:col-span-5 rounded-3xl bg-[#050505] border border-white/15 p-6 sm:p-8 flex flex-col justify-between space-y-4">
-          <div className="text-[11px] font-mono-code text-orange-400 uppercase tracking-widest">
-            THINGS WE ARE... AH... NOT SO GREAT AT:
-          </div>
-          <div className="space-y-2.5 text-sm sm:text-base font-display font-bold text-white">
-            <div className="flex items-center gap-2.5">
-              <span className="text-rose-500">✕</span>
-              <span>Inventing fake &ldquo;500/500 online&rdquo; server bots.</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-rose-500">✕</span>
-              <span>Pay-to-Win kits that ruin competitive PvP.</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-rose-500">✕</span>
-              <span>Letting Bangladesh’s 2011–2018 server history vanish.</span>
-            </div>
-          </div>
-          <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] font-mono-code text-emerald-400">
-            <span>100% VERIFIED TELEMETRY</span>
-            <button
-              type="button"
-              onClick={() => onNavigateTab('legacy', 'THE LEGACY')}
-              className="underline hover:text-white"
-            >
-              Read Our Charter →
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Wavy S-Curve SVG Ribbon Banner (Inspired by Opraah 01:34) */}
-      <div className="relative rounded-2xl bg-[#070B0A] border border-white/10 py-6 px-4 overflow-hidden">
-        <svg viewBox="0 0 1200 130" className="w-full h-20 sm:h-28 overflow-visible">
-          <path
-            id="opraahWaveCurve"
-            d="M -40,95 C 260,15 520,145 840,45 C 1020,-5 1140,85 1240,55"
-            fill="none"
-            stroke="#10B981"
-            strokeWidth="28"
-            strokeLinecap="round"
-          />
-          <text className="fill-slate-950 font-mono-code font-extrabold text-[13px] tracking-widest uppercase">
-            <textPath href="#opraahWaveCurve" startOffset="2%">
-              BLOCKBANGLA • ZERO FAKE SERVER STATS • BDIX &amp; SINGAPORE LOW PING • 19,000+ BANGLA VIDEOS • VERIFIED SINCE 2018 •
-            </textPath>
-          </text>
-        </svg>
-      </div>
-    </section>
-  );
-};
-
-// D. BDZONE-Inspired Flagship Network Deep-Dive, 4-Step How-To-Join, Team Roster, Idea Board & Season Gallery
-const BdzoneInspiredNetworkShowcase = ({
-  lang,
-  bdzoneTelemetry,
-  onCopyText,
-  copiedKey,
-  onOpenSubmitModal,
-  devReceiverEndpoint
-}) => {
-  const [activeSubTab, setActiveSubTab] = useState('overview'); // 'overview' | 'ideas' | 'seasons' | 'faq'
-  const [ideaFilter, setIdeaFilter] = useState('All');
-  const [openFaqIdx, setOpenFaqIdx] = useState(0);
-  const [newIdeaAuthor, setNewIdeaAuthor] = useState('');
-  const [newIdeaCategory, setNewIdeaCategory] = useState('In-Game');
-  const [newIdeaText, setNewIdeaText] = useState('');
-  const [ideaNotice, setIdeaNotice] = useState(null);
-
-  const [ideasList, setIdeasList] = useState([
-    {
-      id: 'id-01',
-      author: 'X33R',
-      category: 'Website',
-      status: 'Pending',
-      text: 'Please make the password input on the login screen hidden (showing **** instead of plain text). It is a standard security feature that prevents screen-peeking.',
-      upvotes: 14,
-      downvotes: 0,
-      comments: 3
-    },
-    {
-      id: 'id-02',
-      author: 'mr_69kidding',
-      category: 'In-Game',
-      status: 'Approved',
-      text: 'Add void spawner and skyblock island value leaderboard upgrades for Season 6.',
-      upvotes: 19,
-      downvotes: 1,
-      comments: 5
-    },
-    {
-      id: 'id-03',
-      author: 'SakibSenpai',
-      category: 'Bedrock Crossplay',
-      status: 'Resolved',
-      text: 'Minecraft Bedrock (pe.bdzonemc.com:19132) connection guide for 1.21.4 mobile players added to the main lobby.',
-      upvotes: 22,
-      downvotes: 0,
-      comments: 4
-    },
-    {
-      id: 'id-04',
-      author: 'Synapsees',
-      category: 'Survival (Last/Mini)',
-      status: 'Pending',
-      text: 'I think it would be way more better if there is a feature to toggle PvP on claimed land with clan consent.',
-      upvotes: 11,
-      downvotes: 1,
-      comments: 2
-    },
-    {
-      id: 'id-05',
-      author: 'TormujMia_Gaming',
-      category: 'In-Game',
-      status: 'Approved',
-      text: 'Host a Bangladesh Victory Day & World Cup community tournament event in the main arena!',
-      upvotes: 31,
-      downvotes: 0,
-      comments: 8
-    },
-    {
-      id: 'id-06',
-      author: 'ary2_61',
-      category: 'In-Game',
-      status: 'Pending',
-      text: 'Add Creative plot world for Bangladeshi architectural builders so everyone gets a plot to build.',
-      upvotes: 17,
-      downvotes: 0,
-      comments: 4
-    }
-  ]);
-
-  const bdzoneTeam = [
-    { name: 'JoynalBokhsho', role: 'OWNER & FOUNDER', badgeColor: 'bg-red-500/20 text-red-300 border-red-500/40' },
-    { name: 'RealEsco', role: 'MANAGER', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-    { name: 'AZombie_', role: 'MANAGER', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-    { name: 'MoinulXD18', role: 'MANAGER', badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40' },
-    { name: '6apish_', role: 'DEVELOPER', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    { name: 'N0THINGS', role: 'JR. DEVELOPER', badgeColor: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
-    { name: 'robin_the_noob', role: 'MOD', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
-    { name: 'Beleamel', role: 'JR. MOD', badgeColor: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' },
-    { name: 'Tasif27', role: 'MANAGER (Former)', badgeColor: 'bg-slate-800 text-slate-400 border-slate-700' }
-  ];
-
-  const seasonGallery = [
-    {
-      title: 'Season Genesis',
-      count: '7 IMAGES',
-      note: 'Nether Hub & Circular Portal Sanctuary',
-      img: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80'
-    },
-    {
-      title: 'Season 6',
-      count: 'ACTIVE ERA',
-      note: 'Grand Spawn Plaza & Custom Economy',
-      img: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80'
-    },
-    {
-      title: 'Season 5',
-      count: '4 IMAGES',
-      note: 'Medieval Timber Citadel & Market',
-      img: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=900&q=80'
-    },
-    {
-      title: 'Season 4',
-      count: '10 IMAGES',
-      note: 'Classic BDZONE Monument & Arena',
-      img: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=900&q=80'
-    },
-    {
-      title: 'Season 3',
-      count: '1 IMAGE',
-      note: 'Isometric Blossom Island Spawn',
-      img: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=900&q=80'
-    },
-    {
-      title: 'Season 1 and 2',
-      count: '10 IMAGES',
-      note: '2018–2019 Founding Survival Worlds',
-      img: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=900&q=80'
-    }
-  ];
-
-  const faqs = [
-    {
-      q: '01. How do I join BD ZONE or other Bangladeshi servers on PC and Mobile?',
-      a: 'On PC (Java Edition 1.8–1.21.x), click Multiplayer → Add Server and enter play.bdzonemc.com. On Mobile/Console/Windows (Bedrock Edition), go to Servers → Add Server, enter IP pe.bdzonemc.com and Port 19132.'
-    },
-    {
-      q: '02. Is the server free to play and cosmetic-friendly?',
-      a: 'Yes! As documented in BD ZONE’s charter, the network is designed around a cosmetic-and-convenience-first philosophy with strict no pay-to-win enforcement across PvP and progression modes.'
-    },
-    {
-      q: '03. What Minecraft versions are supported?',
-      a: 'Java & Bedrock versions from 1.8.x through 1.21.x+ are supported via ViaVersion and GeyserMC crossplay bridges.'
-    },
-    {
-      q: '04. Are hacked clients, autoclickers, or X-ray mods allowed?',
-      a: 'Strictly prohibited. Custom Anti-Cheat and active moderators enforce zero tolerance for cheating, griefing, or exploiting bugs.'
-    }
-  ];
-
-  const handleIdeaSubmit = async (e) => {
-    e.preventDefault();
-    if (!newIdeaText.trim()) return;
-    const item = {
-      id: `id-${Date.now()}`,
-      author: newIdeaAuthor.trim() || 'BDPlayer',
-      category: newIdeaCategory,
-      status: 'Pending',
-      text: newIdeaText.trim(),
-      upvotes: 1,
-      downvotes: 0,
-      comments: 0
-    };
-    setIdeasList((prev) => [item, ...prev]);
-    setNewIdeaText('');
-    setIdeaNotice('✓ Your suggestion has been added to the Idea Board & forwarded to the Dev Inbox!');
-
-    if (devReceiverEndpoint) {
-      try {
-        await fetch(devReceiverEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            project: 'BLOCKBANGLA_IDEA_BOARD',
-            author: item.author,
-            category: item.category,
-            suggestion: item.text
-          })
-        });
-      } catch (err) {}
-    }
-  };
-
-  return (
-    <section className="rounded-3xl bg-[#07080C] border border-red-500/25 p-5 sm:p-8 space-y-8 shadow-2xl">
-      {/* Top Spotlight Header (Inspired by BDZONE 00:00 & 00:37) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center border-b border-white/10 pb-7">
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-mono-code font-bold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>{bdzoneTelemetry?.online ? 'ONLINE NOW' : 'VERIFIED NETWORK'}</span>
-            </span>
-            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-slate-200 text-xs font-mono-code">
-              Java &amp; Bedrock
-            </span>
-            <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-mono-code">
-              Est. 9 April 2018
-            </span>
-          </div>
-
-          <div className="space-y-1">
-            <div className="text-xs font-mono-code text-red-400 uppercase tracking-wider">
-              FLAGSHIP BANGLADESHI NETWORK SPOTLIGHT // BD ZONE
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-display font-extrabold text-white tracking-tight">
-              <GlyphScrambleHeading targetText="Infinite Adventures." />
-            </h2>
-          </div>
-
-          <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
-            Founded on 9 April 2018 by <strong>Joynal Bokhsho</strong>, BD ZONE is one of Bangladesh’s longest-running Minecraft networks—hosting over <strong>10,000+ registered players</strong> across Survival, SkyBlock, BedWars, and Practice PvP with sub-20ms Bangladesh routing.
-          </p>
-
-          {/* Dual Copy Buttons (Exact match to BDZONE 00:37) */}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <button
-              type="button"
-              onClick={() => onCopyText('play.bdzonemc.com', 'bdz-java-hero')}
-              className="px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs sm:text-sm inline-flex items-center gap-2 shadow-lg shadow-red-600/30 transition"
-            >
-              <span>
-                {copiedKey === 'bdz-java-hero' ? '✓ Copied play.bdzonemc.com!' : 'Copy Java IP →'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onCopyText('pe.bdzonemc.com', 'bdz-bed-hero')}
-              className="px-5 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/15 font-bold text-xs sm:text-sm inline-flex items-center gap-2 transition"
-            >
-              <span>
-                {copiedKey === 'bdz-bed-hero'
-                  ? '✓ Copied pe.bdzonemc.com (19132)!'
-                  : 'Copy Bedrock IP'}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right Side: Live Network Status Card (BDZONE 00:37) */}
-        <div className="lg:col-span-5 rounded-2xl bg-[#0D0F17] border border-white/10 p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div className="flex items-center gap-2">
-              <Server className="w-4 h-4 text-red-400" />
-              <span className="font-display font-bold text-white text-sm">Network Status</span>
-            </div>
-            <span className="px-2.5 py-1 rounded-md bg-red-500/15 text-red-300 border border-red-500/30 text-xs font-mono-code font-bold">
-              {bdzoneTelemetry?.online
-                ? `${bdzoneTelemetry.playersOnline} / ${bdzoneTelemetry.playersMax} Online`
-                : 'Live API Ready'}
-            </span>
-          </div>
-          <div className="space-y-2 text-xs font-mono-code">
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/50 border border-white/5">
-              <span className="text-slate-400">Java IP:</span>
-              <span className="text-emerald-300 font-bold">play.bdzonemc.com</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/50 border border-white/5">
-              <span className="text-slate-400">Bedrock IP (Port 19132):</span>
-              <span className="text-amber-300 font-bold">pe.bdzonemc.com</span>
-            </div>
-            <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/50 border border-white/5">
-              <span className="text-slate-400">Supported Versions:</span>
-              <span className="text-cyan-300">1.8 — 1.21.x (Crossplay)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Sub-Navigation Pills for BDZONE Showcase Sections */}
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { id: 'overview', label: '🏛️ About, Rules, Team & 4-Step Join' },
-          { id: 'ranks', label: '👑 Server Ranks & Vote Goal (BDZONE)' },
-          { id: 'ideas', label: '💡 Shape the Future (Idea Board)' },
-          { id: 'seasons', label: '🖼️ Season 1–6 & Genesis Gallery' },
-          { id: 'faq', label: '❓ Got Questions? (FAQ)' }
-        ].map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setActiveSubTab(t.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-              activeSubTab === t.id
-                ? 'bg-red-600 text-white shadow-lg shadow-red-600/25'
-                : 'bg-white/5 text-slate-300 hover:bg-white/10 border border-white/10'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {/* SUB-TAB 1.5: RANKS & COMMUNITY VOTE GOAL TRACKER (BDZONE 00:28 - 00:35) */}
-      {activeSubTab === 'ranks' && (
-        <div className="space-y-6">
-          {/* Weekly Server Vote Goal Progress Bar (BDZONE 00:29) */}
-          <div className="p-6 rounded-2xl bg-[#0B0D13] border border-emerald-500/30 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-mono-code text-emerald-400 uppercase">
-                  VOTE FOR OUR SERVER • WEEKLY COMMUNITY GOAL (BDZONE ARCHIVE)
-                </span>
-                <h3 className="text-xl font-display font-extrabold text-white mt-0.5">
-                  Weekly Vote Goal — Unlock Community Crate Drop Event
-                </h3>
-              </div>
-              <span className="px-3 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 font-mono-code text-xs font-bold">
-                379 / 2,000 Weekly Votes • 166,096 Total Votes
-              </span>
-            </div>
-            <div className="w-full h-3 rounded-full bg-black border border-white/10 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400"
-                style={{ width: '24%' }}
-              />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center font-mono-code text-xs">
-              {[
-                { label: 'TOTAL VOTES', val: '166,096' },
-                { label: 'TOTAL VOTERS', val: '3,282' },
-                { label: "TODAY'S VOTES", val: '202' },
-                { label: "THIS WEEK'S VOTES", val: '379' },
-                { label: "THIS MONTH'S VOTES", val: '1,992' }
-              ].map((stat) => (
-                <div key={stat.label} className="p-3 rounded-xl bg-black/60 border border-white/10">
-                  <div className="text-base font-display font-extrabold text-white">{stat.val}</div>
-                  <div className="text-[10px] text-slate-400 mt-0.5">{stat.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Documented BDZONE Rank Tiers (Noble -> Immortal, BDZONE 00:31 - 00:35) */}
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <span className="text-[11px] font-mono-code text-red-400 uppercase">
-                  COSMETIC & CONVENIENCE-FIRST RANKS (ZERO PAY-TO-WIN)
-                </span>
-                <h3 className="text-xl font-display font-extrabold text-white">
-                  Documented BD ZONE Server Rank Progression
-                </h3>
-              </div>
-              <a
-                href="https://bdzonemc.com/store/category/ranks"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
-              >
-                Official BD ZONE Store ↗
-              </a>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { name: 'Noble', price: '749 BDT', color: 'border-amber-500/40 text-amber-300', desc: 'Unlock exclusive perks, extra homes, vaults, XP boost & priority queue.' },
-                { name: 'Prime', price: '1,499 BDT', color: 'border-cyan-500/40 text-cyan-300', desc: 'Unlock premium perks, extra homes, pets, trails & particle cosmetics.' },
-                { name: 'Elite', price: '2,499 BDT', color: 'border-emerald-500/40 text-emerald-300', desc: 'Unlock elite perks, advanced utilities, extra homes & custom chat tags.' },
-                { name: 'Reaper', price: '3,749 BDT', color: 'border-purple-500/40 text-purple-300', desc: 'Unlock powerful cosmetic perks, extra vaults & seasonal lobby effects.' },
-                { name: 'Warlord', price: '5,249 BDT', color: 'border-rose-500/40 text-rose-300', desc: 'Unlock top-tier convenience utilities, premium customization & nick.' },
-                { name: 'Master', price: '6,999 BDT', color: 'border-orange-500/40 text-orange-300', desc: 'Master tier cosmetics, lobby flight, and supporter recognition.' },
-                { name: 'GrandMaster', price: '8,999 BDT', color: 'border-yellow-500/40 text-yellow-300', desc: 'Legendary cosmetic perks, massive home/vault capacity & custom gradient.' },
-                { name: 'Immortal', price: '17,999 BDT', color: 'border-red-500/50 text-red-400', desc: 'Ultimate supporter rank — 100% of revenue goes back into server hosting.' }
-              ].map((rk) => (
-                <div
-                  key={rk.name}
-                  className={`p-4 rounded-2xl bg-[#0C0E14] border ${rk.color} flex flex-col justify-between gap-3`}
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono-code uppercase text-slate-400">RANK TIER</span>
-                      <span className="px-2 py-0.5 rounded bg-white/5 text-xs font-mono-code font-bold text-white">
-                        {rk.price}
-                      </span>
-                    </div>
-                    <h4 className="text-lg font-display font-extrabold text-white">{rk.name}</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">{rk.desc}</p>
-                  </div>
-                  <div className="pt-2 border-t border-white/10 text-[10px] font-mono-code text-emerald-300">
-                    ✓ Cosmetic & Convenience Only
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUB-TAB 1: OVERVIEW, 4 GAME MODES, 4-STEP HOW TO JOIN, TEAM & INFRASTRUCTURE */}
-      {activeSubTab === 'overview' && (
-        <div className="space-y-8">
-          {/* 4 Game Modes Grid (BDZONE 00:01) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              {
-                title: 'Survival',
-                color: 'border-t-emerald-500',
-                desc: 'Vanilla-enhanced survival with economy, player shops, land claiming, and custom crafting recipes. The heart of our network.'
-              },
-              {
-                title: 'SkyBlock',
-                color: 'border-t-amber-500',
-                desc: 'Start from a tiny island and expand your empire. Custom generators, island upgrades, and a thriving economy await you.'
-              },
-              {
-                title: 'BedWars',
-                color: 'border-t-rose-500',
-                desc: 'Original BedWars experience with 8 unique maps, seasonal cosmetics, and a fully ranked competitive ladder.'
-              },
-              {
-                title: 'Practice PvP',
-                color: 'border-t-purple-500',
-                desc: 'Sharpen your skills in 1v1 duels, kit-based arenas, and ranked matchmaking. The ultimate training ground for competitive players.'
-              }
-            ].map((gm) => (
-              <div
-                key={gm.title}
-                className={`p-5 rounded-2xl bg-[#0C0E14] border border-white/10 border-t-4 ${gm.color} space-y-2`}
-              >
-                <h4 className="text-base font-display font-bold text-white">{gm.title}</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">{gm.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* 4-Step "How to Join" Horizontal Flow + Dual Recommended Cards (BDZONE 00:42) */}
-          <div className="p-6 rounded-2xl bg-[#0B0D13] border border-white/10 space-y-6">
-            <div className="text-center space-y-1">
-              <span className="text-[11px] font-mono-code text-red-400 uppercase">
-                GET STARTED IN 60 SECONDS
-              </span>
-              <h3 className="text-2xl font-display font-extrabold text-white">How to Join</h3>
-              <p className="text-xs text-slate-400">
-                Connect to our Bangladeshi crossplay servers in four simple steps
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  step: '1',
-                  title: 'Copy Server IP',
-                  desc: 'Click the copy button below to copy the Java or Bedrock server address.'
-                },
-                {
-                  step: '2',
-                  title: 'Launch Minecraft',
-                  desc: 'Open your Minecraft Java Edition (PC) or Bedrock Edition (Mobile/Win10).'
-                },
-                {
-                  step: '3',
-                  title: 'Add Server',
-                  desc: 'Go to Multiplayer → Add Server and paste the IP address (Port 19132 on mobile).'
-                },
-                {
-                  step: '4',
-                  title: 'Join & Play!',
-                  desc: 'Connect and start your adventure with thousands of Bangladeshi players.'
-                }
-              ].map((st) => (
-                <div
-                  key={st.step}
-                  className="p-4 rounded-xl bg-black/50 border border-white/10 space-y-2"
-                >
-                  <span className="w-7 h-7 rounded-lg bg-red-600 text-white font-mono-code font-bold text-xs inline-flex items-center justify-center">
-                    {st.step}
-                  </span>
-                  <h4 className="text-sm font-display font-bold text-white">{st.title}</h4>
-                  <p className="text-xs text-slate-400">{st.desc}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-black/60 border border-emerald-500/30 flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-white">Java Edition</span>
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono-code font-bold">
-                      RECOMMENDED
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">For PC, Mac &amp; Linux</div>
-                  <code className="text-xs font-mono-code text-emerald-400 font-bold block mt-2">
-                    play.bdzonemc.com
-                  </code>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onCopyText('play.bdzonemc.com', 'join-java-card')}
-                  className="p-2.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs"
-                >
-                  {copiedKey === 'join-java-card' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-
-              <div className="p-4 rounded-xl bg-black/60 border border-amber-500/30 flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-white">Bedrock Edition</span>
-                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-mono-code font-bold">
-                      PORT: 19132
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">For Mobile, Console &amp; Windows 10/11</div>
-                  <code className="text-xs font-mono-code text-amber-300 font-bold block mt-2">
-                    pe.bdzonemc.com
-                  </code>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onCopyText('pe.bdzonemc.com', 'join-bed-card')}
-                  className="p-2.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
-                >
-                  {copiedKey === 'join-bed-card' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Meet the Team Roster + Infrastructure Grid (BDZONE 00:04 - 00:05) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-7 p-5 rounded-2xl bg-[#0B0D13] border border-white/10 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-display font-bold text-white">
-                  Meet the Documented BD ZONE Team
-                </h3>
-                <span className="text-[11px] font-mono-code text-slate-400">
-                  Source: bdzonemc.com/about
-                </span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {bdzoneTeam.map((member) => (
-                  <div
-                    key={member.name}
-                    className="p-3 rounded-xl bg-black/50 border border-white/10 flex flex-col items-center text-center gap-2"
-                  >
-                    <img
-                      src={`https://mc-heads.net/avatar/${encodeURIComponent(member.name)}/64`}
-                      alt={member.name}
-                      loading="lazy"
-                      className="w-12 h-12 rounded-lg border border-white/15 bg-slate-900"
-                    />
-                    <div className="text-xs font-bold text-white truncate max-w-full">
-                      {member.name}
-                    </div>
-                    <span
-                      className={`px-2 py-0.5 rounded text-[9px] font-mono-code font-bold border ${member.badgeColor}`}
-                    >
-                      {member.role}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="lg:col-span-5 p-5 rounded-2xl bg-[#0B0D13] border border-white/10 space-y-3">
-              <h3 className="text-lg font-display font-bold text-white">
-                Infrastructure &amp; Features
-              </h3>
-              <div className="space-y-2.5 text-xs">
-                {[
-                  {
-                    t: 'Custom Anti-Cheat',
-                    d: 'Proprietary system trained to catch cheaters without false positives.'
-                  },
-                  {
-                    t: 'High-Clock Ryzen 9 CPUs',
-                    d: 'Ryzen 9 series processors running at maximum single-core frequencies for smooth 20 TPS.'
-                  },
-                  {
-                    t: 'NVMe SSD Storage',
-                    d: 'Ultra-fast storage arrays for instant chunk loading and zero I/O lag.'
-                  },
-                  {
-                    t: 'Low Latency BD Network',
-                    d: 'Dedicated fiber lines with Bangladesh-optimized routing for sub-20ms local ping.'
-                  }
-                ].map((inf) => (
-                  <div
-                    key={inf.t}
-                    className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1"
-                  >
-                    <div className="font-bold text-emerald-300">{inf.t}</div>
-                    <p className="text-slate-400">{inf.d}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SUB-TAB 2: "SHAPE THE SERVER'S FUTURE" IDEA BOARD (BDZONE 00:08 - 00:12) */}
-      {activeSubTab === 'ideas' && (
-        <div className="space-y-6">
-          <div className="text-center max-w-2xl mx-auto space-y-2">
-            <span className="px-3 py-1 rounded-full bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-mono-code font-bold">
-              💡 COMMUNITY IDEA &amp; SUGGESTION BOARD
-            </span>
-            <h3 className="text-2xl sm:text-4xl font-display font-extrabold text-white">
-              Shape the Community’s Future
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-400">
-              Got a feature idea, server improvement, or archive request? Submit suggestions, vote for your favorites, and watch the best ideas come to life.
-            </p>
-          </div>
-
-          {/* Submit New Idea Form */}
-          <form
-            onSubmit={handleIdeaSubmit}
-            className="p-4 rounded-2xl bg-[#0C0E14] border border-white/10 space-y-3"
-          >
-            {ideaNotice && (
-              <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-xs text-emerald-300">
-                {ideaNotice}
-              </div>
-            )}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <input
-                type="text"
-                value={newIdeaAuthor}
-                onChange={(e) => setNewIdeaAuthor(e.target.value)}
-                placeholder="Your Minecraft Username..."
-                className="px-3 py-2 rounded-xl bg-black/60 border border-slate-700 text-xs text-white"
-              />
-              <select
-                value={newIdeaCategory}
-                onChange={(e) => setNewIdeaCategory(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-black/60 border border-slate-700 text-xs font-mono-code text-amber-300"
-              >
-                <option value="In-Game">In-Game</option>
-                <option value="Website">Website</option>
-                <option value="Survival (Last/Mini)">Survival (Last/Mini)</option>
-                <option value="Bedrock Crossplay">Bedrock Crossplay</option>
-              </select>
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs"
-              >
-                + Submit Idea (Forwards to Dev Inbox)
-              </button>
-            </div>
-            <input
-              type="text"
-              value={newIdeaText}
-              onChange={(e) => setNewIdeaText(e.target.value)}
-              placeholder="Describe your feature idea or server suggestion..."
-              className="w-full px-3.5 py-2.5 rounded-xl bg-black/60 border border-slate-700 text-xs text-white"
-            />
-          </form>
-
-          {/* Filter Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            {['All', 'Website', 'In-Game', 'Survival (Last/Mini)', 'Bedrock Crossplay'].map(
-              (cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setIdeaFilter(cat)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-mono-code ${
-                    ideaFilter === cat
-                      ? 'bg-red-600 text-white font-bold'
-                      : 'bg-white/5 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {cat}
-                </button>
-              )
-            )}
-          </div>
-
-          {/* 3-Column Suggestion Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ideasList
-              .filter((item) => ideaFilter === 'All' || item.category === ideaFilter)
-              .map((idea) => (
-                <div
-                  key={idea.id}
-                  className="p-4 rounded-2xl bg-[#0C0E14] border border-white/10 flex flex-col justify-between gap-3"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={`https://mc-heads.net/avatar/${encodeURIComponent(idea.author)}/32`}
-                          alt={idea.author}
-                          className="w-6 h-6 rounded"
-                        />
-                        <span className="text-xs font-bold text-white">{idea.author}</span>
-                      </div>
-                      <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-mono-code font-bold ${
-                          idea.status === 'Approved'
-                            ? 'bg-emerald-500/20 text-emerald-300'
-                            : idea.status === 'Resolved'
-                            ? 'bg-cyan-500/20 text-cyan-300'
-                            : 'bg-amber-500/20 text-amber-300'
-                        }`}
-                      >
-                        ● {idea.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">{idea.text}</p>
-                    <span className="inline-block px-2 py-0.5 rounded bg-white/5 text-[10px] font-mono-code text-cyan-300">
-                      {idea.category}
-                    </span>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs font-mono-code">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setIdeasList((prev) =>
-                            prev.map((x) =>
-                              x.id === idea.id ? { ...x, upvotes: x.upvotes + 1 } : x
-                            )
-                          )
-                        }
-                        className="px-2.5 py-1 rounded bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30"
-                      >
-                        👍 {idea.upvotes}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setIdeasList((prev) =>
-                            prev.map((x) =>
-                              x.id === idea.id ? { ...x, downvotes: x.downvotes + 1 } : x
-                            )
-                          )
-                        }
-                        className="px-2.5 py-1 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30"
-                      >
-                        👎 {idea.downvotes}
-                      </button>
-                    </div>
-                    <span className="text-slate-400">💬 {idea.comments}</span>
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* SUB-TAB 3: SEASONAL GALLERY (BDZONE 00:13 - 00:15) */}
-      {activeSubTab === 'seasons' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {seasonGallery.map((s) => (
-            <div
-              key={s.title}
-              className="group relative h-52 rounded-2xl overflow-hidden border border-white/15 bg-slate-950"
-            >
-              <img
-                src={s.img}
-                alt={s.title}
-                loading="lazy"
-                className="w-full h-full object-cover opacity-75 group-hover:scale-105 group-hover:opacity-95 transition duration-700"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4 space-y-0.5">
-                <h4 className="text-lg font-display font-extrabold text-white">{s.title}</h4>
-                <div className="text-[11px] font-mono-code text-amber-300">{s.count}</div>
-                <p className="text-xs text-slate-300">{s.note}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* SUB-TAB 4: FAQ ACCORDION ("GOT QUESTIONS?" BDZONE 00:43) */}
-      {activeSubTab === 'faq' && (
-        <div className="max-w-3xl mx-auto space-y-3">
-          {faqs.map((f, i) => (
-            <div
-              key={f.q}
-              className="rounded-2xl bg-[#0C0E14] border border-white/10 overflow-hidden"
-            >
-              <button
-                type="button"
-                onClick={() => setOpenFaqIdx(openFaqIdx === i ? -1 : i)}
-                className="w-full px-5 py-4 text-left flex items-center justify-between gap-3"
-              >
-                <span className="text-sm font-display font-bold text-white">{f.q}</span>
-                <ChevronDown
-                  className={`w-4 h-4 text-red-400 transition-transform ${
-                    openFaqIdx === i ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-              {openFaqIdx === i && (
-                <div className="px-5 pb-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 pt-3">
-                  {f.a}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-};
-
-// 7. Real Three.js WebGL / Interactive 3D Voxel Bangladesh Floating Island (With Offscreen Pause & Mobile Guardrails)
-const WebGLVoxelBengalScene = ({ atmosphere = 'dusk', threeReady, reducedMotion }) => {
-  const mountRef = useRef(null);
-  const [activeBiomeMode, setActiveBiomeMode] = useState('sangsad-delta');
-  const [webglActive, setWebglActive] = useState(false);
-  const [isVisibleOnScreen, setIsVisibleOnScreen] = useState(true);
-  const [sceneEnabled, setSceneEnabled] = useState(() =>
-    typeof window !== 'undefined' ? window.innerWidth >= 640 : true
-  );
-
-  // Motion Guardrail: Pause WebGL loop when scrolled off-screen
-  useEffect(() => {
-    const el = mountRef.current;
-    if (!el || !('IntersectionObserver' in window)) return undefined;
-    const io = new IntersectionObserver(
-      (entries) => {
-        setIsVisibleOnScreen(Boolean(entries[0]?.isIntersecting));
-      },
-      { threshold: 0.05 }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const container = mountRef.current;
-    if (!container || !window.THREE || !sceneEnabled || !isVisibleOnScreen) return;
-
-    const THREE = window.THREE;
-    let renderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      setWebglActive(true);
-    } catch (err) {
-      setWebglActive(false);
-      return;
-    }
-
-    const width = container.clientWidth || 640;
-    const height = container.clientHeight || 360;
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    container.innerHTML = '';
-    container.appendChild(renderer.domElement);
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-    camera.position.set(11, 9, 13);
-    camera.lookAt(0, 1, 0);
-
-    // Ambient + Directional Lighting matching atmosphere
-    const ambientLight = new THREE.AmbientLight(
-      atmosphere === 'dusk' ? 0xfde68a : atmosphere === 'monsoon' ? 0x38bdf8 : 0x34d399,
-      0.75
-    );
-    scene.add(ambientLight);
-
-    const dirLight = new THREE.DirectionalLight(
-      atmosphere === 'dusk' ? 0xf59e0b : 0x6ee7b7,
-      1.35
-    );
-    dirLight.position.set(12, 18, 10);
-    scene.add(dirLight);
-
-    // Root Voxel Island Group
-    const islandGroup = new THREE.Group();
-    scene.add(islandGroup);
-
-    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-
-    const matGrass = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.55 });
-    const matMud = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.85 });
-    const matWater = new THREE.MeshStandardMaterial({
-      color: 0x06b6d4,
-      roughness: 0.2,
-      metalness: 0.3,
-      transparent: true,
-      opacity: 0.86
-    });
-    const matQuartz = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35 });
-    const matTerracotta = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
-    const matGlow = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
-
-    const addVoxel = (x, y, z, mat, sx = 1, sy = 1, sz = 1) => {
-      const m = new THREE.Mesh(boxGeo, mat);
-      m.position.set(x, y, z);
-      m.scale.set(sx, sy, sz);
-      islandGroup.add(m);
-      return m;
-    };
-
-    // Base Bengal Delta Island & Padma River Channel
-    for (let x = -4; x <= 4; x++) {
-      for (let z = -4; z <= 4; z++) {
-        const dist = Math.sqrt(x * x + z * z);
-        if (dist <= 4.3) {
-          addVoxel(x, -1, z, matMud);
-          if (z === 0 || z === 1) {
-            addVoxel(x, 0, z, matWater, 1, 0.75, 1);
-          } else {
-            addVoxel(x, 0, z, matGrass);
-          }
-        }
-      }
-    }
-
-    // Landmark 1: Jatiya Sangsad Brutalist Monolith (Back Left)
-    addVoxel(-2, 1.8, -2, matQuartz, 2.2, 2.6, 2.2);
-    addVoxel(-2, 3.3, -2, matGlow, 0.6, 0.4, 0.6);
-
-    // Landmark 2: Paharpur Terracotta Pyramid (Back Right)
-    addVoxel(2, 1.0, -2, matTerracotta, 2.4, 1.0, 2.4);
-    addVoxel(2, 2.0, -2, matTerracotta, 1.5, 1.0, 1.5);
-    addVoxel(2, 2.8, -2, matGlow, 0.5, 0.6, 0.5);
-
-    // Landmark 3: Sundarbans Mangrove Canopy (Front Left)
-    addVoxel(-2.5, 1.2, 2.5, matMud, 0.4, 1.8, 0.4);
-    addVoxel(-2.5, 2.4, 2.5, matGrass, 1.8, 1.1, 1.8);
-
-    // Landmark 4: Padma Bridge Truss Span across Water Channel
-    addVoxel(0, 1.2, 0.5, matQuartz, 8.2, 0.35, 0.7);
-
-    // Floating Firefly Voxel Particles
-    const fireflies = [];
-    for (let i = 0; i < 28; i++) {
-      const ff = new THREE.Mesh(boxGeo, matGlow);
-      ff.scale.set(0.16, 0.16, 0.16);
-      ff.position.set(
-        (Math.random() - 0.5) * 11,
-        1 + Math.random() * 4.5,
-        (Math.random() - 0.5) * 11
-      );
-      scene.add(ff);
-      fireflies.push({ mesh: ff, speed: 0.5 + Math.random(), phase: Math.random() * Math.PI * 2 });
-    }
-
-    // Mouse Parallax & Drag Rotation State
-    let targetRotY = 0.45;
-    let targetRotX = 0.12;
-    let isDragging = false;
-    let prevX = 0;
-
-    const onPointerDown = (e) => {
-      isDragging = true;
-      prevX = e.clientX;
-    };
-    const onPointerUp = () => {
-      isDragging = false;
-    };
-    const onPointerMove = (e) => {
-      const rect = container.getBoundingClientRect();
-      const nx = ((e.clientX - rect.left) / rect.width - 0.5) * 2;
-      const ny = ((e.clientY - rect.top) / rect.height - 0.5) * 2;
-      if (isDragging) {
-        targetRotY += (e.clientX - prevX) * 0.012;
-        prevX = e.clientX;
-      } else if (!reducedMotion) {
-        targetRotY = 0.45 + nx * 0.55;
-        targetRotX = 0.12 + ny * 0.25;
-      }
-    };
-
-    container.addEventListener('pointerdown', onPointerDown);
-    window.addEventListener('pointerup', onPointerUp);
-    container.addEventListener('pointermove', onPointerMove);
-
-    let rafId;
-    const clock = new THREE.Clock();
-
-    const animate = () => {
-      const elapsed = clock.getElapsedTime();
-      if (!reducedMotion && !isDragging) {
-        targetRotY += 0.0025;
-      }
-      islandGroup.rotation.y += (targetRotY - islandGroup.rotation.y) * 0.08;
-      islandGroup.rotation.x += (targetRotX - islandGroup.rotation.x) * 0.08;
-      islandGroup.position.y = Math.sin(elapsed * 1.4) * 0.18;
-
-      fireflies.forEach((f) => {
-        f.mesh.position.y += Math.sin(elapsed * f.speed + f.phase) * 0.006;
-      });
-
-      renderer.render(scene, camera);
-      rafId = requestAnimationFrame(animate);
-    };
-    animate();
-
-    const onResize = () => {
-      if (!container) return;
-      const w = container.clientWidth || 640;
-      const h = container.clientHeight || 360;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener('resize', onResize);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('pointerup', onPointerUp);
-      window.removeEventListener('resize', onResize);
-      container.removeEventListener('pointerdown', onPointerDown);
-      container.removeEventListener('pointermove', onPointerMove);
-      renderer.dispose();
-    };
-  }, [atmosphere, threeReady, activeBiomeMode, reducedMotion, sceneEnabled, isVisibleOnScreen]);
-
-  return (
-    <div className="rounded-2xl bg-[#09110F] border border-emerald-500/30 overflow-hidden shadow-2xl">
-      <div className="px-4 py-2.5 bg-[#060A09] border-b border-emerald-500/20 flex flex-wrap items-center justify-between gap-2 text-xs">
-        <div className="flex items-center gap-2 font-mono-code text-emerald-300">
-          <Box className="w-4 h-4 text-emerald-400" />
-          <span>
-            3D VOXEL BENGAL LANDMARK SCENE //{' '}
-            {!sceneEnabled
-              ? 'STATIC POWER-SAVER MODE'
-              : !isVisibleOnScreen
-              ? 'PAUSED OFF-SCREEN'
-              : webglActive
-              ? 'INTERACTIVE 3D ACTIVE'
-              : 'READY'}
-          </span>
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setSceneEnabled((prev) => !prev)}
-            className="px-2.5 py-1 rounded text-[11px] font-mono-code bg-slate-800 text-amber-300 border border-amber-500/30 hover:bg-slate-700"
-          >
-            {sceneEnabled ? 'Pause / Static View' : 'Enable Interactive 3D'}
-          </button>
-          {[
-            { id: 'sangsad-delta', label: 'Sangsad & Padma' },
-            { id: 'paharpur-arch', label: 'Paharpur Stupa' },
-            { id: 'sundarbans-night', label: 'Sundarbans' }
-          ].map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => setActiveBiomeMode(m.id)}
-              className={`px-2.5 py-1 rounded text-[11px] font-mono-code transition ${
-                activeBiomeMode === m.id
-                  ? 'bg-emerald-500 text-slate-950 font-bold'
-                  : 'bg-slate-900 text-slate-400 hover:text-white'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      {sceneEnabled ? (
-        <div
-          ref={mountRef}
-          className="w-full h-60 sm:h-72 cursor-grab active:cursor-grabbing relative bg-gradient-to-b from-[#071210] via-[#0B1C18] to-[#050908]"
-          title="Drag or move cursor to orbit 3D Voxel Bangladesh Island"
-        />
-      ) : (
-        <div
-          ref={mountRef}
-          className="w-full h-56 sm:h-64 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#071210] via-[#0B1C18] to-[#050908] space-y-3"
-        >
-          <p className="text-xs sm:text-sm text-slate-300 max-w-md">
-            3D WebGL scene is paused to save battery and keep scrolling fast on mobile/low-power devices.
-          </p>
-          <button
-            type="button"
-            onClick={() => setSceneEnabled(true)}
-            className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
-          >
-            Launch Interactive 3D Voxel Island
-          </button>
-        </div>
-      )}
-      <div className="px-4 py-2 bg-[#060A09] border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono-code text-slate-400">
-        <span>Drag to orbit landmarks • Auto-pauses when scrolled off-screen</span>
-        <TermTooltip term="PBR" label="What is PBR Lighting?" />
-      </div>
-    </div>
-  );
-};
-
-// 8. Scroll-Driven History Journey (Pinned on Desktop + Accessible Non-Pinned Fallback on Mobile)
-const PinnedBengalStoryScrubber = ({ lang, onNavigateTab, onOpenSubmitMemory }) => {
-  const sectionRef = useRef(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [manualStage, setManualStage] = useState(null);
-
-  const chapters = [
-    {
-      stage: '01 / 04',
-      years: '2010 – 2013',
-      titleEn: 'Cybercafe LANs, USB Drives & Hamachi Tunnels',
-      titleBn: 'সাইবার ক্যাফে ল্যান, পেনড্রাইভ ও হামাচি টানেল',
-      descEn:
-        'Before international payment cards were accessible to students in Dhaka or Chattogram, Minecraft spread dorm-to-dorm via portable Beta 1.7.3 folders and 5-player LogMeIn Hamachi virtual LANs.',
-      descBn:
-        'আন্তর্জাতিক পেমেন্ট কার্ড সহজলভ্য হওয়ার আগে পেনড্রাইভ এবং লগমিইন হামাচি ভার্চুয়াল ল্যানের মাধ্যমে বাংলাদেশের তরুণদের মাঝে মাইনক্রাফট ছড়িয়ে পড়ে।',
-      coord: 'X: 2011, Y: 64, Z: 90',
-      accent: '#10B981',
-      badge: 'DOCUMENTED ECOSYSTEM ERA',
-      sourceLabel: 'Source: SRC-BD-01 (2011–2014 Oral & Forum Archive)'
-    },
-    {
-      stage: '02 / 04',
-      years: '2014 – 2018',
-      titleEn: 'Bangla YouTube Pioneers & The 64-District Mobile Wave',
-      titleBn: 'বাংলা ইউটিউব পথিকৃৎ ও ৬৪ জেলায় পকেট এডিশন বিপ্লব',
-      descEn:
-        'Early Bengali creators normalized native-language survival storytelling while affordable Android 3G/4G smartphones brought Minecraft Pocket/Bedrock Edition to every district of Bangladesh.',
-      descBn:
-        'মাতৃভাষা বাংলায় সারভাইভাল গেমপ্লে এবং সাশ্রয়ী অ্যান্ড্রয়েড স্মার্টফোনের মাধ্যমে সারা বাংলাদেশে মাইনক্রাফট পৌঁছে যায়।',
-      coord: 'X: 2017, Y: 85, Z: 310',
-      accent: '#F59E0B',
-      badge: 'VERIFIED ECOSYSTEM SHIFT',
-      sourceLabel: 'Source: SRC-BD-05 (YouTube #minecraftbangla Archive)'
-    },
-    {
-      stage: '03 / 04',
-      years: '2018 – 2023',
-      titleEn: 'Dedicated Bangladeshi Networks & Voxel Heritage Megabuilds',
-      titleBn: 'ডেডিকেটেড বাংলাদেশি সার্ভার ও ভক্সেলে বাংলার স্থাপত্য',
-      descEn:
-        'Founding of BDZONE (April 9, 2018) and Cyan Plex (June 2021) ended 200ms European queues, while builders recreated Jatiya Sangsad Bhaban, Paharpur, and the Padma Bridge.',
-      descBn:
-        '৯ এপ্রিল ২০১৮-এ BDZONE এবং ২০২১-এ Cyan Plex প্রতিষ্ঠার মাধ্যমে দেশীয় সার্ভারের যুগ শুরু হয় এবং নির্মিত হয় সংসদ ভবন ও পদ্মা সেতুর ভক্সেল রেপ্লিকা।',
-      coord: 'X: 2021, Y: 108, Z: 580',
-      accent: '#06B6D4',
-      badge: 'VERIFIED FACT',
-      sourceLabel: 'Source: SRC-BD-02 & SRC-BD-03 (bdzonemc.com/about & Registry)'
-    },
-    {
-      stage: '04 / 04',
-      years: '2024 – 2026+',
-      titleEn: 'GeyserMC Unification & 19,000+ Video Ecosystem',
-      titleBn: 'জাভা-বেডরক ঐক্য এবং ১৯,০০০+ ভিডিওর বিশাল কমিউনিটি',
-      descEn:
-        'Today, GeyserMC unites PC Java and mobile Bedrock players across BMS and Maven’s Hive Season 8, while 3,600+ channels power #minecraftbangla on YouTube.',
-      descBn:
-        'আজ GeyserMC প্রযুক্তিতে পিসি ও মোবাইল প্লেয়াররা একসাথে খেলছে এবং ইউটিউবে #minecraftbangla হ্যাশট্যাগে যুক্ত হয়েছে ১৯ হাজারেরও বেশি ভিডিও।',
-      coord: 'X: 2026, Y: 128, Z: 900',
-      accent: '#34D399',
-      badge: 'VERIFIED FACT (NOV 2026)',
-      sourceLabel: 'Source: SRC-BD-04 & SRC-BD-05 (Public Directory & YouTube Index)'
-    }
-  ];
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      const viewportH = window.innerHeight || 800;
-      const totalScrollable = Math.max(1, rect.height - viewportH);
-      const scrolled = Math.min(totalScrollable, Math.max(0, -rect.top));
-      const ratio = scrolled / totalScrollable;
-      setScrollProgress(ratio);
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  const computedIndex =
-    manualStage !== null
-      ? manualStage
-      : Math.min(chapters.length - 1, Math.floor(scrollProgress * chapters.length));
-  const activeChapter = chapters[computedIndex] || chapters[0];
-
-  return (
-    <section
-      ref={sectionRef}
-      className="relative lg:min-h-[165vh] rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-[#081210] via-[#0B1916] to-[#070D0C] p-4 sm:p-8"
-    >
-      <div className="lg:sticky lg:top-20 z-20 rounded-2xl bg-[#070C0B]/95 backdrop-blur-xl border border-emerald-500/30 p-5 sm:p-8 shadow-2xl space-y-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-          <div>
-            <span className="text-xs font-mono-code text-emerald-400 uppercase tracking-wider">
-              SOURCED HISTORY JOURNEY (2010–2026) • SCROLL OR SELECT ERA
-            </span>
-            <h2 className="text-xl sm:text-3xl font-display font-extrabold text-white mt-1">
-              {lang === 'bn'
-                ? 'বাংলাদেশের মাইনক্রাফট ইতিহাসের প্রামাণ্য সফর'
-                : 'The Bangladesh Minecraft Story: Sourced Timeline'}
-            </h2>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {chapters.map((ch, idx) => (
-              <button
-                key={ch.stage}
-                type="button"
-                onClick={() => setManualStage(idx)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-mono-code font-bold transition ${
-                  computedIndex === idx
-                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30'
-                    : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
-                }`}
-              >
-                {ch.years}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Scroll Progress Bar */}
-        <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 transition-all duration-150"
-            style={{ width: `${Math.max(15, Math.round(((computedIndex + 1) / chapters.length) * 100))}%` }}
-          />
-        </div>
-
-        {/* Dynamic Stage Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          <div className="lg:col-span-7 space-y-3.5">
-            <div className="flex flex-wrap items-center gap-2 text-xs font-mono-code">
-              <span
-                className="px-2.5 py-1 rounded-full font-bold text-slate-950"
-                style={{ backgroundColor: activeChapter.accent }}
-              >
-                {activeChapter.stage} • {activeChapter.badge}
-              </span>
-              <span className="text-slate-400">{activeChapter.sourceLabel}</span>
-            </div>
-
-            <div className="text-3xl sm:text-4xl font-display font-extrabold text-white tracking-tight">
-              {activeChapter.years}
-            </div>
-
-            <h3 className="text-lg sm:text-2xl font-display font-bold text-emerald-300">
-              {lang === 'bn' ? activeChapter.titleBn : activeChapter.titleEn}
-            </h3>
-
-            <p className="text-xs sm:text-base text-slate-300 leading-relaxed">
-              {lang === 'bn' ? activeChapter.descBn : activeChapter.descEn}
-            </p>
-
-            <div className="pt-2 flex flex-wrap gap-2.5">
-              <button
-                type="button"
-                onClick={() => onNavigateTab('legacy')}
-                className="tactile-btn px-4 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-              >
-                Explore All 10 Eras & Citations →
-              </button>
-              {onOpenSubmitMemory && (
-                <button
-                  type="button"
-                  onClick={onOpenSubmitMemory}
-                  className="px-3.5 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-mono-code font-semibold"
-                >
-                  + Submit Memory / Report Correction
-                </button>
-              )}
-              {manualStage !== null && (
-                <button
-                  type="button"
-                  onClick={() => setManualStage(null)}
-                  className="px-3 py-2.5 rounded-xl bg-slate-900 text-slate-300 border border-slate-700 text-xs font-mono-code"
-                >
-                  Resume Scroll Sync
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Animated Isometric Morphing Stage Visualizer */}
-          <div className="lg:col-span-5">
-            <div className="rounded-2xl bg-[#050807] border border-emerald-500/30 p-5 relative overflow-hidden">
-              <svg viewBox="0 0 320 200" className="w-full h-44">
-                <defs>
-                  <radialGradient id="pinStageGlow" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stopColor={activeChapter.accent} stopOpacity="0.45" />
-                    <stop offset="100%" stopColor="#050807" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-                <circle cx="160" cy="100" r="85" fill="url(#pinStageGlow)" />
-                <g
-                  transform={`translate(160, 105) scale(${1 + computedIndex * 0.08}) rotate(${
-                    computedIndex * 12
-                  })`}
-                  style={{ transition: 'transform 500ms cubic-bezier(0.16, 1, 0.3, 1)' }}
-                >
-                  <polygon
-                    points="0,-50 60,-20 0,12 -60,-20"
-                    fill={activeChapter.accent}
-                    fillOpacity="0.85"
-                  />
-                  <polygon points="-60,-20 0,12 0,60 -60,30" fill="#0F766E" />
-                  <polygon points="0,12 60,-20 60,30 0,60" fill="#064E3B" />
-                  <circle cx="0" cy="-20" r={7 + computedIndex * 3} fill="#FDE047" />
-                </g>
-              </svg>
-              <div className="flex items-center justify-between text-[11px] font-mono-code text-slate-400 border-t border-slate-800 pt-2">
-                <span>PROGRESS: {Math.round(((computedIndex + 1) / chapters.length) * 100)}%</span>
-                <span className="text-emerald-400">{activeChapter.coord}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-};
-
-// ============================================================================
-// 1. VERIFIED RESEARCH LEDGER & INITIAL SEED DATA (NOVEMBER 2026)
-// ============================================================================
-
-const RESEARCH_SOURCES_LEDGER = [
-  { id: 'SRC-BD-01', claim: 'Early adoption of Minecraft in Bangladesh (2010–2013) occurred primarily via offline LAN launchers (MinecraftSP, TeamExtreme), tech forum file-sharing, and LogMeIn Hamachi virtual LANs due to strict lack of international dual-currency payment cards for students.', sourceTitle: 'BLOCKBANGLA Digital Historiography & Veteran Player Oral Archive (2011–2015 Cohort)', originalUrl: 'https://minecraft.wiki/w/Java_Edition_Beta', publicationDate: '2011–2014 (Archival Period)', dateAccessed: '2026-11-08', confidenceLevel: 'DOCUMENTED ECOSYSTEM ERA', editorialNotes: 'Cross-referenced with Bangladesh Bank retail e-commerce foreign currency quota history and surviving Bangladeshi gaming forum threads.' },
-  { id: 'SRC-BD-02', claim: 'BDZONE (bdzonemc.com / play.bdzonemc.com) was founded on 9 April 2018 by Joynal Bokhsho and evolved into one of the longest-running Bangladeshi Minecraft server communities supporting Survival, SkyBlock, BedWars, and Practice PvP with Java and Bedrock (pe.bdzonemc.com:19132) access.', sourceTitle: 'About BD ZONE & TopMinecraftServers Bangladesh Directory', originalUrl: 'https://bdzonemc.com/about', publicationDate: '2018-04-09 (Founded) / 2026-11 (Directory Verified)', dateAccessed: '2026-11-08', confidenceLevel: 'VERIFIED FACT', editorialNotes: 'Verified directly via bdzonemc.com/about and public server directory records in November 2026.' },
-  { id: 'SRC-BD-03', claim: 'Cyan Plex (play.cyanplex.net) was founded in June 2021 as a Bangladeshi Java and Bedrock crossplay network featuring Semi-Modded Survival, BedWars, Kit-PvP, and TNT Run.', sourceTitle: 'Cyan Plex Official Listing — Bangladesh Minecraft Server Registry', originalUrl: 'https://topminecraftservers.org/country/BD', publicationDate: '2021-06-01', dateAccessed: '2026-11-08', confidenceLevel: 'VERIFIED FACT', editorialNotes: 'Verified via public Bangladesh country server listings and network metadata.' },
-  { id: 'SRC-BD-04', claim: "Bangladeshi Minecraft Society (BMS — play.minecraftbangladesh.com:5555) and Maven's Hive (play.mavenshive.com, reaching Season 8 by 2026) operate active multi-mode and GeyserMC crossplay communities for Bangladeshi players.", sourceTitle: 'Bangladesh Minecraft Server List & BMS Community Discord Index', originalUrl: 'https://topminecraftservers.org/country/BD', publicationDate: '2022–2026', dateAccessed: '2026-11-08', confidenceLevel: 'VERIFIED FACT', editorialNotes: 'Confirmed via public server index records and Discord community directory listings (November 2026).' },
-  { id: 'SRC-BD-05', claim: 'By November 2026, the #minecraftbangla hashtag on YouTube documented over 19,000 videos across 3,600+ channels, while #minecraftbangladesh documented over 4,900 videos across 1,200+ channels.', sourceTitle: 'YouTube Public Hashtag Index (#minecraftbangla & #minecraftbangladesh)', originalUrl: 'https://www.youtube.com/hashtag/minecraftbangla', publicationDate: '2026-11-08', dateAccessed: '2026-11-08', confidenceLevel: 'VERIFIED FACT', editorialNotes: 'Directly observed on YouTube public hashtag aggregation counters on November 8, 2026.' },
-  { id: 'SRC-BD-06', claim: 'BDIX (Bangladesh Internet Exchange) local peering reduces domestic gaming & web latency inside Bangladesh to under 5ms–15ms compared to 45ms–75ms on Singapore routes and 160ms+ on European routes.', sourceTitle: 'BDIX Network Peering & Latency Benchmarks in Bangladesh', originalUrl: 'https://hostserverbd.com/bdix-hosting/', publicationDate: '2026', dateAccessed: '2026-11-08', confidenceLevel: 'VERIFIED FACT', editorialNotes: 'Explains why Bangladeshi PvP and SMP servers prioritize BDIX domestic nodes or Singapore BGP routes.' },
-  { id: 'SRC-BD-07', claim: 'Identity of the single "First Bangladeshi Minecraft Player" or "First Bangladeshi YouTube Minecraft Upload" (2010–2012) remains unverified due to deleted early accounts and private Facebook groups.', sourceTitle: 'BLOCKBANGLA Open Archival Investigation Protocol #01', originalUrl: 'https://web.archive.org', publicationDate: 'Open Investigation', dateAccessed: '2026-11-08', confidenceLevel: 'OPEN ARCHIVAL INVESTIGATION', editorialNotes: 'BLOCKBANGLA strictly refuses to fabricate or crown an unverified "first player" without primary timestamped proof.' }
-];
-
-const HISTORICAL_TIMELINE = [
-  { id: 'ERA-01', period: '2010 – 2012', eraTag: 'Alpha, Beta & Offline LAN Era', titleEn: 'USB Drives, Cybercafes & The Offline Discovery', titleBn: 'ইউএসবি ড্রাইভ, সাইবার ক্যাফে এবং অফলাইন সূচনা', epistemicStatus: 'DOCUMENTED ECOSYSTEM ERA', confidence: 'High (Ecosystem Context) / Open (Individual Firsts)', summaryEn: 'Before dual-currency international credit cards or mobile wallets could purchase digital games from Mojang in Sweden, Minecraft entered Dhaka, Chattogram, and Sylhet through tech forums, university dorm USB drives, and offline launchers (MinecraftSP / TeamExtreme). Players explored Alpha and Beta 1.7.3 worlds solo or across local cybercafe LANs.', summaryBn: 'আন্তর্জাতিক ডুয়াল-কারেন্সি কার্ডের অভাবে বাংলাদেশে মাইনক্রাফটের যাত্রা শুরু হয় বিশ্ববিদ্যালয় হল, পেনড্রাইভ, টেক ফোরাম এবং অফলাইন লঞ্চারের মাধ্যমে। ঢাকা ও চট্টগ্রামের তরুণরা সাইবার ক্যাফেতে লোকাল ল্যানে (LAN) প্রথম ব্লক ওয়ার্ল্ড গড়ে তোলে।', keyMilestones: ['Spread of Java Edition Beta 1.7.3 & 1.8 Adventure Update via portable `.minecraft` folders on USB flash drives.', 'Absence of official BDT payment gateways meant early Bangladeshi players learned Java installation and RAM allocation troubleshooting by hand.', 'Open Archival Question: Early forum screenshots from 2011 in Bangladeshi tech communities are actively being sought for preservation.'], sourceId: 'SRC-BD-01', sourceTitle: 'BLOCKBANGLA Digital Historiography & Veteran Player Oral Archive', sourceUrl: 'https://minecraft.wiki/w/Java_Edition_Beta', coordinates: 'X: 2011, Y: 64, Z: 90' },
-  { id: 'ERA-02', period: '2012 – 2014', eraTag: 'Hamachi Tunnels & First FB Groups', titleEn: 'Virtual LAN Tunnels & Early Facebook Gatherings', titleBn: 'হামাচি টানেল ও প্রথম ফেসবুক গ্রুপের যুগ', epistemicStatus: 'COMMUNITY ORAL MEMORY', confidence: 'Medium-High (Corroborated Community Memory)', summaryEn: 'Because domestic ISP connections in Bangladesh relied heavily on shared CGNAT IPs without port forwarding, friends hosted 5-to-10 player survival worlds using LogMeIn Hamachi and Tunngle virtual networks. Early Facebook groups titled "Minecraft Bangladesh" and "Minecraft BD" became the digital town square for sharing seeds, skin files, and redstone screenshots.', summaryBn: 'বাংলাদেশের আইএসপিগুলোতে পোর্ট ফরওয়ার্ডিং সুবিধা সীমিত থাকায় লগমিইন হামাচি (Hamachi) ও টাংগল ব্যবহার করে বন্ধুরা মিলে মাল্টিপ্লেয়ার খেলত। এ সময় ফেসবুকে প্রথম মাইনক্রাফট বাংলাদেশ গ্রুপগুলোর জন্ম হয়।', keyMilestones: ['LogMeIn Hamachi 5-player network limit defined the size of early Bangladeshi friend-group SMPs.', 'Early Facebook groups served as helpdesks for modpacks (Tekkit, Hexxit, SkyBlock 2.1).', 'First wave of local players experimenting with Bukkit plugins on home PCs.'], sourceId: 'SRC-BD-01', sourceTitle: 'Veteran Community Oral History Collection (2012–2014)', sourceUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', coordinates: 'X: 2013, Y: 70, Z: 140' },
-  { id: 'ERA-03', period: '2014 – 2016', eraTag: 'Early Bangla YouTube Pioneers', titleEn: 'Bandicam Watermarks & First Bangla Let’s Plays', titleBn: 'প্রথম বাংলা ইউটিউব গেমপ্লে ও টিউটোরিয়াল যুগ', epistemicStatus: 'DOCUMENTED ECOSYSTEM ERA', confidence: 'High (Public Video Archive)', summaryEn: 'A pivotal cultural shift occurred when Bangladeshi creators began recording Minecraft Survival episodes, Skyblock challenges, and Redstone tutorials in spoken Bengali (বাংলা) rather than English or Hindi. Recorded on modest dual-core PCs using Fraps, Bandicam, and early OBS, channels like The Bangla Gamer, Sokher Gamer, and Narin The Gamer helped normalize Bengali gaming commentary.', summaryBn: 'ইংরেজি বা হিন্দির পরিবর্তে মাতৃভাষা বাংলায় মাইনক্রাফট সারভাইভাল ও টিউটোরিয়াল ভিডিও তৈরির সূচনা হয়। স্বল্প ক্ষমতার পিসিতে ব্যান্ডিক্যাম ও ওবিএস দিয়ে রেকর্ড করা এই ভিডিওগুলো নতুন প্রজন্মকে অনুপ্রাণিত করে।', keyMilestones: ['Transition from silent/text tutorials to energetic Bengali storytelling in Survival series.', 'Later retrospective tributes (such as "FIRST HOUSE OF MINECRAFT BANGLA YOUTUBERS" referencing @SokherGamer, @TheBanglaGamer, @NarinTheGamer) preserved memories of these early bases.', 'Growth of Redstone farm tutorials tailored for low-FPS laptops.'], sourceId: 'SRC-BD-05', sourceTitle: 'YouTube #minecraftbangla Historical Video Index', sourceUrl: 'https://www.youtube.com/hashtag/minecraftbangla', coordinates: 'X: 2015, Y: 78, Z: 210' },
-  { id: 'ERA-04', period: '2016 – 2018', eraTag: 'Pocket Edition (MCPE) Revolution', titleEn: '3G/4G Smartphones Democratize Minecraft Across 64 Districts', titleBn: 'পকেট এডিশন (MCPE) ও স্মার্টফোন বিপ্লব', epistemicStatus: 'VERIFIED FACT', confidence: 'Verified Ecosystem Shift', summaryEn: 'With affordable Android smartphones and expanding 3G/4G mobile data reaching beyond Dhaka and Chattogram into every district of Bangladesh, Minecraft Pocket Edition (later Bedrock Edition after the 2017 Better Together Update) exploded in popularity. Mobile players became the numerical majority of Bangladesh’s Minecraft population.', summaryBn: 'সাশ্রয়ী অ্যান্ড্রয়েড স্মার্টফোন এবং থ্রিজি/ফোরজি ইন্টারনেটের প্রসারে ঢাকা ও চট্টগ্রামের বাইরে বাংলাদেশের ৬৪ জেলাতেই মাইনক্রাফট পকেট এডিশন (বেডরক) ছড়িয়ে পড়ে।', keyMilestones: ['2017 Better Together Update enabled Xbox Live gamertag connections on Android devices without complex port setup.', 'Rise of PocketMine-MP and Nukkit servers hosted for Bangladeshi mobile PvP and faction communities.', 'Touch-control bridging and split-control PvP emerged as a distinct skill culture among Bangladeshi students.'], sourceId: 'SRC-BD-05', sourceTitle: 'Mojang Bedrock Convergence & BD Mobile Gaming Telemetry', sourceUrl: 'https://minecraft.wiki/w/Bedrock_Edition', coordinates: 'X: 2017, Y: 85, Z: 310' },
-  { id: 'ERA-05', period: '2018 – 2019', eraTag: 'Dedicated BD Networks & BDZONE', titleEn: 'From Aternos Queues to Dedicated Bangladeshi Networks', titleBn: 'ডেডিকেটেড বাংলাদেশি সার্ভার ও নেটওয়ার্কের উত্থান', epistemicStatus: 'VERIFIED FACT', confidence: 'Verified Primary Date (April 9, 2018)', summaryEn: 'Frustrated by long free-host queues and 200ms European latency, Bangladeshi server administrators began deploying dedicated Bungeecord/Velocity networks routed through Singapore and local BDIX nodes. On April 9, 2018, Joynal Bokhsho founded BDZONE (bdzonemc.com), establishing a long-term home for Bangladeshi Survival, SkyBlock, BedWars, and Practice PvP players.', summaryBn: 'ফ্রি হোস্টিংয়ের দীর্ঘ অপেক্ষা ও হাই পিং কাটিয়ে ২০১৮ সালে বাংলাদেশি অ্যাডমিনরা ডেডিকেটেড সার্ভার তৈরি শুরু করেন। ৯ এপ্রিল ২০১৮ সালে যাত্রা শুরু করে বাংলাদেশের অন্যতম বৃহৎ কমিউনিটি সার্ভার BDZONE।', keyMilestones: ['April 9, 2018: Founding of BDZONE (play.bdzonemc.com), documented as one of the largest sustained Bangladeshi Minecraft server networks.', 'Adoption of Singapore low-latency VPS nodes (~45–60ms from Dhaka) and domestic BDIX routing (<10ms local peering).', 'Standardization of 1.8.9 combat mechanics for Bangladeshi BedWars and Practice PvP leaderboards.'], sourceId: 'SRC-BD-02', sourceTitle: 'About BD ZONE (Founded 9 April 2018)', sourceUrl: 'https://bdzonemc.com/about', coordinates: 'X: 2018, Y: 92, Z: 420' },
-  { id: 'ERA-06', period: '2020 – 2021', eraTag: 'Lockdown Boom & Discord SMPs', titleEn: 'The Pandemic Surge, Discord Migration & Cyan Plex', titleBn: 'লকডাউন বুম, ডিসকর্ড কমিউনিটি ও এসএমপি রেনেসাঁ', epistemicStatus: 'VERIFIED FACT', confidence: 'Verified Historical Period', summaryEn: 'During the 2020–2021 school and university closures in Bangladesh, Minecraft became a vital social space. Community coordination shifted decisively from Facebook groups to structured Discord servers with voice channels, ticket bots, and seasonal lore SMPs. In June 2021, Cyan Plex (play.cyanplex.net) launched as a dedicated Java + Bedrock crossplay network.', summaryBn: '২০২০-২০২১ সালের লকডাউনে স্কুল-কলেজ বন্ধ থাকায় মাইনক্রাফট হয়ে ওঠে তরুণদের প্রধান সামাজিক যোগাযোগের মাধ্যম। ফেসবুক থেকে ডিসকর্ডে কমিউনিটি স্থানান্তরিত হয় এবং ২০২১ সালের জুনে যাত্রা শুরু করে Cyan Plex।', keyMilestones: ['Massive influx of college and university cohorts forming private whitelisted Lifesteal, Earth SMP, and roleplay servers.', 'June 2021: Launch of Cyan Plex (play.cyanplex.net) offering crossplay Survival, BedWars, and Kit-PvP.', 'Emergence of organized Discord tournament brackets with automated moderation and anti-cheat screenshares.'], sourceId: 'SRC-BD-03', sourceTitle: 'Cyan Plex Founding Record (June 2021) & Discord Server Index', sourceUrl: 'https://topminecraftservers.org/country/BD', coordinates: 'X: 2020, Y: 105, Z: 540' },
-  { id: 'ERA-07', period: '2021 – 2023', eraTag: 'Heritage Builds & Competitive PvP', titleEn: 'Recreating Bengal in Voxels & 1.16+ Crystal/Sword Tiers', titleBn: 'ভক্সেলে বাংলার স্থাপত্য ও প্রতিযোগিতামূলক পিভিপি', epistemicStatus: 'DOCUMENTED ECOSYSTEM ERA', confidence: 'High (Documented Community Works)', summaryEn: 'Bangladeshi builders began using WorldEdit, Axiom, and Complementary Shaders to construct tributes to national landmarks—including Jatiya Sangsad Bhaban, Shaheed Minar, Lalbagh Fort, and the Padma Multipurpose Bridge (inaugurated in 2022). Simultaneously, competitive players transitioned from 1.8 click-speed PvP into modern 1.16+ Sword, Axe, and End Crystal tier-testing.', summaryBn: 'বাংলাদেশি বিল্ডাররা জাতীয় সংসদ ভবন, শহীদ মিনার, লালবাগ কেল্লা এবং পদ্মা সেতুর মতো স্থাপত্য মাইনক্রাফটে নিখুঁতভাবে ফুটিয়ে তোলেন। পাশাপাশি ১.১৬+ সোর্ড ও ক্রিস্টাল পিভিপি টিয়ারের প্রসার ঘটে।', keyMilestones: ['2022 Padma Bridge inauguration inspired numerous scale recreations with working Redstone rail decks across Bangladeshi servers.', 'Growth of Bangladeshi PvP montage editors and tier-list testing communities.', 'Spread of PojavLauncher allowing Android users with mid-range phones to run Java Edition client mods.'], sourceId: 'SRC-BD-05', sourceTitle: 'YouTube #minecraftbangladesh Architectural & PvP Archive', sourceUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', coordinates: 'X: 2022, Y: 112, Z: 660' },
-  { id: 'ERA-08', period: '2023 – 2025', eraTag: 'GeyserMC Unification & Storytelling', titleEn: 'Bridging Java PC & Mobile Bedrock + High-Production Bangla Content', titleBn: 'জাভা ও বেডরক ক্রসপ্লে ঐক্য এবং স্টোরিটেলিং কন্টেন্ট', epistemicStatus: 'VERIFIED FACT', confidence: 'Verified Technical & Creator Trend', summaryEn: 'By deploying GeyserMC and Floodgate proxies as standard infrastructure, Bangladeshi servers such as Bangladeshi Minecraft Society (BMS), BDZONE, Cyan Plex, and Maven’s Hive unified PC Java players and Android Bedrock players inside the same worlds. Meanwhile, Bangladeshi YouTube creators produced scripted survival stories, hardcore challenges, and annual community rewinds (such as Bangladeshi Minecraft Youtubers Rewind 2025).', summaryBn: 'GeyserMC প্রযুক্তির মাধ্যমে পিসির জাভা এবং মোবাইলের বেডরক প্লেয়াররা একই সার্ভারে খেলার সুযোগ পায়। পাশাপাশি বাংলায় স্টোরিটেলিং, হার্ডকোর চ্যালেঞ্জ এবং ইউটিউবারদের বার্ষিক রিওয়াইন্ড ভিডিও ব্যাপক জনপ্রিয়তা পায়।', keyMilestones: ['GeyserMC + Floodgate became mandatory on virtually all major Bangladeshi public networks.', 'Viral growth of Bengali Minecraft Shorts, Hardcore 100-Days narratives, and collaborative SMP events.', 'Publication of community retrospectives like "Bangladeshi Minecraft Youtubers Rewind 2025!" documenting cross-channel camaraderie.'], sourceId: 'SRC-BD-04', sourceTitle: 'BMS Crossplay Architecture & #minecraftbangla 2025–2026 Index', sourceUrl: 'https://www.youtube.com/hashtag/minecraftbangla', coordinates: 'X: 2024, Y: 120, Z: 780' },
-  { id: 'ERA-09', period: '2025 – 2026', eraTag: 'Present Ecosystem State', titleEn: 'A Multi-Generational Community of 4,800+ Creator Channels', titleBn: 'বর্তমান প্রেক্ষাপট: বহুমাত্রিক ও পরিণত মাইনক্রাফট কমিউনিটি', epistemicStatus: 'VERIFIED FACT', confidence: 'Verified (November 2026 Telemetry)', summaryEn: 'As of November 2026, Bangladesh’s Minecraft ecosystem spans two full generations: 2011–2013 pioneers who are now software engineers, architects, and server infrastructure leads, alongside thousands of school and college players discovering Minecraft 1.21+ / 26.x game drops. Multi-season networks like Maven’s Hive (Season 8) and BMS host regular survival seasons, while over 3,600 channels contribute to #minecraftbangla.', summaryBn: 'নভেম্বর ২০২৬-এ দাঁড়িয়ে বাংলাদেশের মাইনক্রাফট কমিউনিটি দুই প্রজন্মের মেলবন্ধন—২০১১ সালের প্রবীণ প্লেয়ারদের সাথে যুক্ত হয়েছে হাজারো নতুন নির্মাতা ও গেমার। ইউটিউবে #minecraftbangla হ্যাশট্যাগে রয়েছে ১৯ হাজারেরও বেশি ভিডিও।', keyMilestones: ['19,000+ videos under #minecraftbangla across 3,600+ channels and 4,900+ videos under #minecraftbangladesh (Nov 2026).', 'Active multi-season progression servers (e.g., Maven’s Hive Season 8, BMS 26.x, BDZONE, Cyan Plex).', 'Widespread adoption of official accounts via virtual cards and Game Pass alongside community crossplay servers.'], sourceId: 'SRC-BD-05', sourceTitle: 'November 2026 YouTube & Server Directory Telemetry', sourceUrl: 'https://topminecraftservers.org/country/BD', coordinates: 'X: 2026, Y: 128, Z: 900' },
-  { id: 'ERA-10', period: '2026 & Beyond', eraTag: 'Digital Preservation & The Next Chapter', titleEn: 'Preserving Ephemeral Worlds & Building BLOCKBANGLA', titleBn: 'ভবিষ্যৎ অধ্যায়: ডিজিটাল আর্কাইভ ও কমিউনিটির স্থায়ী ঘর', epistemicStatus: 'OPEN ARCHIVAL INVESTIGATION', confidence: 'Active Mission', summaryEn: 'Countless early Bangladeshi SMP world files, Discord histories, and Facebook screenshots from 2011–2018 are at risk of disappearing forever. BLOCKBANGLA exists to archive verifiable community history, standardize transparent server & event discovery, welcome young players in Bengali and English, and empower Bangladesh’s builders and engineers for the next decade.', summaryBn: '২০১১ থেকে ২০১৮ সালের অসংখ্য পুরনো সার্ভার ও স্ক্রিনশট হারিয়ে যাওয়ার ঝুঁকিতে রয়েছে। BLOCKBANGLA-এর লক্ষ্য সেই ইতিহাস সংরক্ষণ করা এবং বাংলাদেশের সব মাইনক্রাফট প্লেয়ারকে একটি নির্ভরযোগ্য প্ল্যাটফর্মে যুক্ত করা।', keyMilestones: ['Open call for pre-2016 Bangladeshi screenshot archives, world downloads (.mca / .schematic), and tournament brackets.', 'Bilingual Bengali + English technical documentation for server hosting, Redstone, and safe multiplayer.', 'Transparent real-time API verification replacing fake server lists and fabricated event badges.'], sourceId: 'SRC-BD-07', sourceTitle: 'BLOCKBANGLA Open Archival Charter (2026)', sourceUrl: 'https://web.archive.org', coordinates: 'X: 2030, Y: 140, Z: 1024' }
-];
 
 const INITIAL_SERVERS = [
-  { id: 'srv-bdzone', name: 'BDZONE Network', ip: 'play.bdzonemc.com', bedrockIp: 'pe.bdzonemc.com', port: '25565 (Java) / 19132 (Bedrock)', edition: 'Crossplay Geyser', versions: '1.8.x – 1.21.x+', modes: ['Survival SMP', 'BedWars / PvP', 'Skyblock', 'Practice PvP'], classification: 'Bangladesh Community Server', founded: '9 April 2018 (Founder: Joynal Bokhsho)', website: 'https://bdzonemc.com/about', discord: 'https://bdzonemc.com', routing: 'Bangladesh / SG Low-Latency Route', descriptionEn: 'Founded on April 9, 2018, BDZONE is one of the longest-running Bangladeshi Minecraft networks featuring Survival, SkyBlock, BedWars, Practice PvP, land claims, and full Bedrock crossplay support.', descriptionBn: '৯ এপ্রিল ২০১৮ সালে প্রতিষ্ঠিত BDZONE বাংলাদেশের অন্যতম প্রাচীন ও বৃহত্তম মাইনক্রাফট কমিউনিটি সার্ভার। এতে রয়েছে সারভাইভাল, স্কাইব্লক, বেডওয়ার্স এবং প্র্যাকটিস পিভিপি।', verifiedSource: 'Verified via bdzonemc.com/about & TopMinecraftServers BD Registry (Nov 2026)' },
-  { id: 'srv-cyanplex', name: 'Cyan Plex Network', ip: 'play.cyanplex.net', bedrockIp: 'play.cyanplex.net', port: '25565 (Java) / 19132 (Bedrock)', edition: 'Crossplay Geyser', versions: '1.16.x – 1.21.x / 26.x', modes: ['Survival SMP', 'BedWars / PvP', 'KitPvP', 'Minigames'], classification: 'Bangladesh Community Server', founded: 'June 2021', website: 'https://www.cyanplex.net', discord: 'https://discord.cyanplex.net', routing: 'South Asia / SG Optimized', descriptionEn: 'Founded in June 2021, Cyan Plex is a Bangladeshi Java & Bedrock crossplay network offering Semi-Modded Survival with economy and grief prevention, solo/team BedWars, Kit-PvP, TNT Run, and The Bridge.', descriptionBn: '২০২১ সালের জুনে প্রতিষ্ঠিত Cyan Plex একটি জনপ্রিয় বাংলাদেশি জাভা ও বেডরক ক্রসপ্লে নেটওয়ার্ক, যেখানে রয়েছে সেমি-মডেড সারভাইভাল, বেডওয়ার্স এবং কিট-পিভিপি।', verifiedSource: 'Verified via TopMinecraftServers Bangladesh Directory (Nov 2026)' },
-  { id: 'srv-bms', name: 'Bangladeshi Minecraft Society (BMS)', ip: 'play.minecraftbangladesh.com:5555', bedrockIp: 'play.minecraftbangladesh.com', port: '5555', edition: 'Crossplay Geyser', versions: '1.20.x – 26.3', modes: ['Survival SMP', 'Lifesteal', 'BedWars / PvP', 'Skyblock'], classification: 'Bangladesh Community Server', founded: 'Documented Community Network', website: 'https://discord.com/servers/bangladeshi-minecraft-society-bms-1023670951646330970', discord: 'https://discord.com/servers/bangladeshi-minecraft-society-bms-1023670951646330970', routing: 'DDoS Protected / BD-Friendly', descriptionEn: 'Bangladeshi Minecraft Society (BMS) is a community-driven semi-vanilla Survival, Lifesteal, Skyblock, and BedWars server with Geyser crossplay support and an active Bangladeshi Discord hub.', descriptionBn: 'বাংলাদেশি মাইনক্রাফট সোসাইটি (BMS) একটি কমিউনিটি-চালিত সারভাইভাল, লাইফস্টিল ও বেডওয়ার্স সার্ভার, যেখানে জাভা ও বেডরক উভয় সংস্করণের খেলোয়াড়রা একসাথে খেলতে পারে।', verifiedSource: 'Verified via Discord Public Server Directory & TopMinecraftServers BD (Nov 2026)' },
-  { id: 'srv-mavenshive', name: "Maven's Hive (Season 8)", ip: 'play.mavenshive.com', bedrockIp: 'pe.mavenshive.com:19035', port: '25565 (Java) / 19035 (Bedrock)', edition: 'Crossplay Geyser', versions: '1.20.x – 26.2', modes: ['Survival SMP', 'Clan Wars', 'Dungeons & Economy', 'Friday UHC'], classification: 'Bangladesh Community Server', founded: 'Multi-Season BD Network (Season 8 in 2026)', website: 'https://topminecraftservers.org/country/BD', discord: 'https://topminecraftservers.org/country/BD', routing: 'South Asia Low-Latency', descriptionEn: 'Maven’s Hive is a progression-focused Bangladeshi Survival & Clan Wars server featuring custom dungeons, fishing events, HiveCoin economy, custom enchants, and recurring Friday UHC competitions.', descriptionBn: 'ম্যাভেনস হাইভ (সিজন ৮) একটি প্রগ্রেশন ও ক্ল্যান-ওয়ার ভিত্তিক বাংলাদেশি সারভাইভাল সার্ভার, যাতে রয়েছে কাস্টম ডানজন, ইকোনমি এবং সাপ্তাহিক ইউএইচসি ইভেন্ট।', verifiedSource: 'Verified via TopMinecraftServers Bangladesh Directory (Nov 2026)' },
-  { id: 'srv-bongocraft', name: 'BongoCraft Network', ip: 'play.bongocraft.fun:25575', bedrockIp: 'play.bongocraft.fun', port: '25575', edition: 'Crossplay Geyser', versions: '1.19.x – 1.21.x', modes: ['Survival SMP', 'Economy', 'PvP Arena'], classification: 'Bangladesh Community Server', founded: 'Documented TopG Bangladesh Listing', website: 'https://topg.org/minecraft-servers/country/Bangladesh/', discord: 'https://topg.org/minecraft-servers/country/Bangladesh/', routing: 'Bangladesh / SG Route', descriptionEn: 'Listed on the TopG Bangladesh Minecraft server registry, BongoCraft offers community survival, economy trading, and casual PvP events for Bangladeshi players.', descriptionBn: 'টপ-জি বাংলাদেশ সার্ভার ডিরেক্টরিতে তালিকাভুক্ত বঙ্গক্রাফট একটি সারভাইভাল ও ইকোনমি সার্ভার।', verifiedSource: 'Verified via TopG Bangladesh Server Registry (topg.org/minecraft-servers/country/Bangladesh/)' },
-  { id: 'srv-royalsmp', name: 'RoyalSMP Bangladesh', ip: 'play.royalsmp.fun', bedrockIp: 'play.royalsmp.fun', port: '25565 (Java) / 19132 (Bedrock)', edition: 'Crossplay Geyser', versions: '1.20.x – 1.21.x', modes: ['Survival SMP', 'Lifesteal', 'Clans'], classification: 'Bangladesh Community Server', founded: 'Documented TopG Bangladesh Listing', website: 'https://topg.org/minecraft-servers/country/Bangladesh/', discord: 'https://topg.org/minecraft-servers/country/Bangladesh/', routing: 'South Asia Route', descriptionEn: 'A Bangladeshi Survival and Lifesteal SMP documented on TopG Bangladesh where players form clans, contest supply drops, and build seasonal bases.', descriptionBn: 'টপ-জি বাংলাদেশ তালিকায় থাকা রয়েল এসএমপি একটি ক্ল্যান ও লাইফস্টিল ভিত্তিক কমিউনিটি সার্ভার।', verifiedSource: 'Verified via TopG Bangladesh Server Registry' },
-  { id: 'srv-hypixel-ref', name: 'Hypixel Network (Global API Benchmark)', ip: 'mc.hypixel.net', bedrockIp: 'N/A (Java Only)', port: '25565', edition: 'Java', versions: '1.8.9 – 1.21.x', modes: ['BedWars / PvP', 'Skyblock', 'Minigames'], classification: 'Global Reference Test Server', founded: 'April 2013 (Global Reference)', website: 'https://hypixel.net', discord: 'https://hypixel.net', routing: 'Global Anycast / Cloudflare Spectrum', descriptionEn: 'Included as a guaranteed 24/7 high-volume global reference endpoint so visitors can test BLOCKBANGLA’s live mcsrvstat.us / mcstatus.io API telemetry inspector alongside regional Bangladeshi servers.', descriptionBn: 'লাইভ সার্ভার স্ট্যাটাস ইন্সপেক্টর পরীক্ষা করার জন্য একটি সার্বক্ষণিক সচল গ্লোবাল রেফারেন্স সার্ভার হিসেবে হাইপিক্সেল যুক্ত করা হয়েছে।', verifiedSource: 'Live Global Reference Endpoint for Real-Time API Verification' }
+  { id: 'srv-bdzone', name: 'BDZONE Network', ip: 'play.bdzonemc.com', edition: 'Listing details unconfirmed', versions: '', modes: [], descriptionEn: 'This name and Java address are unconfirmed. Check the address and other details with the server owner before joining.' },
+  { id: 'srv-cyanplex', name: 'Cyan Plex Network', ip: 'play.cyanplex.net', edition: 'Listing details unconfirmed', versions: '', modes: [], descriptionEn: 'This name and Java address are unconfirmed. Check the address and other details with the server owner before joining.' },
+  { id: 'srv-bms', name: 'Bangladeshi Minecraft Society (BMS)', ip: 'play.minecraftbangladesh.com:5555', edition: 'Listing details unconfirmed', versions: '', modes: [], descriptionEn: 'This name and Java address are unconfirmed. Check the address and other details with the server owner before joining.' },
+  { id: 'srv-mavenshive', name: "Maven's Hive", ip: 'play.mavenshive.com', edition: 'Listing details unconfirmed', versions: '', modes: [], descriptionEn: 'This name and Java address are unconfirmed. Check the address and other details with the server owner before joining.' },
+  { id: 'srv-bongocraft', name: 'BongoCraft Network', ip: 'play.bongocraft.fun:25575', edition: 'Listing details unconfirmed', versions: '', modes: [], descriptionEn: 'This name and Java address are unconfirmed. Check the address and other details with the server owner before joining.' },
+  { id: 'srv-royalsmp', name: 'RoyalSMP Bangladesh', ip: 'play.royalsmp.fun', edition: 'Listing details unconfirmed', versions: '', modes: [], descriptionEn: 'This name and Java address are unconfirmed. Check the address and other details with the server owner before joining.' }
 ];
-
-const INITIAL_SMP_PROJECTS = [
-  { id: 'smp-01', name: "Maven's Hive SMP — Season 8", season: 'Season 8 (Active 2026)', recruitmentStatus: 'OPEN RECRUITMENT', edition: 'Java + Bedrock (Geyser Port 19035)', version: '1.20.x – 26.2', ip: 'play.mavenshive.com', owner: "Maven's Hive Admin Collective", rules: ['No X-Ray or Hacked Clients', 'Clan Griefing Only During Declared Siege Windows', 'Respectful Bangla/English Chat'], loreEn: 'Progression-driven survival world with HiveCoin economy, custom boss dungeons, and Friday UHC border battles.', discordUrl: 'https://topminecraftservers.org/country/BD' },
-  { id: 'smp-02', name: 'Bangladeshi Minecraft Society (BMS) Semi-Vanilla SMP', season: '2026 Continuous Realm', recruitmentStatus: 'OPEN DISCORD VERIFICATION', edition: 'Java + Bedrock (Port 5555)', version: '1.20.x – 26.3', ip: 'play.minecraftbangladesh.com:5555', owner: 'BMS Moderation Council', rules: ['CoreProtect Active — Zero Stealing at Spawn', 'Land Claim Protection Enabled', 'Mandatory Discord Sync for Mayor Towns'], loreEn: 'Flagship community SMP of the Bangladeshi Minecraft Society Discord server uniting mobile and PC builders.', discordUrl: 'https://discord.com/servers/bangladeshi-minecraft-society-bms-1023670951646330970' },
-  { id: 'smp-03', name: 'Primeur SMP & Secret SMP Bangladesh', season: '2026 Community Seasons', recruitmentStatus: 'APPLICATION / PUBLIC LOBBY', edition: 'Java + Bedrock Crossplay', version: '1.20.x – 1.21.x', ip: 'play.primeursmp.fun:19136', owner: 'Primeur & Secret SMP Organizers', rules: ['Fair Play PvP Ruleset', 'No Lag Machines or Uncapped Hoppers', 'No Toxicity'], loreEn: 'Documented Bangladeshi SMP networks listed in the TopG Bangladesh registry focused on Lifesteal and lore alliances.', discordUrl: 'https://topg.org/minecraft-servers/country/Bangladesh/' }
-];
-
-const PRISMARINE_GAME_DATA = {
-  items: [
-    { id: 'minecraft:mace', name: 'Mace (1.21+)', stack: 1, rarity: 'Epic', blastRes: 6.0, note: 'Crafted from Heavy Core + Breeze Rod; smash attack scales with fall distance.' },
-    { id: 'minecraft:crafter', name: 'Crafter', stack: 64, rarity: 'Common', blastRes: 3.5, note: 'Automated redstone-powered crafting table introduced in 1.21.' },
-    { id: 'minecraft:netherite_ingot', name: 'Netherite Ingot', stack: 64, rarity: 'Rare', blastRes: 1200, note: 'Requires 4 Ancient Debris (Scrap) + 4 Gold Ingots + Smithing Template.' },
-    { id: 'minecraft:elytra', name: 'Elytra', stack: 1, rarity: 'Uncommon', blastRes: 0, note: 'Found in End Ships; repaired with Phantom Membranes or Mending.' },
-    { id: 'minecraft:mud_bricks', name: 'Mud Bricks (Bengal Heritage)', stack: 64, rarity: 'Common', blastRes: 3.0, note: 'Crafted from Packed Mud (Dirt + Water Bottle + Wheat).' },
-    { id: 'minecraft:mangrove_propagule', name: 'Mangrove Propagule (Sundarbans)', stack: 64, rarity: 'Common', blastRes: 0, note: 'Grows in water or land into dense Mangrove root trees.' }
-  ],
-  enchantments: [
-    { name: 'Mending', maxLevel: 'I', target: 'All Durability Items', conflict: 'Infinity (on Bows)', source: 'Librarian Trade / Loot' },
-    { name: 'Density', maxLevel: 'V', target: 'Mace', conflict: 'Breach, Smite, Bane of Arthropods', source: 'Enchanting Table / Trial Chambers' },
-    { name: 'Wind Burst', maxLevel: 'III', target: 'Mace', conflict: 'None', source: 'Ominous Vaults (Trial Chambers)' },
-    { name: 'Fortune', maxLevel: 'III', target: 'Pickaxe, Axe, Shovel, Hoe', conflict: 'Silk Touch', source: 'Enchanting Table / Librarian' },
-    { name: 'Feather Falling', maxLevel: 'IV', target: 'Boots', conflict: 'None', source: 'Enchanting Table / Librarian' },
-    { name: 'Swift Sneak', maxLevel: 'III', target: 'Leggings', conflict: 'None', source: 'Ancient City Chests Only' }
-  ],
-  potions: [
-    { name: 'Potion of Fire Resistance', base: 'Awkward Potion', reagent: 'Magma Cream', duration: '3:00 (8:00 with Redstone)' },
-    { name: 'Potion of Night Vision', base: 'Awkward Potion', reagent: 'Golden Carrot', duration: '3:00 (8:00 with Redstone)' },
-    { name: 'Potion of Strength II', base: 'Awkward Potion', reagent: 'Blaze Powder + Glowstone Dust', duration: '1:30 (+6 Melee Damage)' },
-    { name: 'Potion of Slow Falling', base: 'Awkward Potion', reagent: 'Phantom Membrane', duration: '1:30 (4:00 with Redstone)' },
-    { name: 'Potion of Weaving (1.21)', base: 'Awkward Potion', reagent: 'Cobweb', duration: '3:00 (Spawns cobwebs on death)' }
-  ],
-  versions: [
-    { version: '1.21.4 (The Garden Awakens)', protocol: 769, javaReq: 'Java 21', geyserSupport: 'Full Crossplay' },
-    { version: '1.21.1 (Tricky Trials)', protocol: 767, javaReq: 'Java 21', geyserSupport: 'Full Crossplay' },
-    { version: '1.20.4 (Trails & Tales)', protocol: 765, javaReq: 'Java 17+', geyserSupport: 'Full Crossplay' },
-    { version: '1.16.5 (Nether Update)', protocol: 754, javaReq: 'Java 8–16', geyserSupport: 'ViaVersion Bridge' },
-    { version: '1.8.9 (Classic PvP)', protocol: 47, javaReq: 'Java 8', geyserSupport: 'ViaVersion +ViaRewind' }
-  ]
-};
-
-const INITIAL_EVENTS = [
-  { id: 'evt-01', titleEn: 'Maven’s Hive Season 8 — Friday UHC & Clan Citadel Siege', titleBn: 'ম্যাভেনস হাইভ সিজন ৮ — ফ্রাইডে UHC ও ক্ল্যান দুর্গ অভিযান', category: 'Tournaments', edition: 'Crossplay Java + Bedrock', organizer: "Maven's Hive BD Community", verifiedStatus: 'RECURRING COMMUNITY FORMAT', startTimeIso: '2026-11-13T15:00:00+06:00', endTimeIso: '2026-11-13T18:30:00+06:00', location: 'Online — play.mavenshive.com (Bedrock Port: 19035)', descriptionEn: 'Weekly Friday Ultra Hardcore (UHC) border-shrink survival showdown and Clan Wars progression event documented on Maven’s Hive Season 8. Open to both Java PC and Android Bedrock players.', descriptionBn: 'ম্যাভেনস হাইভ সিজন ৮-এর সাপ্তাহিক ফ্রাইডে আল্ট্রা হার্ডকোর (UHC) এবং ক্ল্যান ওয়ার ইভেন্ট। পিসি এবং মোবাইল উভয় প্লেয়ারদের জন্য উন্মুক্ত।', registrationUrl: 'https://topminecraftservers.org/country/BD', discordUrl: 'https://topminecraftservers.org/country/BD', streamUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', artTheme: 'crimson-citadel' },
-  { id: 'evt-02', titleEn: 'BMS Monthly Community Survival & BedWars Bracket', titleBn: 'বিএমএস (BMS) মাসিক সারভাইভাল ও বেডওয়ার্স টুর্নামেন্ট', category: 'PvP Competitions', edition: 'Crossplay Java + Bedrock', organizer: 'Bangladeshi Minecraft Society (BMS)', verifiedStatus: 'DOCUMENTED COMMUNITY SERIES', startTimeIso: '2026-11-20T16:00:00+06:00', endTimeIso: '2026-11-20T20:00:00+06:00', location: 'Online — play.minecraftbangladesh.com:5555', descriptionEn: 'Bangladeshi Minecraft Society hosts recurring monthly community tournaments spanning 4v4 BedWars, KitPvP arena brackets, and Lifesteal supply drops coordinated via the BMS Discord server.', descriptionBn: 'বাংলাদেশি মাইনক্রাফট সোসাইটি (BMS) আয়োজিত মাসিক কমিউনিটি টুর্নামেন্ট—যেখানে ৪ বনাম ৪ বেডওয়ার্স এবং কিট-পিভিপি প্রতিযোগিতা অনুষ্ঠিত হয়।', registrationUrl: 'https://discord.com/servers/bangladeshi-minecraft-society-bms-1023670951646330970', discordUrl: 'https://discord.com/servers/bangladeshi-minecraft-society-bms-1023670951646330970', streamUrl: 'https://www.youtube.com/hashtag/minecraftbangla', artTheme: 'diamond-arena' },
-  { id: 'evt-03', titleEn: 'Bengal Architectural Heritage Build Showcase (Bijoy Dibosh Edition)', titleBn: 'বাংলার ঐতিহ্য স্থাপত্য বিল্ড প্রদর্শনী (বিজয় দিবস সংস্করণ)', category: 'Building Competitions', edition: 'Java & Bedrock Schematics', organizer: 'BLOCKBANGLA Archival & Builders Collective', verifiedStatus: 'OPEN COMMUNITY CALL', startTimeIso: '2026-12-16T10:00:00+06:00', endTimeIso: '2026-12-16T22:00:00+06:00', location: 'BLOCKBANGLA Community Hub & World Download Vault', descriptionEn: 'An open non-commercial community showcase celebrating December 16 (Victory Day of Bangladesh) through voxel reconstructions of Jatiya Smriti Soudho, Shaheed Minar, Paharpur, and riverine Bengal.', descriptionBn: '১৬ই ডিসেম্বর মহান বিজয় দিবস উপলক্ষে জাতীয় স্মৃতিসৌধ, শহীদ মিনার, পাহাড়পুর ও আবহমান বাংলার স্থাপত্য নিয়ে বিশেষ ভক্সেল বিল্ড প্রদর্শনী।', registrationUrl: 'INTERNAL:community', discordUrl: 'INTERNAL:community', streamUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', artTheme: 'emerald-bengal', rulesSummary: '100% original voxel work or WorldEdit schematic; must include at least 3 coordinates screenshots and block palette list.', bracketFormat: 'Open Community Exhibition (Non-Commercial Archival Recognition)' },
-  { id: 'evt-04', titleEn: 'BDZONE Autumn SkyBlock Economy Reset & Practice PvP Ladder', titleBn: 'BDZONE স্কাইব্লক ইকোনমি ও প্র্যাকটিস পিভিপি সিজন রিভিউ', category: 'Community SMP Events', edition: 'Crossplay Java + Bedrock', organizer: 'BDZONE Network', verifiedStatus: 'COMPLETED ARCHIVE RECORD', startTimeIso: '2026-10-15T14:00:00+06:00', endTimeIso: '2026-10-15T21:00:00+06:00', location: 'Online — play.bdzonemc.com', descriptionEn: 'Archived community milestone from October 2026 featuring island value leaderboards, crate key drops, and 1.8/1.20 duel ladders on BDZONE.', descriptionBn: 'অক্টোবর ২০২৬-এ সম্পন্ন হওয়া BDZONE স্কাইব্লক ইকোনমি এবং প্র্যাকটিস ডুয়েল ল্যাডার ইভেন্টের আর্কাইভ রেকর্ড।', registrationUrl: 'https://bdzonemc.com/about', discordUrl: 'https://bdzonemc.com/about', streamUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', artTheme: 'terracotta-arch', rulesSummary: 'Standard BDZONE Fair Play Rules; Prohibited client macros or autoclickers.', bracketFormat: 'Seasonal Island Value Leaderboard + 1v1 Duel Queue' }
-];
-
-const INITIAL_CREATORS = [
-  { id: 'cr-01', name: 'The Bangla Gamer', handle: '@TheBanglaGamer', category: 'YouTubers', verificationStatus: 'Public YouTube Index Record (#minecraftbangla)', subscriberBadge: 'Publicly Indexed Channel — Multi-Million View Survival Series', primaryPlatform: 'YouTube', channelUrl: 'https://www.youtube.com/results?search_query=The+Bangla+Gamer+Minecraft', featuredVideoTitle: 'Minecraft Bangla Survival Series (Ep 2 & Ep 8 — 2.8M+ to 3.4M+ Public Views)', bioEn: 'One of the earliest and most widely watched Bengali-language Minecraft Survival storytellers on YouTube, frequently cited by younger Bangladeshi creators as an inspiration for starting Bangla gameplay commentary.', bioBn: 'বাংলা ভাষায় মাইনক্রাফট সারভাইভাল গেমপ্লে জনপ্রিয় করার পেছনে অন্যতম পথিকৃৎ চ্যানেল, যার এপিসোডগুলো লাখো দর্শক দেখেছেন।', contributions: ['Pioneered accessible Bengali commentary for vanilla Minecraft survival mechanics', 'Featured in community "First House of Minecraft Bangla YouTubers" tributes'] },
-  { id: 'cr-02', name: 'Gamer AR Raifan', handle: '@GamerARRaifan', category: 'YouTubers', verificationStatus: 'Public YouTube Index Record (#minecraftbangla 2026)', subscriberBadge: 'Verified Active Creator in #minecraftbangla Index', primaryPlatform: 'YouTube', channelUrl: 'https://www.youtube.com/results?search_query=Gamer+AR+Raifan+Minecraft', featuredVideoTitle: 'Minecraft POOR vs RICH Treehouse Challenge & Modded Story Challenges (Bangla)', bioEn: 'High-output Bangladeshi Minecraft storyteller creating modded survival challenges, custom boss encounters, and dramatic Bengali cooperative episodes.', bioBn: 'মডেড সারভাইভাল চ্যালেঞ্জ এবং আকর্ষণীয় বাংলা স্টোরিটেলিং ভিডিওর জন্য পরিচিত সক্রিয় বাংলাদেশি মাইনক্রাফট ক্রিয়েটর।', contributions: ['Consistent long-form Bengali modded survival entertainment (2025–2026)', 'Youth-friendly Bangla group challenge formats'] },
-  { id: 'cr-03', name: 'NOT NOVA XD', handle: '@NOTNOVAXD', category: 'Streamers', verificationStatus: 'Public YouTube Index Record (#minecraftbangladesh)', subscriberBadge: 'Verified Active Creator in #minecraftbangladesh Index', primaryPlatform: 'YouTube', channelUrl: 'https://www.youtube.com/results?search_query=NOT+NOVA+XD+Minecraft+BD', featuredVideoTitle: 'এই Minecraft Multiplayer World টি অনেক অদ্ভুত ! || Minecraft BD', bioEn: 'Bangladeshi multiplayer SMP and comedic adventure creator producing collaborative videos across local Bangladeshi Minecraft worlds and servers.', bioBn: 'বাংলাদেশি মাল্টিপ্লেয়ার ওয়ার্ল্ড এবং কো-অপারেটিভ কমেডি অ্যাডভেঞ্চার ভিডিও নির্মাতা।', contributions: ['Showcases Bangladeshi multiplayer worlds and collaborative creator crossovers'] },
-  { id: 'cr-04', name: 'Deadliest RIS & R2 Habib', handle: '@DeadliestRIS / @R2Habib', category: 'PvP Creators', verificationStatus: 'Public YouTube Index Record (#minecraftbangladesh)', subscriberBadge: 'Active Community Event & Challenge Creators', primaryPlatform: 'YouTube', channelUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', featuredVideoTitle: 'Minecraft Bangladesh Server এ আমরা Hide and Seek Event করলাম', bioEn: 'Known in the #minecraftbangladesh and #minecraftbangla community for hosting large multiplayer server events, PvP challenges, and poor-to-millionaire progression battles.', bioBn: 'বাংলাদেশি মাইনক্রাফট সার্ভারে হাইড অ্যান্ড সিক ইভেন্ট, পিভিপি এবং চ্যালেঞ্জ ভিডিও তৈরির জন্য পরিচিত।', contributions: ['Community server hide-and-seek events', 'Competitive Bangla SMP crossover episodes'] },
-  { id: 'cr-05', name: 'Miraz The Gamer & Play With Munna', handle: '@MirazTheGamer / @PlayWithMunna', category: 'Builders', verificationStatus: 'Public YouTube Index Record (#minecraftbangla)', subscriberBadge: 'Long-Form Bangla Vanilla Survival & Farm Builders', primaryPlatform: 'YouTube', channelUrl: 'https://www.youtube.com/hashtag/minecraftbangla', featuredVideoTitle: 'Panda Village in Minecraft Survival (Part 34) & Secret Iron Farm Builds in Bangla', bioEn: 'Dedicated episodic vanilla survival builders and technical farm creators teaching Bangladeshi players how to design mega-bases, villager halls, and automated iron farms in Bengali.', bioBn: 'দীর্ঘমেয়াদী ভ্যানিলা সারভাইভাল সিরিজ, পান্ডা ভিলেজ এবং অটোমেটেড আয়রন ফার্ম টিউটোরিয়াল নির্মাতা।', contributions: ['30+ episode Bangla survival world progression', 'Accessible farm engineering tutorials in Bengali'] },
-  { id: 'cr-06', name: 'Enderium, TARLOX & Sbj Gamerz', handle: '@Enderium / @TARLOX / @SbjGamerz', category: 'Educators', verificationStatus: 'Public YouTube Index Record (#minecraftbangladesh)', subscriberBadge: 'Hardcore Survival, Build Mechanics & Community Rewind Curators', primaryPlatform: 'YouTube', channelUrl: 'https://www.youtube.com/hashtag/minecraftbangladesh', featuredVideoTitle: 'Bangladeshi Minecraft Youtubers Rewind 2025 & Hardcore Survival Bangla Guides', bioEn: 'Representing the analytical, hardcore survival, and community-archiving wing of Bangladeshi Minecraft content—from high-retention base security tips in Bangla to annual community rewind compilations.', bioBn: 'হার্ডকোর সারভাইভাল, বেস সিকিউরিটি টিপস এবং বাংলাদেশি মাইনক্রাফট ইউটিউবারদের বার্ষিক রিওয়াইন্ড সংকলন নির্মাতা।', contributions: ['Curated Bangladeshi Minecraft Youtubers Rewind 2025', 'Viral Bengali base-defense and biome mechanics shorts'] },
-  { id: 'cr-07', name: 'Bangladesh Server Architects & Geyser Engineers (Archetype)', handle: 'Community Infrastructure Role', category: 'Server Owners', verificationStatus: 'Documented Community Ecosystem Role', subscriberBadge: 'Founders & Admins of BDZONE, Cyan Plex, BMS & Maven’s Hive', primaryPlatform: 'Discord & Server Networks', channelUrl: 'https://topminecraftservers.org/country/BD', featuredVideoTitle: 'BDIX / Singapore Velocity Proxy & GeyserMC Crossplay Engineering', bioEn: 'Behind every thriving Bangladeshi SMP or BedWars lobby stands a dedicated group of system administrators tuning PaperMC ticks, configuring GeyserMC for mobile parity, and mitigating DDoS attacks.', bioBn: 'বাংলাদেশের প্রতিটি সফল সার্ভারের পেছনে রয়েছেন দক্ষ সার্ভার ওনার ও ডেভেলপাররা, যারা জাভা ও বেডরক ক্রসপ্লে সচল রাখেন।', contributions: ['Sustained Bangladeshi multiplayer infrastructure since 2018', 'Crossplay accessibility for mobile players'] }
-];
-
-const INITIAL_BUILDS = [
-  { id: 'bld-01', titleEn: 'Jatiya Sangsad Bhaban — Brutalist Voxel Architectural Study', titleBn: 'জাতীয় সংসদ ভবন — ভক্সেল স্থাপত্য শৈলী', builder: 'DhakaVoxelAtelier (Curated Architectural Archetype)', edition: 'Java Edition 1.21 + WorldEdit', category: 'Builds Showcase', submissionDate: '2026-10-18', status: 'Verified Blueprint Showcase', coordinates: 'X: 237, Y: 72, Z: 903', palette: ['Smooth Quartz (42%)', 'Light Gray Concrete (28%)', 'Cyan Terracotta (14%)', 'Prismarine Basin (16%)'], descriptionEn: 'A 1:1.5 scale voxel study of Louis Kahn’s iconic National Parliament House in Sher-e-Bangla Nagar, Dhaka. Features octagonal concrete towers, triangular geometric light-cuts, and reflective artificial lake basins.', descriptionBn: 'শেরেবাংলা নগরে অবস্থিত লুই আই কানের নকশাকৃত জাতীয় সংসদ ভবনের জ্যামিতিক কাঠামো ও লেকের পানির প্রতিফলন নিয়ে নির্মিত একটি ভক্সেল স্থাপত্য।', artType: 'sangsad', likes: 148 },
-  { id: 'bld-02', titleEn: 'Somapura Mahavihara (Paharpur) Terracotta Monastery', titleBn: 'সোমপুর মহাবিহার (পাহাড়পুর) টেরাকোটা পুনর্নির্মাণ', builder: 'VarendraCraft_BD (Curated Architectural Archetype)', edition: 'Crossplay (Java + Bedrock Schematic)', category: 'Builds Showcase', submissionDate: '2026-09-29', status: 'Verified Blueprint Showcase', coordinates: 'X: -840, Y: 68, Z: 412', palette: ['Terracotta (38%)', 'Mud Bricks (34%)', 'Red Sandstone (18%)', 'Waxed Copper (10%)'], descriptionEn: 'Inspired by the 8th-century UNESCO World Heritage site in Naogaon, Bangladesh. Constructed using 1.19+ Mud Bricks and warm Terracotta gradients to replicate the cruciform central stupa and 177 monastic cells.', descriptionBn: 'নওগাঁর ঐতিহাসিক পাহাড়পুর বৌদ্ধ বিহারের আদলে মাড ব্রিকস এবং টেরাকোটা ব্লক দিয়ে নির্মিত একটি ঐতিহ্যবাহী মাইনক্রাফট প্রজেক্ট।', artType: 'paharpur', likes: 112 },
-  { id: 'bld-03', titleEn: 'Sundarbans Mangrove Delta & Kotka Watchtower Biome', titleBn: 'সুন্দরবন ম্যানগ্রোভ বনাঞ্চল ও কটকা ওয়াচটাওয়ার', builder: 'BengalTerraformer (Curated Biome Archetype)', edition: 'Java Edition + Complementary Unbound Shaders', category: 'Screenshots & Shaders', submissionDate: '2026-10-25', status: 'Verified Blueprint Showcase', coordinates: 'X: 1420, Y: 63, Z: -1190', palette: ['Mangrove Wood (35%)', 'Mangrove Roots (30%)', 'Packed Mud (25%)', 'Froglights (10%)'], descriptionEn: 'Custom riverine delta biome utilizing Minecraft’s Mangrove Swamp blocks to recreate tidal creeks, breathing pneumatophore roots, wooden forest department watchtowers, and country dinghy boats.', descriptionBn: 'মাইনক্রাফটের ম্যানগ্রোভ ব্লক, মাড এবং কাস্টম গাছের সমন্বয়ে তৈরি সুন্দরবনের খাল, শ্বাসমূল এবং কাঠের ওয়াচটাওয়ার।', artType: 'sundarbans', likes: 134 },
-  { id: 'bld-04', titleEn: 'Padma Multipurpose Bridge — Double-Deck Redstone Rail Span', titleBn: 'পদ্মা বহুমুখী সেতু — ডাবল-ডেক রেডস্টোন রেল লজিস্টিকস', builder: 'RedstonePadma_Eng (Curated Engineering Archetype)', edition: 'Bedrock & Java Compatible', category: 'Builds Showcase', submissionDate: '2026-10-04', status: 'Verified Blueprint Showcase', coordinates: 'X: 512, Y: 84, Z: 2022', palette: ['Deepslate Tiles (40%)', 'Iron Bars (25%)', 'Smooth Stone Slabs (25%)', 'Powered Rails (10%)'], descriptionEn: 'A 615-block scale engineering tribute featuring an upper four-lane ice-boat highway and a lower automated Redstone minecart rail deck connecting two SMP continents across a wide river biome.', descriptionBn: 'উপরের তলায় আইস-বোট হাইওয়ে এবং নিচের তলায় স্বয়ংক্রিয় রেডস্টোন মাইনকার্ট রেললাইনসহ নির্মিত পদ্মা সেতুর রেপ্লিকা।', artType: 'padma', likes: 167 },
-  { id: 'bld-05', titleEn: 'Puran Dhaka Shakrain Rooftop Kite Festival', titleBn: 'পুরান ঢাকার সাকরাইন ঘুড়ি উৎসব ও ছাদ স্থাপত্য', builder: 'OldDhakaBlocks (Curated Cultural Archetype)', edition: 'Bedrock Edition (Android)', category: 'Fan Art & Voxel Renders', submissionDate: '2026-11-02', status: 'Verified Blueprint Showcase', coordinates: 'X: 90, Y: 96, Z: 1700', palette: ['Brick Blocks (45%)', 'Sandstone Walls (25%)', 'Colorful Wool Kites (20%)', 'Lanterns (10%)'], descriptionEn: 'Built on Android Bedrock Edition, capturing the densely packed heritage rooftops of Old Dhaka during the winter Shakrain festival with colorful wool kites suspended in the sky.', descriptionBn: 'মোবাইলে বেডরক এডিশনে নির্মিত পুরান ঢাকার ঘনবসতিপূর্ণ ছাদ এবং আকাশে রঙিন সাকরাইন ঘুড়ির উৎসব।', artType: 'shakrain', likes: 98 }
-];
-
-const LEARNING_GUIDES = [
-  { id: 'guide-01', category: 'Beginner Core', titleEn: '1. Minecraft Basics & Surviving Your First Night', titleBn: '১. মাইনক্রাফটের মূল ধারণা ও প্রথম রাত টিকে থাকার গাইড', readTime: '6 min read', summaryEn: 'Master resource gathering, crafting table essentials, light-level mob spawning rules, and shelter construction before your first sunset.', summaryBn: 'প্রথম সূর্যাস্তের আগে কাঠ সংগ্রহ, ক্রাফটিং টেবিল তৈরি, টর্চের আলো এবং নিরাপদ শেল্টার তৈরির সম্পূর্ণ গাইড।', contentEn: ['Punching Trees to Wooden Pickaxe: Collect 4–5 logs immediately, convert to Planks, craft a Crafting Table, and make ONLY a Wooden Pickaxe first—mine 3 Cobblestone immediately to upgrade to Stone tools.', 'Food & Wool Priority: Locate 3 sheep of matching wool colors during daylight to craft a Bed (3 Wool + 3 Planks). Sleeping skips the night and sets your Respawn Point.', 'Light Level Rules (1.18+): Hostile mobs (Zombies, Skeletons, Creepers) only spawn in complete block-light darkness (Light Level 0). Place Torches (1 Coal/Charcoal + 1 Stick) around your shelter perimeter.'], contentBn: ['কাঠ থেকে পাথরের যন্ত্রপাতি: শুরুতে ৪-৫টি গাছের গুঁড়ি সংগ্রহ করে ক্রাফটিং টেবিল ও শুধুমাত্র একটি কাঠের পিকঅ্যাক্স বানান। এরপর ৩টি পাথর (Cobblestone) ভেঙে সাথে সাথে স্টোন পিকঅ্যাক্স ও কুড়াল তৈরি করুন।', 'খাবার ও বিছানা (Bed): দিনের আলো থাকতেই ৩টি ভেড়ার উল এবং ৩টি কাঠের তক্তা দিয়ে একটি বিছানা তৈরি করুন। রাতে ঘুমালে মনস্টার স্পন এড়ানো যায় এবং রেসপন পয়েন্ট সেট হয়।', 'আলোর নিয়ম (Light Level 0): মাইনক্রাফট ১.১৮+ সংস্করণে সম্পূর্ণ অন্ধকারে (লাইট লেভেল ০) জম্বি বা ক্রিপার স্পন হয়। কয়লা বা কাঠকয়লা (Charcoal) দিয়ে টর্চ বানিয়ে চারপাশ আলোকিত রাখুন।'], proTip: 'If you cannot find coal on Day 1, smelt Oak/Mango logs inside a Furnace using wooden planks as fuel to produce Charcoal for torches.' },
-  { id: 'guide-02', category: 'Edition Comparison', titleEn: '2. Java vs. Bedrock Edition in Bangladesh (PC & Mobile Matrix)', titleBn: '২. জাভা বনাম বেডরক এডিশন: পিসি ও মোবাইল তুলনামূলক গাইড', readTime: '8 min read', summaryEn: 'Understand the architectural differences between Java Edition (PC) and Bedrock Edition (Android/iOS/Windows 10/11) and how GeyserMC bridges both in Bangladesh.', summaryBn: 'পিসির জাভা এডিশন এবং মোবাইলের বেডরক এডিশনের পার্থক্য ও বাংলাদেশে GeyserMC ক্রসপ্লে কীভাবে কাজ করে তার বিস্তারিত ব্যাখ্যা।', contentEn: ['Java Edition (PC/Mac/Linux): Written in Java. Features the deepest modding ecosystem (Fabric, Sodium, Iris Shaders), 1.9+ weapon cooldown combat, quasi-connectivity Redstone, and left-hand offhand freedom.', 'Bedrock Edition (Android, iOS, Windows, Console): Written in C++. Runs smoothly on budget laptops and smartphones across Bangladesh, supports controller/touch input, and uses Xbox Live friend invites.', 'The Bangladesh Crossplay Standard (GeyserMC): Almost all major Bangladeshi servers (BDZONE, Cyan Plex, BMS, Maven’s Hive) run a Java backend equipped with GeyserMC + Floodgate so Android Bedrock players can join using port 19132.'], contentBn: ['জাভা এডিশন (পিসি/ল্যাপটপ): এতে রয়েছে ফ্যাব্রিক মড, সোডিয়াম এফপিএস বুস্টার, শেডার্স এবং উন্নত রেডস্টোন মেকানিক্স। পিসি গেমারদের কাছে এটি সবচেয়ে জনপ্রিয়।', 'বেডরক এডিশন (অ্যান্ড্রয়েড মোবাইল ও উইন্ডোজ): সি++ ভাষায় তৈরি হওয়ায় কম র‍্যামের মোবাইল ও বাজেট পিসিতেও অত্যন্ত মসৃণভাবে চলে। বাংলাদেশে মোবাইল প্লেয়ারের সংখ্যা সবচেয়ে বেশি।', 'ক্রসপ্লে সুবিধা (GeyserMC): বাংলাদেশের প্রধান সার্ভারগুলোতে GeyserMC প্লাগইন যুক্ত থাকায় পিসি (Java) এবং মোবাইল (Bedrock) প্লেয়াররা একই সার্ভারে একসাথে খেলতে পারে।'], proTip: 'When buying Minecraft on PC today, the official "Minecraft: Java & Bedrock Edition for PC" bundle includes BOTH editions for a single purchase.' },
-  { id: 'guide-03', category: 'Networking & Servers', titleEn: '3. Joining Multiplayer & Optimizing Ping from Bangladesh (BDIX vs SG)', titleBn: '৩. মাল্টিপ্লেয়ার সার্ভারে যুক্ত হওয়া এবং পিং (Ping) কমানোর উপায়', readTime: '7 min read', summaryEn: 'Step-by-step instructions for connecting to Java and Bedrock servers, configuring Port 19132, and understanding BDIX (<10ms) vs Singapore (~50ms) routing.', summaryBn: 'জাভা ও বেডরক সার্ভারে আইপি ও পোর্ট দিয়ে যুক্ত হওয়ার নিয়ম এবং বাংলাদেশ থেকে কম পিং পাওয়ার নেটওয়ার্কিং টিপস।', contentEn: ['Java Edition Connection: Open Multiplayer -> Add Server -> Enter the Server Address (e.g., `play.bdzonemc.com` or `play.cyanplex.net`). Default port 25565 is automatic unless a custom port like `:5555` is specified.', 'Bedrock Edition (Mobile) Connection: Go to Play -> Servers tab -> Scroll to bottom -> Add Server. Enter the Bedrock IP (often starts with `pe.` or matches the main domain) and verify the Port (default is `19132`, though some servers use custom ports like `19035`).', 'Latency & Routing in Bangladesh: Servers hosted on local BDIX peering deliver 2ms–15ms ping inside Bangladesh. Servers hosted in Singapore data centers deliver 45ms–70ms on good ISP routes. If your ping spikes above 180ms to Singapore, switch DNS to `1.1.1.1`.'], contentBn: ['জাভা এডিশনে যুক্ত হওয়ার নিয়ম: Multiplayer > Add Server-এ গিয়ে সার্ভার আইপি (যেমন `play.bdzonemc.com`) লিখুন। পোর্ট ২৫৫৬৫ হলে আলাদা করে লিখতে হয় না।', 'বেডরক বা মোবাইলে যুক্ত হওয়ার নিয়ম: Play > Servers > Add Server-এ গিয়ে সার্ভারের বেডরক আইপি এবং সঠিক পোর্ট (সাধারণত `19132` অথবা সার্ভারের নির্দিষ্ট পোর্ট) বসিয়ে যুক্ত হোন।', 'পিং ও বিডিআইএক্স (BDIX) রাউটিং: দেশীয় BDIX সার্ভারে পিং থাকে ৫-১৫ মিলিসেকেন্ড এবং সিঙ্গাপুর সার্ভারে ৪৫-৭০ মিলিসেকেন্ড। পিং বেশি হলে ক্লাউডফ্লেয়ার DNS (`1.1.1.1`) ব্যবহার করুন।'], proTip: 'Use BLOCKBANGLA’s Live Server Status Inspector in the Server Directory tab to verify if a server is online before launching your game.' },
-  { id: 'guide-04', category: 'Account Safety', titleEn: '4. Buying Official Minecraft Safely in Bangladesh & Avoiding Malware', titleBn: '৪. বাংলাদেশে বৈধভাবে মাইনক্রাফট কেনা এবং ম্যালওয়্যার থেকে সুরক্ষা', readTime: '6 min read', summaryEn: 'How Bangladeshi players purchase legitimate accounts using passport-endorsed dual-currency cards or Google Play, and why sketchy third-party launchers pose security risks.', summaryBn: 'ডুয়াল কারেন্সি কার্ডের মাধ্যমে বৈধ অ্যাকাউন্ট কেনা এবং আনঅফিসিয়াল বা ক্ষতিকর লঞ্চার থেকে পিসি ও আইডি নিরাপদ রাখার গাইড।', contentEn: ['Official Purchase Methods in BD: Any Bangladeshi bank debit/credit card (or prepaid virtual card) endorsed with a Passport for international e-commerce can buy Minecraft directly from `minecraft.net` or Microsoft Store.', 'Avoid "Cheap Alt Account" Scams: Facebook pages selling "৳২০০ ফুল অ্যাক্সেস অ্যাকাউন্ট" often peddle stolen or game-pass-trial accounts that get revoked within 30 days.', 'Open-Source Launcher Hygiene: Use reputable open-source launchers such as Prism Launcher or Modrinth App, and never enter your Microsoft password into unverified executables.'], contentBn: ['অফিসিয়াল অ্যাকাউন্ট কেনার নিয়ম: পাসপোর্ট এন্ডোর্সমেন্ট করা যেকোনো বাংলাদেশি ব্যাংকের ডুয়াল-কারেন্সি কার্ড দিয়ে সরাসরি `minecraft.net` বা গুগল প্লে স্টোর থেকে বৈধভাবে মাইনক্রাফট কেনা যায়।', 'সস্তা অ্যাকাউন্ট প্রতারণা থেকে সাবধান: ফেসবুকে অতি অল্প দামে "ফুল অ্যাক্সেস" নামে বিক্রি হওয়া চুরি করা বা ট্রায়াল অ্যাকাউন্ট কিনবেন না—এগুলো কিছুদিন পর বন্ধ হয়ে যায়।', 'ম্যালওয়্যার সুরক্ষা: অজানা ওয়েবসাইট থেকে `.exe` ফাইল বা আনভেরিফায়েড মড ডাউনলোড করবেন না। সর্বদা Modrinth বা CurseForge থেকে মড ব্যবহার করুন।'], proTip: 'Enable Microsoft Two-Factor Authentication (2FA) via the Microsoft Authenticator app immediately after setting up your official account.' },
-  { id: 'guide-05', category: 'Survival & Farms', titleEn: '5. Survival Progression, Villager Trading & Automated Iron Farms', titleBn: '৫. সারভাইভাল প্রগ্রেশন, ভিলেজার ট্রেডিং ও অটোমেটেড আয়রন ফার্ম', readTime: '9 min read', summaryEn: 'Transition from diamond mining to infinite Mending books, cured villager discounts, and high-efficiency iron/food automation.', summaryBn: 'ডায়মন্ড মাইনিং থেকে শুরু করে মেন্ডিং (Mending) এনচ্যান্টমেন্ট এবং স্বয়ংক্রিয় আয়রন ফার্ম তৈরির কৌশল।', contentEn: ['Librarian Lectern Cycling: Place an unemployed Villager in a secure 1x1 booth and place/break a Lectern in front of them BEFORE trading once until they offer Mending, Unbreaking III, or Fortune III.', 'Iron Farm Mechanics: In Java Edition, 3 Villagers who have slept recently and get panicked by a named Zombie will spawn an Iron Golem every ~35 seconds. In Bedrock Edition, Iron Farms require at least 10 Villagers linked to 20 Beds.', 'Nether Roof & Fast Travel: Every 1 block traveled in the Nether equals 8 blocks in the Overworld.'], contentBn: ['লাইব্রেরিয়ান লেকটার্ন কৌশল: কোনো ট্রেড করার আগে ভিলেজারের সামনে লেকটার্ন (Lectern) বসিয়ে ও ভেঙে Mending বা Fortune III বই বেছে নিন।', 'আয়রন ফার্মের পার্থক্য: জাভা এডিশনে ৩ জন ভিলেজার ও ১টি জম্বি দিয়ে আয়রন ফার্ম কাজ করে, কিন্তু বেডরক এডিশনে কমপক্ষে ১০ জন কর্মরত ভিলেজার ও ২০টি বিছানা প্রয়োজন হয়।', 'নেদার পোর্টাল ফাস্ট ট্রাভেল: নেদারে ১ ব্লক মানে ওভারওয়ার্ল্ডে ৮ ব্লক।'], proTip: 'Check whether your Bangladeshi SMP server uses Java mechanics or PaperMC/Purpur villager optimization plugins before building ultra-stacked iron farms.' },
-  { id: 'guide-06', category: 'Engineering', titleEn: '6. Redstone Engineering Basics & Lag-Friendly Circuits', titleBn: '৬. রেডস্টোন ইঞ্জিনিয়ারিংয়ের মূলসূত্র ও ল্যাগ-মুক্ত সার্কিট', readTime: '8 min read', summaryEn: 'Learn strong vs. weak power, Redstone Repeaters, Comparators, Observers, and how to build circuits that won’t get disabled by SMP admins.', summaryBn: 'রেডস্টোন রিপিটার, কম্প্যারেটর, অবজারভারের কাজ এবং মাল্টিপ্লেয়ার সার্ভারে ল্যাগ ছাড়াই অটোমেটিক সিস্টেম তৈরির নিয়ম।', contentEn: ['Signal Strength (0 to 15): Redstone Dust carries power up to 15 blocks, losing 1 level per block. Use a Redstone Repeater to refresh the signal back to 15.', 'Comparators & Containers: A Redstone Comparator placed behind a Chest, Hopper, or Crafter outputs a signal proportional to how full the container is.', 'Server TPS Etiquette: Place a Composter on top of every exposed Hopper line to drastically reduce server CPU lag!'], contentBn: ['সিগন্যাল ক্ষমতা (০-১৫): রেডস্টোন ডাস্ট ১৫ ব্লক পর্যন্ত সিগন্যাল বহন করে। সিগন্যাল পুনরায় ১৫-তে নিতে রিপিটার (Repeater) ব্যবহার করা হয়।', 'কম্প্যারেটর ও আইটেম সর্টার: চেস্ট বা হপারের ভেতরে কতটুকু আইটেম আছে তা পরিমাপ করতে কম্প্যারেটর ব্যবহৃত হয়।', 'সার্ভার ল্যাগ কমানোর টিপস: খোলা হপারের (Hopper) ওপর একটি করে কম্পোস্টার (Composter) বসিয়ে দিলে সার্ভারের টিপিএস (TPS) ভালো থাকে।'], proTip: 'In Minecraft 1.21+, the Crafter block lets you automate crafting recipes using pulsing Redstone signals!' },
-  { id: 'guide-07', category: 'Architecture', titleEn: '7. Bengal Heritage Block Palettes & Architectural Texturing', titleBn: '৭. বাংলার ঐতিহ্যবাহী স্থাপত্য ও ব্লক প্যালেট গাইড', readTime: '7 min read', summaryEn: 'Curated block combinations for recreating Bangladeshi terracotta temples, Mughal forts, brutalist concrete landmarks, and lush delta landscapes.', summaryBn: 'বাংলার টেরাকোটা মন্দির, মুঘল দুর্গ, সংসদ ভবন এবং নদীমাতৃক গ্রাম তৈরির জন্য সেরা ব্লক কম্বিনেশন।', contentEn: ['Paharpur & Kantajew Terracotta Palette: Base of `Mud Bricks` + `Terracotta` + `Bricks`, accented with `Red Sandstone Stairs`, `Jungle Trapdoors`, and `Waxed Exposed Cut Copper`.', 'Sangsad Bhaban Brutalist Concrete Palette: Gradient from `Tuff Bricks` at the water line up through `Andesite`, `Light Gray Concrete Powder`, and `Smooth Quartz`.', 'Rural Bengal Tin-Shed & Bamboo Homestead: Use `Bamboo Mosaic`, `Stripped Mangrove Wood` stilts, and `Weathered Copper` roofs.'], contentBn: ['টেরাকোটা ও প্রাচীন বিহার প্যালেট: মাড ব্রিকস (Mud Bricks), সাধারণ ব্রিকস, টেরাকোটা এবং রেড স্যান্ডস্টোন সিঁড়ি ব্যবহার করে পাহাড়পুর বা কান্তজিউ মন্দিরের কারুকাজ ফুটিয়ে তোলা যায়।', 'সংসদ ভবন কংক্রিট প্যালেট: অ্যান্ডেসাইট, লাইট গ্রে কংক্রিট পাউডার এবং স্মুথ কোয়ার্টজের গ্রেডিয়েন্ট ব্যবহার করলে লুই কানের স্থাপত্যের বাস্তবসম্মত রূপ পাওয়া যায়।', 'গ্রামবাংলার টিনের ঘর ও বাঁশঝাড়: ব্যাম্বু মোজাইক, ম্যানগ্রোভ কাঠের খুঁটি এবং কপার স্ল্যাব দিয়ে গ্রামের টিনের চালা তৈরি করা যায়।'], proTip: 'Never build large walls with a single flat block type—mix 3 blocks of similar color temperature for cinematic texture.' },
-  { id: 'guide-08', category: 'Combat & PvP', titleEn: '8. PvP Combat Mastery: 1.8 BedWars vs. 1.20+ Sword & Crystal Tiers', titleBn: '৮. পিভিপি (PvP) কমব্যাট গাইড: ১.৮ বেডওয়ার্স বনাম ১.২০+ মেকানিক্স', readTime: '8 min read', summaryEn: 'How to master sprint-resetting (W-Tap), hit-selecting on 55ms Bangladeshi ping, shield breaking, and modern End Crystal positioning.', summaryBn: 'বাংলাদেশ থেকে ৫০-৬০ পিংয়ে কীভাবে স্প্রিন্ট-রিসেট (W-Tap), হিট-সিলেক্ট এবং শিল্ড ব্রেকিংয়ে দক্ষ হবেন তার কৌশল।', contentEn: ['Sprint Resetting (W-Tap & S-Tap): The first hit delivered while sprinting deals massive bonus knockback. Briefly release and re-press `W` after every hit.', 'Playing Smart on 50ms–65ms Ping: Use "Hit-Selecting" to turn opponent knockback into a mid-air double-hit combo.', '1.9+ / 1.21 Cooldown Combat: Watch your crosshair attack indicator! Pair an Axe (to disable enemy Shields for 5 seconds) with timed Crit-Chains.'], contentBn: ['স্প্রিন্ট রিসেট (W-Tap): দৌড়ানো অবস্থায় প্রথম আঘাতে সবচেয়ে বেশি নকব্যাক (Knockback) পাওয়া যায়। প্রতিবার হিট করার পর মুহূর্তের জন্য `W` ছেড়ে আবার চাপুন।', '৫০-৬৫ পিংয়ে খেলার কৌশল: স্ট্রেফিং এবং হিট-সিলেক্টিং কৌশল ব্যবহার করলে বেশি পিংয়েও সহজেই ডুয়েল জেতা সম্ভব।', '১.৯+ আধুনিক কমব্যাট: ক্রসহেয়ারের নিচে অ্যাটাক ইন্ডিকেটর পূর্ণ না হওয়া পর্যন্ত আঘাত করবেন না।'], proTip: 'Practice both 1.8.9 BedWars bridging and 1.20+ Duels on Bangladeshi servers like BDZONE and Cyan Plex.' },
-  { id: 'guide-09', category: 'Commands Reference', titleEn: '9. Essential Minecraft Commands & WorldEdit Cheat Sheet', titleBn: '৯. প্রয়োজনীয় মাইনক্রাফট কমান্ড এবং ওয়ার্ল্ড-এডিট চিট শিট', readTime: '5 min read', summaryEn: 'Use the interactive command table below to copy singleplayer, SMP admin, and creative building commands in one click.', summaryBn: 'সিঙ্গেলপ্লেয়ার, সার্ভার অ্যাডমিন এবং ক্রিয়েটিভ বিল্ডিংয়ের জন্য সবচেয়ে গুরুত্বপূর্ণ কমান্ডগুলো এক ক্লিকে কপি করুন।', contentEn: ['Gamerules are case-sensitive in Java Edition! Always type `/gamerule keepInventory true` with a capital `I`.', 'Use `/locate structure` or `/locate biome` in test worlds to quickly find Trial Chambers, Ancient Cities, or Mangrove Swamps.', 'For SMP owners using Spark profiler: `/spark tps` and `/spark profiler` are the gold standard for diagnosing server tick lag.'], contentBn: ['জাভা এডিশনে গেমরুল কমান্ড লেখার সময় বড় হাতের অক্ষরের দিকে খেয়াল রাখুন—যেমন `/gamerule keepInventory true`-তে `I` বড় হাতের হবে।', 'নতুন স্ট্রাকচার বা বায়োম খুঁজে পেতে `/locate structure` বা `/locate biome` কমান্ডটি অত্যন্ত কার্যকর।', 'সার্ভারের ল্যাগ পরীক্ষা করার জন্য অ্যাডমিনরা `/spark tps` কমান্ড ব্যবহার করতে পারেন।'], proTip: 'Scroll down inside this section to use the Interactive Command Search & One-Click Copy Table!' },
-  { id: 'guide-10', category: 'Server Administration', titleEn: '10. Hosting a Bangladeshi SMP: PaperMC, Geyser & Security', titleBn: '১০. বাংলাদেশি এসএমপি সার্ভার হোস্টিং ও নিরাপত্তা গাইড', readTime: '9 min read', summaryEn: 'Architecture blueprint for launching a safe, lag-free Java + Bedrock SMP for Bangladeshi players without getting griefed.', summaryBn: 'হ্যাকার ও গ্রিফারমুক্ত নিরাপদ জাভা + বেডরক এসএমপি সার্ভার তৈরি ও পরিচালনার সম্পূর্ণ গাইড।', contentEn: ['Server Software Stack: Use `PaperMC` or `Purpur` for 3x better tick performance, paired with `Geyser-Spigot` and `Floodgate` so mobile Bedrock players can join.', 'Securing Offline/Crossplay Networks: Install an authentication plugin (`AuthMeReloaded` or `LibreLogin` on Velocity) AND lock backend sub-servers behind a firewall (`BungeeGuard` / Velocity modern forwarding).', 'CoreProtect Rollbacks: Always install `CoreProtect` on Day 1. `/co rollback u:<username> t:2h r:30` restores every block in seconds.'], contentBn: ['সার্ভার সফটওয়্যার নির্বাচন: ভালো পারফরম্যান্সের জন্য ভ্যানিলা জার ফাইলের বদলে `PaperMC` বা `Purpur` ব্যবহার করুন এবং মোবাইল প্লেয়ারদের জন্য `GeyserMC` ও `Floodgate` যুক্ত করুন।', 'লগইন নিরাপত্তা: অফলাইন বা ক্র্যাকড মোড চালু থাকলে অবশ্যই `LibreLogin` বা `AuthMe` প্লাগইন এবং `BungeeGuard` ফায়ারওয়াল ব্যবহার করুন।', 'গ্রিফিং রোধে CoreProtect: সার্ভারে প্রথম দিন থেকেই `CoreProtect` প্লাগইন রাখুন।'], proTip: 'Schedule automated daily off-site backups to cloud storage so hardware failures never erase your community’s history.' }
-];
-
-const COMMANDS_CHEATSHEET = [
-  { cmd: '/gamerule keepInventory true', edition: 'Java & Bedrock', purposeEn: 'Players keep all items and XP upon death.', purposeBn: 'মৃত্যুর পরও ইনভেন্টরির সব আইটেম ও এক্সপি অক্ষত থাকে।' },
-  { cmd: '/tp @s ~ ~10 ~', edition: 'Java & Bedrock', purposeEn: 'Teleports yourself 10 blocks straight up using relative coordinates.', purposeBn: 'নিজের বর্তমান অবস্থান থেকে ১০ ব্লক উপরে টেলিপোর্ট করে।' },
-  { cmd: '/locate structure minecraft:trial_chambers', edition: 'Java 1.21+', purposeEn: 'Finds coordinates of the nearest Trial Chambers.', purposeBn: 'সবচেয়ে কাছের ট্রায়াল চেম্বারের স্থানাঙ্ক (Coordinates) খুঁজে বের করে।' },
-  { cmd: '/locate biome minecraft:mangrove_swamp', edition: 'Java & Bedrock', purposeEn: 'Finds the nearest Mangrove Swamp (Sundarbans style biome).', purposeBn: 'কাছাকাছি ম্যানগ্রোভ সোয়াম্প বায়োম খুঁজে বের করে।' },
-  { cmd: '/effect give @p minecraft:night_vision infinite 1 true', edition: 'Java 1.19.4+', purposeEn: 'Grants permanent Night Vision without particle bubbles.', purposeBn: 'পার্টিকেল ছাড়া অনির্দিষ্টকালের জন্য নাইট ভিশন দেয়।' },
-  { cmd: '/gamerule doDaylightCycle false', edition: 'Java & Bedrock', purposeEn: 'Freezes the sun/moon at the current time (ideal for building).', purposeBn: 'দিনের বা রাতের সময় স্থির করে রাখে (বিল্ডিংয়ের জন্য আদর্শ)।' },
-  { cmd: '//wand', edition: 'WorldEdit Plugin', purposeEn: 'Gives the Wooden Axe selection wand for WorldEdit regions.', purposeBn: 'ওয়ার্ল্ড-এডিট এরিয়া সিলেক্ট করার জন্য কাঠের কুড়াল প্রদান করে।' },
-  { cmd: '//replace grass_block mud_bricks,terracotta', edition: 'WorldEdit Plugin', purposeEn: 'Replaces grass in selection with a 50/50 mix of Mud Bricks & Terracotta.', purposeBn: 'সিলেক্ট করা স্থানের ঘাস বদলে মাড ব্রিকস ও টেরাকোটার মিশ্রণ বসায়।' },
-  { cmd: '/co inspect', edition: 'CoreProtect SMP', purposeEn: 'Toggles block inspector mode to see who placed or broke a block.', purposeBn: 'কোন ব্লকটি কে ভেঙেছে বা বসিয়েছে তা দেখার ইন্সপেক্টর মোড চালু করে।' }
-];
-
-const NEWS_ARTICLES = [
-  { id: 'news-01', stream: 'BANGLADESH COMMUNITY', badge: 'ARCHIVAL INITIATIVE', date: 'November 8, 2026', titleEn: 'BLOCKBANGLA Launches Open Oral History Vault for 2011–2016 Bangladeshi Minecraft Screenshots', titleBn: '২০১১–২০১৬ সালের পুরনো মাইনক্রাফট স্মৃতি ও স্ক্রিনশট সংরক্ষণে ব্লকবাংলার বিশেষ উদ্যোগ', author: 'BLOCKBANGLA Digital History Desk', sourceName: 'BLOCKBANGLA Archival Charter', sourceUrl: 'INTERNAL:legacy', summaryEn: 'As part of our commitment to strict historical accuracy, BLOCKBANGLA invites veteran Bangladeshi players from the early Beta, Hamachi, and first Facebook group eras to submit dated screenshots, server logs, and memories.', summaryBn: 'বাংলাদেশের মাইনক্রাফট ইতিহাসের প্রামাণ্য দলিল সংরক্ষণের লক্ষ্যে ২০১১-২০১৬ সালের পুরনো প্লেয়ারদের কাছ থেকে স্ক্রিনশট ও স্মৃতিকথা আহ্বান করা হচ্ছে।', fullBodyEn: 'Many of the earliest chapters of Minecraft in Bangladesh happened inside ephemeral Hamachi networks, university dorm LANs, and early Facebook groups between 2011 and 2016. Rather than inventing founding dates or crowning unverified "firsts", BLOCKBANGLA’s Digital Museum tags every claim with its exact epistemic confidence level.' },
-  { id: 'news-02', stream: 'BANGLADESH COMMUNITY', badge: 'ECOSYSTEM MILESTONE', date: 'November 2026', titleEn: '#minecraftbangla Surpasses 19,000 Videos Across 3,600+ YouTube Channels', titleBn: 'ইউটিউবে #minecraftbangla হ্যাশট্যাগে ৩,৬০০+ চ্যানেলে ১৯ হাজার ভিডিওর মাইলফলক', author: 'Creator Telemetry Report', sourceName: 'YouTube Public Hashtag Index (#minecraftbangla)', sourceUrl: 'https://www.youtube.com/hashtag/minecraftbangla', summaryEn: 'Public YouTube hashtag aggregation in November 2026 confirms over 19K videos under #minecraftbangla and 4.9K+ videos under #minecraftbangladesh, reflecting vibrant grassroots content creation across Bangladesh.', summaryBn: 'নভেম্বর ২০২৬-এর পাবলিক ইউটিউব পরিসংখ্যান অনুযায়ী #minecraftbangla হ্যাশট্যাগে ১৯ হাজারেরও বেশি এবং #minecraftbangladesh হ্যাশট্যাগে ৪.৯ হাজারেরও বেশি ভিডিও প্রকাশিত হয়েছে।', fullBodyEn: 'From early Bandicam survival episodes recorded on dual-core PCs a decade ago to high-production Hardcore challenges, GeyserMC server events, and annual community rewinds in 2025–2026, Bengali-language Minecraft content creation continues to expand rapidly.' },
-  { id: 'news-03', stream: 'BANGLADESH COMMUNITY', badge: 'INFRASTRUCTURE STANDARD', date: 'October 28, 2026', titleEn: 'Real-Time Server Telemetry Standard: Ending Fake Player Counts in Directory Listings', titleBn: 'সার্ভার ডিরেক্টরিতে রিয়েল-টাইম এপিআই যাচাইকরণ: ভুয়া প্লেয়ার কাউন্টের অবসান', author: 'BLOCKBANGLA Engineering Team', sourceName: 'mcsrvstat.us & mcstatus.io Protocol', sourceUrl: 'INTERNAL:servers', summaryEn: 'Every server in the BLOCKBANGLA Directory connects directly to live public Minecraft query APIs so players can inspect real-time online status, version compatibility, and MOTD before joining.', summaryBn: 'ব্লকবাংলার সার্ভার ডিরেক্টরিতে যুক্ত করা হয়েছে সরাসরি লাইভ স্ট্যাটাস ইন্সপেক্টর, যা কোনো অনুমান ছাড়াই সার্ভারের প্রকৃত অনলাইন স্ট্যাটাস ও প্লেয়ার সংখ্যা প্রদর্শন করে।', fullBodyEn: 'Static server lists often leave stale or inflated player numbers up for months. BLOCKBANGLA enforces strict separation between community directory metadata and live network telemetry.' },
-  { id: 'news-04', stream: 'OFFICIAL GLOBAL MINECRAFT', badge: 'MOJANG STUDIOS DISPATCH', date: '2025 – 2026 Cadence', titleEn: 'Minecraft Game Drops, Bundles of Bravery, The Garden Awakens & Cross-Edition Parity', titleBn: 'মাইনক্রাফট অফিশিয়াল আপডেট: গেম ড্রপস, বান্ডেল ও জাভা-বেডরক প্যারিটি', author: 'Mojang Studios (Official Global Reference)', sourceName: 'Minecraft.net Official Newsroom', sourceUrl: 'https://www.minecraft.net/en-us/articles', summaryEn: 'Mojang Studios’ shift toward more frequent thematic Game Drops throughout the year brings steady blocks, Pale Garden atmosphere, Crafter automation, and deeper parity between Java and Bedrock.', summaryBn: 'মোজ্যাং স্টুডিওসের নিয়মিত গেম ড্রপ আপডেটের মাধ্যমে নতুন ব্লক, পেল গার্ডেন বায়োম, বান্ডেল এবং জাভা ও বেডরক সংস্করণের মধ্যে আরও সামঞ্জস্য যুক্ত হয়েছে।', fullBodyEn: 'Official global Minecraft updates are tracked separately from Bangladesh announcements to maintain clear provenance.' },
-  { id: 'news-05', stream: 'BANGLADESH COMMUNITY', badge: 'CULTURAL & SERVER MILESTONE', date: 'October 23, 2026', titleEn: 'BD ZONE Survival Season 6, Shuvo Noboborsho १४३३ & International Mother Language Day Tributes', titleBn: 'বিডিজোন সিজন ৬, শুভ নববর্ষ ১৪৩৩ এবং আন্তর্জাতিক মাতৃভাষা দিবস ও বিজয় দিবস উদযাপন', author: 'BD ZONE & Community Cultural Desk', sourceName: 'bdzonemc.com/blog', sourceUrl: 'https://bdzonemc.com/blog', summaryEn: 'Documenting how Bangladeshi servers celebrate national cultural milestones—including 21 February (International Mother Language Day), Pohela Boishakh (Shuvo Noboborsho), 16 December Victory Day, and BD ZONE’s 8th Anniversary.', summaryBn: '২১শে ফেব্রুয়ারি আন্তর্জাতিক মাতৃভাষা দিবস, পহেলা বৈশাখ (শুভ নববর্ষ ১৪৩৩), ১৬ই ডিসেম্বর মহান বিজয় দিবস এবং BD ZONE-এর ৮ম বর্ষপূর্তি উদযাপনের প্রামাণ্য আর্কাইভ।', fullBodyEn: 'Bangladeshi Minecraft communities uniquely blend global sandbox gameplay with national heritage—hosting in-game Shaheed Minar tributes on 21 February, Boishakhi fairs in April, and Victory Day build events every December.' }
-];
-
-// ============================================================================
-// 2. CUSTOM ORIGINAL SVG ARTWORKS (LOGO + HERO VOXEL BANGLADESH LANDSCAPE)
-// ============================================================================
 
 const BlockBanglaLogo = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 select-none" aria-label="BLOCKBANGLA Original Voxel Shapla Emblem">
-    <defs>
-      <linearGradient id="bbTopGrass" x1="12" y1="8" x2="52" y2="32" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#34D399" /><stop offset="100%" stopColor="#10B981" /></linearGradient>
-      <linearGradient id="bbLeftTerracotta" x1="8" y1="22" x2="32" y2="58" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#D97706" /><stop offset="100%" stopColor="#92400E" /></linearGradient>
-      <linearGradient id="bbRightRiver" x1="32" y1="22" x2="56" y2="58" gradientUnits="userSpaceOnUse"><stop offset="0%" stopColor="#06B6D4" /><stop offset="100%" stopColor="#0F766E" /></linearGradient>
-    </defs>
-    <polygon points="32,6 56,19 32,32 8,19" fill="url(#bbTopGrass)" stroke="#052E16" strokeWidth="1.5" />
-    <polygon points="8,19 32,32 32,58 8,45" fill="url(#bbLeftTerracotta)" stroke="#052E16" strokeWidth="1.5" />
-    <polygon points="32,32 56,19 56,45 32,58" fill="url(#bbRightRiver)" stroke="#052E16" strokeWidth="1.5" />
-    <polygon points="8,19 16,23.3 16,28 8,23.7" fill="#10B981" />
-    <polygon points="24,27.6 32,32 32,37 24,32.6" fill="#059669" />
-    <polygon points="32,32 40,27.6 40,33 32,37.3" fill="#10B981" />
-    <polygon points="48,23.3 56,19 56,24 48,28.3" fill="#34D399" />
-    <circle cx="32" cy="19" r="5.5" fill="#EF4444" stroke="#FEF2F2" strokeWidth="1.2" />
-    <polygon points="32,10 35,17 32,21 29,17" fill="#FBBF24" />
-    <polygon points="24,15 30,17 29,21 23,19" fill="#FDE68A" />
-    <polygon points="40,15 34,17 35,21 41,19" fill="#FDE68A" />
-    <polyline points="8,19 32,32 56,19" stroke="#A7F3D0" strokeWidth="1.2" strokeOpacity="0.6" />
-    <line x1="32" y1="32" x2="32" y2="58" stroke="#A7F3D0" strokeWidth="1.2" strokeOpacity="0.5" />
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 select-none" role="img" aria-label="BLOCKBANGLA logo">
+    <polygon points="32,6 56,19 32,32 8,19" fill="#1E5138" stroke="#183326" strokeWidth="1.5" />
+    <polygon points="8,19 32,32 32,58 8,45" fill="#A94F32" stroke="#183326" strokeWidth="1.5" />
+    <polygon points="32,32 56,19 56,45 32,58" fill="#E8E4D8" stroke="#183326" strokeWidth="1.5" />
+    <polygon points="8,19 16,23.3 16,28 8,23.7" fill="#2D6849" />
+    <polygon points="24,27.6 32,32 32,37 24,32.6" fill="#1E5138" />
+    <polygon points="32,32 40,27.6 40,33 32,37.3" fill="#E8E4D8" />
+    <polygon points="48,23.3 56,19 56,24 48,28.3" fill="#D7D1C1" />
+    <circle cx="32" cy="19" r="5.5" fill="#A94F32" stroke="#F3EFE4" strokeWidth="1.2" />
+    <polygon points="32,10 35,17 32,21 29,17" fill="#F3EFE4" />
+    <polygon points="24,15 30,17 29,21 23,19" fill="#F3EFE4" />
+    <polygon points="40,15 34,17 35,21 41,19" fill="#F3EFE4" />
+    <polyline points="8,19 32,32 56,19" stroke="#F3EFE4" strokeWidth="1.2" strokeOpacity="0.7" />
+    <line x1="32" y1="32" x2="32" y2="58" stroke="#F3EFE4" strokeWidth="1.2" strokeOpacity="0.65" />
   </svg>
 );
 
-const HERO_HOTSPOTS = [
-  {
-    id: 'hs-sangsad',
-    titleEn: 'Jatiya Sangsad Bhaban (Voxel Parliament)',
-    titleBn: 'জাতীয় সংসদ ভবন (ভক্সেল স্থাপত্য)',
-    coords: 'XYZ: 237.450 / 78.000 / 903.120',
-    biome: 'minecraft:sher_e_bangla_basin',
-    lightLevel: '15 (Sky: 15, Block: 14)',
-    blocks: 'Smooth Quartz, Light Gray Concrete, Prismarine',
-    swatches: [
-      { label: 'Smooth Quartz (42%)', colors: ['#F8FAFC', '#E2E8F0', '#94A3B8'] },
-      { label: 'Gray Concrete (28%)', colors: ['#94A3B8', '#64748B', '#475569'] },
-      { label: 'Prismarine (18%)', colors: ['#2DD4BF', '#0D9488', '#115E59'] },
-      { label: 'Sea Lantern (12%)', colors: ['#FEF08A', '#FACC15', '#CA8A04'] }
-    ],
-    descEn: 'Louis Kahn’s monolithic concrete geometry built as a true 3D isometric voxel citadel with glowing octagonal light-wells and animated water reflections.',
-    descBn: 'লুই আই কানের নকশাকৃত জাতীয় সংসদ ভবনের জ্যামিতিক ৩ডি আইসোমেট্রিক ভক্সেল সংস্করণ ও লেকের পানির প্রতিফলন।',
-    isoX: 0,
-    isoY: 5.2,
-    isoZ: 0
-  },
-  {
-    id: 'hs-paharpur',
-    titleEn: 'Paharpur & Lalbagh Terracotta Gateways',
-    titleBn: 'পাহাড়পুর ও লালবাগ টেরাকোটা তোরণ',
-    coords: 'XYZ: -840.110 / 70.000 / 412.890',
-    biome: 'minecraft:varendra_terracotta_hills',
-    lightLevel: '14 (Sky: 15, Block: 13)',
-    blocks: 'Mud Bricks, Red Terracotta, Copper Lanterns',
-    swatches: [
-      { label: 'Terracotta (38%)', colors: ['#F97316', '#C2410C', '#7C2D12'] },
-      { label: 'Mud Bricks (34%)', colors: ['#A16207', '#78350F', '#451A03'] },
-      { label: 'Red Sandstone (18%)', colors: ['#EA580C', '#9A3412', '#431407'] },
-      { label: 'Glowstone (10%)', colors: ['#FDE047', '#EAB308', '#A16207'] }
-    ],
-    descEn: '8th-century Somapura Mahavihara stepped stupa and Mughal fort arches crafted from warm Bengal clay, mud bricks, and glowing lantern alcoves.',
-    descBn: 'বাংলার প্রাচীন পোড়ামাটির ফলক, পাহাড়পুর বিহার ও লালবাগ কেল্লার ঐতিহ্যবাহী ৩ডি ভক্সেল তোরণ।',
-    isoX: 4.5,
-    isoY: 3.8,
-    isoZ: -2.2
-  },
-  {
-    id: 'hs-sundarbans',
-    titleEn: 'Sundarbans Mangrove Canopy & Fireflies',
-    titleBn: 'সুন্দরবন ম্যানগ্রোভ বনাঞ্চল ও জোনাকি',
-    coords: 'XYZ: 1420.000 / 63.000 / -1190.500',
-    biome: 'minecraft:mangrove_swamp_delta',
-    lightLevel: '12 (Sky: 13, Block: 12)',
-    blocks: 'Mangrove Propagules, Packed Mud, Froglights',
-    swatches: [
-      { label: 'Mangrove Leaves (40%)', colors: ['#34D399', '#10B981', '#047857'] },
-      { label: 'Mangrove Roots (30%)', colors: ['#78350F', '#451A03', '#271206'] },
-      { label: 'Packed Mud (20%)', colors: ['#92400E', '#78350F', '#451A03'] },
-      { label: 'Ochre Froglight (10%)', colors: ['#FEF9C3', '#FDE047', '#CA8A04'] }
-    ],
-    descEn: 'Dense tidal mangrove roots guarding the southern coast of Bangladesh, illuminated by glowing voxel froglights and floating fireflies.',
-    descBn: 'সুন্দরবনের শ্বাসমূল, ঘন ম্যানগ্রোভ বনাঞ্চল এবং রাতের জোনাকি পোকার আলোর ৩ডি দৃশ্য।',
-    isoX: -4.6,
-    isoY: 3.4,
-    isoZ: 2.2
-  },
-  {
-    id: 'hs-padma',
-    titleEn: 'Padma River Sampan & Double-Deck Truss Span',
-    titleBn: 'পদ্মা নদীর সাম্পান ও সেতু স্প্যান',
-    coords: 'XYZ: 512.800 / 62.000 / 2022.000',
-    biome: 'minecraft:padma_river_confluence',
-    lightLevel: '15 (Sky: 15, Block: 15)',
-    blocks: 'Deepslate Tiles, Iron Bars, Spruce Boats, Cyan Glass',
-    swatches: [
-      { label: 'Deepslate Tiles (40%)', colors: ['#64748B', '#334155', '#1E293B'] },
-      { label: 'Iron Truss (25%)', colors: ['#E2E8F0', '#94A3B8', '#475569'] },
-      { label: 'Spruce Sampan (20%)', colors: ['#B45309', '#78350F', '#451A03'] },
-      { label: 'Redstone Rail (15%)', colors: ['#F87171', '#DC2626', '#7F1D1D'] }
-    ],
-    descEn: 'Connecting districts across the mighty Padma river with a Redstone rail lower deck, concrete piers, and traditional wooden country boat.',
-    descBn: 'প্রমত্তা পদ্মা নদীর বুকে ঐতিহ্যবাহী সাম্পান নৌকা এবং আধুনিক ডাবল-ডেক রেডস্টোন রেল সেতু।',
-    isoX: 1.5,
-    isoY: 1.8,
-    isoZ: 4.5
-  }
-];
-
-const HeroVoxelBangladeshCanvas = ({ atmosphere, setAtmosphere, lang }) => {
-  const [activeHotspot, setActiveHotspot] = useState(HERO_HOTSPOTS[0]);
-  const [buildStage, setBuildStage] = useState(4);
-  const [isConstructing, setIsConstructing] = useState(false);
-  const [canvasMode, setCanvasMode] = useState('voxel');
-  const [waveTick, setWaveTick] = useState(0);
-  const [mouseTilt, setMouseTilt] = useState({ rx: 0, ry: 0, cursorX: 320, cursorY: 190 });
-  const viewportRef = useRef(null);
-
-  useEffect(() => {
-    if (!isConstructing) return undefined;
-    const timer = setInterval(() => {
-      setBuildStage((prev) => {
-        if (prev >= 4) {
-          setIsConstructing(false);
-          return 4;
-        }
-        return prev + 1;
-      });
-    }, 620);
-    return () => clearInterval(timer);
-  }, [isConstructing]);
-
-  // Subtle Water Wave & Beacon Pulse Tick
-  useEffect(() => {
-    const id = setInterval(() => {
-      setWaveTick((t) => (t + 1) % 360);
-    }, 90);
-    return () => clearInterval(id);
-  }, []);
-
-  const triggerBuildReveal = () => {
-    setCanvasMode('voxel');
-    setBuildStage(1);
-    setIsConstructing(true);
-  };
-
-  const handleViewportMove = (e) => {
-    if (!viewportRef.current) return;
-    const rect = viewportRef.current.getBoundingClientRect();
-    const nx = (e.clientX - rect.left) / rect.width - 0.5;
-    const ny = (e.clientY - rect.top) / rect.height - 0.5;
-    setMouseTilt({
-      rx: -ny * 14,
-      ry: nx * 18,
-      cursorX: Math.round((nx + 0.5) * 680),
-      cursorY: Math.round((ny + 0.5) * 400)
-    });
-  };
-
-  const handleViewportLeave = () => {
-    setMouseTilt({ rx: 0, ry: 0, cursorX: 340, cursorY: 200 });
-  };
-
-  // True 3D Isometric Voxel Scene Dataset (Each voxel has x, y, z, w, h, d, stage, palette)
-  const isometricVoxels = useMemo(() => {
-    const blocks = [];
-    const addBlock = (x, y, z, w, h, d, colors, stage = 1, isWater = false, isGlow = false) => {
-      blocks.push({ x, y, z, w, h, d, colors, stage, isWater, isGlow });
-    };
-
-    // Palettes [Top, Left, Right] reacting to Dusk / Night / Monsoon shader atmosphere
-    const waterCols =
-      atmosphere === 'dusk'
-        ? ['#22D3EE', '#0891B2', '#0E7490']
-        : atmosphere === 'monsoon'
-        ? ['#0284C7', '#0369A1', '#075985']
-        : ['#06B6D4', '#0E7490', '#164E63'];
-    const grassCols =
-      atmosphere === 'dusk'
-        ? ['#34D399', '#059669', '#064E3B']
-        : ['#10B981', '#047857', '#022C22'];
-    const mudCols = ['#78350F', '#451A03', '#271206'];
-    const plazaRedCols = ['#DC2626', '#991B1B', '#7F1D1D'];
-    const quartzLight = ['#F8FAFC', '#CBD5E1', '#64748B'];
-    const concreteMid = ['#E2E8F0', '#94A3B8', '#475569'];
-    const concreteDark = ['#94A3B8', '#64748B', '#334155'];
-    const terracottaCols = ['#EA580C', '#C2410C', '#7C2D12'];
-    const amberCols = ['#F59E0B', '#D97706', '#92400E'];
-    const glowCols = ['#FEF08A', '#FACC15', '#EAB308'];
-    const mangroveLeaf = ['#10B981', '#059669', '#064E3B'];
-
-    // STAGE 1: Delta Island Base, Mud Foundation & Animated Water Basin
-    for (let gx = -6; gx <= 6; gx += 2) {
-      for (let gz = -6; gz <= 6; gz += 2) {
-        const dist = Math.sqrt(gx * gx + gz * gz);
-        if (dist <= 7.2) {
-          addBlock(gx, -1.2, gz, 2, 1.2, 2, mudCols, 1);
-          const isLake =
-            (gx >= -3 && gx <= 3 && gz >= -3 && gz <= 3) || gz >= 3;
-          if (isLake) {
-            addBlock(gx, 0, gz, 2, 0.85, 2, waterCols, 1, true);
-          } else {
-            addBlock(gx, 0, gz, 2, 1.0, 2, grassCols, 1);
-          }
-        }
-      }
-    }
-
-    // STAGE 2: Red BrickSangad Plaza Platform, Paharpur Terraced Base & Padma Bridge Piers
-    addBlock(0, 0.9, 0, 4.4, 0.7, 4.4, plazaRedCols, 2);
-    addBlock(0, 1.5, 0, 3.8, 0.5, 3.8, concreteDark, 2);
-    // Paharpur Base (Back Right)
-    addBlock(4.5, 1.0, -2.5, 3.0, 1.1, 3.0, mudCols, 2);
-    addBlock(4.5, 2.0, -2.5, 2.2, 1.0, 2.2, terracottaCols, 2);
-    // Sundarbans Roots (Front Left)
-    addBlock(-4.6, 1.0, 2.0, 1.2, 1.8, 1.2, mudCols, 2);
-    // Padma Bridge Piers (Front River)
-    addBlock(-2.5, 0.8, 4.5, 0.9, 2.1, 0.9, concreteDark, 2);
-    addBlock(1.5, 0.8, 4.5, 0.9, 2.1, 0.9, concreteDark, 2);
-    addBlock(5.2, 0.8, 4.5, 0.9, 2.1, 0.9, concreteDark, 2);
-
-    // STAGE 3: Jatiya Sangsad Octagonal Towers, Paharpur Stupa & Padma Double-Deck Span
-    // Left, Right, Front, Back Octagonal Towers
-    addBlock(-1.3, 2.0, 1.1, 1.3, 2.8, 1.3, concreteMid, 3);
-    addBlock(1.3, 2.0, 1.1, 1.3, 2.8, 1.3, concreteMid, 3);
-    addBlock(-1.3, 2.0, -1.1, 1.3, 2.8, 1.3, concreteDark, 3);
-    addBlock(1.3, 2.0, -1.1, 1.3, 2.8, 1.3, concreteMid, 3);
-    // Central Parliament Monolith Core
-    addBlock(0, 2.0, 0, 2.4, 3.6, 2.4, quartzLight, 3);
-    // Paharpur Upper Shrine
-    addBlock(4.5, 2.9, -2.5, 1.3, 1.2, 1.3, amberCols, 3);
-    // Sundarbans Canopy Layer 1
-    addBlock(-4.6, 2.6, 2.0, 2.8, 1.1, 2.8, mangroveLeaf, 3);
-    // Padma Bridge Deck
-    addBlock(1.4, 2.4, 4.5, 8.6, 0.55, 1.3, concreteMid, 3);
-
-    // STAGE 4: Crown Roofs, Glowing Beacon Light-Wells, Sampan Boat & Lanterns
-    addBlock(0, 5.5, 0, 1.8, 0.7, 1.8, quartzLight, 4);
-    addBlock(0, 6.1, 0, 0.8, 0.6, 0.8, glowCols, 4, false, true);
-    addBlock(-1.3, 4.7, 1.1, 0.6, 0.45, 0.6, glowCols, 4, false, true);
-    addBlock(1.3, 4.7, 1.1, 0.6, 0.45, 0.6, glowCols, 4, false, true);
-    addBlock(4.5, 4.0, -2.5, 0.6, 0.7, 0.6, glowCols, 4, false, true);
-    addBlock(-4.6, 3.6, 2.0, 1.8, 0.9, 1.8, grassCols, 4);
-    addBlock(-3.8, 2.1, 2.8, 0.45, 0.45, 0.45, glowCols, 4, false, true);
-    // Sampan Boat on Padma Water
-    addBlock(-0.4, 0.85, 5.6, 1.7, 0.45, 0.8, amberCols, 4);
-
-    // Sort by isometric painter's algorithm (back-to-front: x + z + y)
-    return blocks
-      .filter((b) => b.stage <= buildStage)
-      .sort((a, b) => a.x + a.z + a.y * 0.4 - (b.x + b.z + b.y * 0.4));
-  }, [atmosphere, buildStage]);
-
-  // Isometric Projection Helper: maps (x, y, z) in voxel units to 2D SVG coordinates
-  const projectIso = (x, y, z) => {
-    const scale = 22;
-    const originX = 335;
-    const originY = 235;
-    const sx = originX + (x - z) * scale * 0.866;
-    const sy = originY + (x + z) * scale * 0.5 - y * scale * 0.92;
-    return { sx, sy };
-  };
-
-  // Render an Isometric Cuboid with Top, Left, and Right Shaded Faces
-  const renderIsoCuboid = (b, idx) => {
-    const waveOffset = b.isWater
-      ? Math.sin((waveTick * Math.PI) / 18 + b.x * 0.7 + b.z * 0.7) * 0.14
-      : 0;
-    const hw = b.w / 2;
-    const hd = b.d / 2;
-    const y0 = b.y + waveOffset;
-    const y1 = b.y + b.h + waveOffset;
-
-    // 8 corners of the 3D box
-    const topBack = projectIso(b.x - hw, y1, b.z - hd);
-    const topRight = projectIso(b.x + hw, y1, b.z - hd);
-    const topFront = projectIso(b.x + hw, y1, b.z + hd);
-    const topLeft = projectIso(b.x - hw, y1, b.z + hd);
-
-    const botRight = projectIso(b.x + hw, y0, b.z - hd);
-    const botFront = projectIso(b.x + hw, y0, b.z + hd);
-    const botLeft = projectIso(b.x - hw, y0, b.z + hd);
-
-    return (
-      <g
-        key={idx}
-        style={{
-          transition: 'transform 350ms cubic-bezier(0.16, 1, 0.3, 1)'
-        }}
-      >
-        {/* Top Face */}
-        <polygon
-          points={`${topBack.sx},${topBack.sy} ${topRight.sx},${topRight.sy} ${topFront.sx},${topFront.sy} ${topLeft.sx},${topLeft.sy}`}
-          fill={b.colors[0]}
-          fillOpacity={b.isWater ? 0.84 : 1}
-          stroke="rgba(0,0,0,0.22)"
-          strokeWidth="0.55"
-        />
-        {/* Left Shaded Face */}
-        <polygon
-          points={`${topLeft.sx},${topLeft.sy} ${topFront.sx},${topFront.sy} ${botFront.sx},${botFront.sy} ${botLeft.sx},${botLeft.sy}`}
-          fill={b.colors[1]}
-          fillOpacity={b.isWater ? 0.78 : 1}
-          stroke="rgba(0,0,0,0.28)"
-          strokeWidth="0.55"
-        />
-        {/* Right Deep-Shaded Face */}
-        <polygon
-          points={`${topFront.sx},${topFront.sy} ${topRight.sx},${topRight.sy} ${botRight.sx},${botRight.sy} ${botFront.sx},${botFront.sy}`}
-          fill={b.colors[2]}
-          fillOpacity={b.isWater ? 0.72 : 1}
-          stroke="rgba(0,0,0,0.32)"
-          strokeWidth="0.55"
-        />
-        {/* Volumetric Beacon Light Beam on Glowing Blocks */}
-        {b.isGlow && (
-          <polygon
-            points={`${topLeft.sx},${topLeft.sy} ${topRight.sx},${topRight.sy} ${
-              topRight.sx + 6
-            },${topRight.sy - 95} ${topLeft.sx - 6},${topLeft.sy - 95}`}
-            fill="url(#shaderBeaconBeam)"
-            className="animate-beacon-beam pointer-events-none"
-          />
-        )}
-      </g>
-    );
-  };
-
-  return (
-    <div
-      ref={viewportRef}
-      onMouseMove={handleViewportMove}
-      onMouseLeave={handleViewportLeave}
-      className="relative rounded-3xl border border-emerald-400/35 bg-[#060B09]/95 backdrop-blur-2xl overflow-hidden shadow-[0_0_90px_-15px_rgba(16,185,129,0.35),0_30px_60px_-15px_rgba(0,0,0,0.95)]"
-    >
-      {/* Top Shader / F3 HUD Telemetry Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 bg-black/75 border-b border-white/10 text-xs">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-400/40 font-pixel-hud text-[10px] text-emerald-300 tracking-wider">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            F3 SHADER HUD // 3D ISOMETRIC ENGINE
-          </span>
-          <button
-            type="button"
-            onClick={() => setCanvasMode((m) => (m === 'voxel' ? 'map-delta' : 'voxel'))}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 font-mono-code text-[11px] font-semibold hover:bg-cyan-500/25 transition"
-          >
-            <MapPin className="w-3.5 h-3.5" />
-            <span>{canvasMode === 'voxel' ? 'Delta Topo Map' : '3D Voxel View'}</span>
-          </button>
-          <button
-            type="button"
-            onClick={triggerBuildReveal}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono-code text-[11px] font-bold hover:bg-amber-500/30 transition"
-          >
-            <Hammer className="w-3.5 h-3.5" />
-            <span>{isConstructing ? `Constructing ${buildStage}/4...` : 'Animate Build #1–#4'}</span>
-          </button>
-        </div>
-
-        {/* Dusk / Night / Monsoon Shader Preset Switcher */}
-        <div className="flex items-center gap-1 bg-slate-950/90 p-1 rounded-xl border border-white/10">
-          {[
-            { id: 'dusk', icon: Sun, labelEn: 'Dusk Shader', labelBn: 'গোধূলি', activeCls: 'bg-amber-500 text-slate-950 font-bold shadow-[0_0_15px_rgba(245,158,11,0.5)]' },
-            { id: 'midnight', icon: Moon, labelEn: 'Night Void', labelBn: 'রাত', activeCls: 'bg-emerald-500 text-slate-950 font-bold shadow-[0_0_15px_rgba(16,185,129,0.5)]' },
-            { id: 'monsoon', icon: CloudRain, labelEn: 'Monsoon Rain', labelBn: 'বর্ষা', activeCls: 'bg-cyan-400 text-slate-950 font-bold shadow-[0_0_15px_rgba(6,182,212,0.5)]' }
-          ].map((preset) => {
-            const Icon = preset.icon;
-            const isAct = atmosphere === preset.id;
-            return (
-              <button
-                key={preset.id}
-                type="button"
-                onClick={() => setAtmosphere(preset.id)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono-code transition ${
-                  isAct ? preset.activeCls : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{lang === 'bn' ? preset.labelBn : preset.labelEn}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Main 3D Isometric Voxel Viewport with F3 Debug Corner Brackets & Live Telemetry */}
-      <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] select-none overflow-hidden bg-[#040807]">
-        {/* F3 Debug Corner Reticle Brackets */}
-        <div className="pointer-events-none absolute top-3 left-3 w-5 h-5 border-t-2 border-l-2 border-emerald-400/70 z-20" />
-        <div className="pointer-events-none absolute top-3 right-3 w-5 h-5 border-t-2 border-r-2 border-emerald-400/70 z-20" />
-        <div className="pointer-events-none absolute bottom-3 left-3 w-5 h-5 border-b-2 border-l-2 border-emerald-400/70 z-20" />
-        <div className="pointer-events-none absolute bottom-3 right-3 w-5 h-5 border-b-2 border-r-2 border-emerald-400/70 z-20" />
-
-        {/* Top-Left Live Minecraft F3 Debug Telemetry Overlay */}
-        <div className="pointer-events-none absolute top-4 left-5 z-20 space-y-0.5 font-mono-code text-[10px] sm:text-[11px] text-emerald-300/95 drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
-          <div className="text-white font-bold">
-            Minecraft 1.21.4 (BLOCKBANGLA Complementary Shader r5.3)
-          </div>
-          <div>
-            144 fps • Chunk-Updates: 0 • Render: 3D Isometric Voxel Mesh ({isometricVoxels.length} cubes)
-          </div>
-          <div className="text-amber-300">{activeHotspot.coords}</div>
-          <div className="text-cyan-300">
-            Biome: {activeHotspot.biome} • Light: {activeHotspot.lightLevel}
-          </div>
-        </div>
-
-        {/* Top-Right Build Stage Layer Selector (#1 – #4) */}
-        <div className="absolute top-4 right-5 z-20 flex items-center gap-1 bg-black/80 backdrop-blur-md p-1 rounded-xl border border-white/15">
-          {[1, 2, 3, 4].map((st) => (
-            <button
-              key={st}
-              type="button"
-              onClick={() => {
-                setIsConstructing(false);
-                setBuildStage(st);
-              }}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-code font-bold transition ${
-                buildStage === st
-                  ? 'bg-emerald-500 text-slate-950 shadow-[0_0_12px_#10B981]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-              title={`Inspect Voxel Construction Stage #${st}`}
-            >
-              Stage #{st}
-            </button>
-          ))}
-        </div>
-
-        {/* Map-to-Build Topographic Delta Drawer */}
-        {canvasMode === 'map-delta' && (
-          <div className="absolute inset-0 z-30 bg-[#050A09]/95 backdrop-blur-xl p-5 flex flex-col justify-between animate-clip-reveal">
-            <div className="flex items-center justify-between border-b border-emerald-500/30 pb-2.5">
-              <div>
-                <span className="text-[10px] font-mono-code text-emerald-400 uppercase block">
-                  BANGLADESH DELTA TOPOGRAPHIC COORDINATES → 3D VOXEL MONUMENTS
-                </span>
-                <h4 className="text-sm sm:text-base font-display font-bold text-white">
-                  Select a Landmark to Lock Camera & Inspect Block Layers
-                </h4>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCanvasMode('voxel')}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
-              >
-                Return to 3D Scene →
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-auto py-2">
-              {HERO_HOTSPOTS.map((spot) => (
-                <button
-                  key={spot.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveHotspot(spot);
-                    setCanvasMode('voxel');
-                  }}
-                  className="text-left p-3 rounded-xl bg-[#091412] hover:bg-emerald-500/15 border border-emerald-500/30 transition flex items-start justify-between gap-2"
-                >
-                  <div>
-                    <div className="text-xs font-bold text-white">
-                      {lang === 'bn' ? spot.titleBn : spot.titleEn}
-                    </div>
-                    <div className="text-[11px] font-mono-code text-emerald-400 mt-0.5">
-                      {spot.coords}
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-1">{spot.blocks}</div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-emerald-400 shrink-0" />
-                </button>
-              ))}
-            </div>
-            <div className="text-[11px] font-mono-code text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
-              <span>23.6850°N, 90.3563°E • Bengal Delta Shader Grid</span>
-              <span className="text-emerald-300">Click any landmark above to teleport</span>
-            </div>
-          </div>
-        )}
-
-        {/* 3D Mouse-Tracking Isometric Voxel Stage */}
-        <div
-          className="w-full h-full flex items-center justify-center"
-          style={{
-            transform: `perspective(1100px) rotateX(${mouseTilt.rx}deg) rotateY(${mouseTilt.ry}deg) scale(1.03)`,
-            transition:
-              mouseTilt.rx === 0 && mouseTilt.ry === 0
-                ? 'transform 600ms cubic-bezier(0.16, 1, 0.3, 1)'
-                : 'transform 75ms linear'
-          }}
-        >
-          <svg
-            viewBox="0 0 680 390"
-            className="w-full h-full object-cover"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              <radialGradient id="shaderAura" cx="50%" cy="48%" r="55%">
-                <stop
-                  offset="0%"
-                  stopColor={
-                    atmosphere === 'dusk'
-                      ? '#F59E0B'
-                      : atmosphere === 'monsoon'
-                      ? '#06B6D4'
-                      : '#10B981'
-                  }
-                  stopOpacity="0.28"
-                />
-                <stop offset="55%" stopColor="#064E3B" stopOpacity="0.12" />
-                <stop offset="100%" stopColor="#040807" stopOpacity="0" />
-              </radialGradient>
-              <linearGradient id="shaderBeaconBeam" x1="0" y1="1" x2="0" y2="0">
-                <stop
-                  offset="0%"
-                  stopColor={atmosphere === 'dusk' ? '#FBBF24' : '#34D399'}
-                  stopOpacity="0.65"
-                />
-                <stop offset="100%" stopColor="#38BDF8" stopOpacity="0" />
-              </linearGradient>
-              <pattern id="isoShaderGrid" width="34" height="20" patternUnits="userSpaceOnUse">
-                <path
-                  d="M 17 0 L 34 10 L 17 20 L 0 10 Z"
-                  fill="none"
-                  stroke="rgba(52, 211, 153, 0.08)"
-                  strokeWidth="0.7"
-                />
-              </pattern>
-            </defs>
-
-            {/* Obsidian Shader Sky & Isometric Floor Grid */}
-            <rect width="680" height="390" fill="#040807" />
-            <rect width="680" height="390" fill="url(#isoShaderGrid)" />
-            <circle cx="340" cy="200" r="240" fill="url(#shaderAura)" />
-
-            {/* Volumetric Voxel Sun / Moon / Monsoon Cloud */}
-            <g transform="translate(545, 72)">
-              <polygon
-                points="0,-28 26,-14 0,0 -26,-14"
-                fill={
-                  atmosphere === 'dusk'
-                    ? '#FDE047'
-                    : atmosphere === 'monsoon'
-                    ? '#38BDF8'
-                    : '#A7F3D0'
-                }
-              />
-              <polygon
-                points="-26,-14 0,0 0,28 -26,14"
-                fill={
-                  atmosphere === 'dusk'
-                    ? '#F59E0B'
-                    : atmosphere === 'monsoon'
-                    ? '#0284C7'
-                    : '#10B981'
-                }
-              />
-              <polygon
-                points="0,0 26,-14 26,14 0,28"
-                fill={
-                  atmosphere === 'dusk'
-                    ? '#B45309'
-                    : atmosphere === 'monsoon'
-                    ? '#0369A1'
-                    : '#047857'
-                }
-              />
-            </g>
-
-            {/* True 3D Isometric Voxel Blocks (Sorted Painter's Algorithm) */}
-            <g>{isometricVoxels.map((b, i) => renderIsoCuboid(b, i))}</g>
-
-            {/* Interactive 3D Landmark Target Pins */}
-            {HERO_HOTSPOTS.map((spot, idx) => {
-              const pt = projectIso(spot.isoX, spot.isoY, spot.isoZ);
-              const isSelected = activeHotspot.id === spot.id;
-              return (
-                <g
-                  key={spot.id}
-                  transform={`translate(${pt.sx}, ${pt.sy})`}
-                  onClick={() => setActiveHotspot(spot)}
-                  className="cursor-pointer"
-                >
-                  <line
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="-24"
-                    stroke={isSelected ? '#FBBF24' : '#34D399'}
-                    strokeWidth="1.8"
-                    strokeDasharray="3 2"
-                  />
-                  <circle
-                    cy="-28"
-                    r={isSelected ? 13 : 9}
-                    fill={isSelected ? '#10B981' : '#050807'}
-                    fillOpacity="0.92"
-                    stroke={isSelected ? '#FEF08A' : '#34D399'}
-                    strokeWidth="2"
-                  />
-                  <text
-                    x="0"
-                    y="-24.5"
-                    textAnchor="middle"
-                    fill={isSelected ? '#022C22' : '#A7F3D0'}
-                    fontSize="9"
-                    fontFamily="JetBrains Mono, monospace"
-                    fontWeight="bold"
-                  >
-                    #{idx + 1}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-        </div>
-      </div>
-
-      {/* Bottom 3D Inventory Block Swatch & Landmark Telemetry Dock */}
-      <div className="bg-[#050908]/95 border-t border-white/10 p-4 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono-code">
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                {activeHotspot.coords}
-              </span>
-              <span className="text-amber-300">{activeHotspot.biome}</span>
-              <span className="text-cyan-300">Build Stage: {buildStage}/4</span>
-            </div>
-            <h4 className="text-base sm:text-lg font-display font-extrabold text-white">
-              {lang === 'bn' ? activeHotspot.titleBn : activeHotspot.titleEn}
-            </h4>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              {lang === 'bn' ? activeHotspot.descBn : activeHotspot.descEn}
-            </p>
-          </div>
-
-          {/* Landmark Hotspot Quick-Selector */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            {HERO_HOTSPOTS.map((h, idx) => (
-              <button
-                key={h.id}
-                type="button"
-                onClick={() => setActiveHotspot(h)}
-                className={`px-3 py-2 rounded-xl text-xs font-mono-code font-bold transition ${
-                  activeHotspot.id === h.id
-                    ? 'bevel-emerald-btn text-slate-950'
-                    : 'bg-slate-900/90 text-slate-300 border border-white/10 hover:border-emerald-400/50'
-                }`}
-              >
-                #{idx + 1}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 3D Isometric Inventory Block Swatches */}
-        <div className="pt-2 border-t border-white/10 flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-pixel-hud text-slate-400 uppercase mr-1">
-            3D BLOCK PALETTE:
-          </span>
-          {(activeHotspot.swatches || []).map((sw) => (
-            <VoxelBlockSwatch3D key={sw.label} label={sw.label} colors={sw.colors} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
+// 3. Directory rendering
 // ============================================================================
-// 3. CUSTOM BUILD & EVENT ARTWORK RENDERERS
-// ============================================================================
-
-const EventTournamentArtwork = ({ artTheme, category, isLive, backdropPhotoUrl }) => {
-  const themes = {
-    'crimson-citadel': { bg1: '#1F0910', bg2: '#450A0A', accent: '#F43F5E', secondary: '#FBBF24' },
-    'diamond-arena': { bg1: '#082F49', bg2: '#0F172A', accent: '#38BDF8', secondary: '#34D399' },
-    'emerald-bengal': { bg1: '#022C22', bg2: '#064E3B', accent: '#10B981', secondary: '#F59E0B' },
-    'terracotta-arch': { bg1: '#271206', bg2: '#451A03', accent: '#F59E0B', secondary: '#38BDF8' }
-  };
-  const t = themes[artTheme] || themes['emerald-bengal'];
-  const fallbackPhoto =
-    backdropPhotoUrl ||
-    'https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=900&q=80';
-
-  return (
-    <div
-      className="relative h-44 w-full overflow-hidden border-b border-white/10"
-      style={{ background: `linear-gradient(135deg, ${t.bg1}, ${t.bg2})` }}
-    >
-      <img
-        src={fallbackPhoto}
-        alt={category}
-        loading="lazy"
-        className="w-full h-full object-cover opacity-50 group-hover:scale-105 transition duration-700"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-[#0D1513]/35 to-transparent" />
-      <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 text-xs font-mono-code">
-        <span
-          className="px-2.5 py-1 rounded-lg bg-black/80 border font-bold"
-          style={{ color: t.accent, borderColor: `${t.accent}55` }}
-        >
-          {category}
-        </span>
-        {isLive && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600 text-white font-bold animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-            LIVE NOW
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const VoxelBuildArtwork = ({ artType, title, realPhotoUrl, onInspectLightbox }) => {
-  const fallbackUrl =
-    realPhotoUrl ||
-    'https://images.unsplash.com/photo-1624863699622-732076711240?auto=format&fit=crop&w=900&q=80';
-  return (
-    <div className="relative h-48 w-full overflow-hidden bg-slate-950 border-b border-white/10 group">
-      <img
-        src={fallbackUrl}
-        alt={title}
-        loading="lazy"
-        className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition duration-700"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-transparent to-black/50" />
-      <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-[11px] font-mono-code">
-        <span className="px-2.5 py-1 rounded bg-black/80 text-emerald-300 border border-emerald-500/30 uppercase">
-          VOXEL × REALITY // {artType}
-        </span>
-        {onInspectLightbox && (
-          <button
-            type="button"
-            onClick={onInspectLightbox}
-            className="px-2.5 py-1 rounded bg-black/80 hover:bg-emerald-500 text-slate-200 hover:text-slate-950 font-bold transition"
-          >
-            Inspect HD
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-const TanximFounderCrestSVG = () => (
-  <svg viewBox="0 0 220 220" className="w-44 h-44 select-none">
-    <defs>
-      <linearGradient id="txTop" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#34D399" />
-        <stop offset="100%" stopColor="#10B981" />
-      </linearGradient>
-      <linearGradient id="txLeft" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#F59E0B" />
-        <stop offset="100%" stopColor="#B45309" />
-      </linearGradient>
-      <linearGradient id="txRight" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#06B6D4" />
-        <stop offset="100%" stopColor="#0E7490" />
-      </linearGradient>
-    </defs>
-    <circle cx="110" cy="110" r="96" fill="#040807" stroke="#10B981" strokeWidth="2" strokeOpacity="0.45" />
-    <polygon points="110,26 182,68 110,110 38,68" fill="url(#txTop)" />
-    <polygon points="38,68 110,110 110,192 38,150" fill="url(#txLeft)" />
-    <polygon points="110,110 182,68 182,150 110,192" fill="url(#txRight)" />
-    <text
-      x="110"
-      y="76"
-      textAnchor="middle"
-      fill="#022C22"
-      fontFamily="Outfit, Space Grotesk, sans-serif"
-      fontWeight="900"
-      fontSize="22"
-    >
-      TX
-    </text>
-  </svg>
-);
-
-const EpistemicBadge = ({ status }) => {
-  const s = String(status || '').toUpperCase();
-  const cls = s.includes('VERIFIED')
-    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-    : s.includes('DOCUMENTED')
-    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-    : 'bg-amber-500/20 text-amber-300 border-amber-500/40';
-  return (
-    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono-code font-bold border ${cls}`}>
-      {status}
-    </span>
-  );
-};
 
 const ServerVisualHeader = ({ srv, tele }) => {
-  const bannerUrl =
-    SECTION_VISUAL_CURATION.serverBanners[srv.id] ||
-    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=900&q=80';
   const cleanHost = String(srv.ip || '').split(':')[0];
   const iconUrl = tele?.icon || `https://api.mcsrvstat.us/icon/${encodeURIComponent(cleanHost)}`;
-  const pct =
-    tele?.online && tele?.playersMax > 0
-      ? Math.min(100, Math.round((tele.playersOnline / tele.playersMax) * 100))
-      : 0;
-
+  const pct = tele?.online && tele?.playersMax > 0
+    ? Math.min(100, Math.round((tele.playersOnline / tele.playersMax) * 100))
+    : 0;
   return (
     <div className="space-y-3">
-      <div className="relative h-32 rounded-xl overflow-hidden border border-white/10 bg-slate-950">
-        <img
-          src={bannerUrl}
-          alt={srv.name}
-          loading="lazy"
-          className="w-full h-full object-cover opacity-55"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-[#0D1513]/45 to-transparent" />
-        <div className="absolute top-2.5 left-3 right-3 flex items-center justify-between text-[11px] font-mono-code">
-          <span className="px-2 py-0.5 rounded bg-black/80 text-cyan-300 border border-cyan-500/30">
-            {srv.edition}
-          </span>
-          <span
-            className={`px-2.5 py-0.5 rounded font-bold ${
-              tele?.online
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-            }`}
-          >
-            {tele?.loading
-              ? 'QUERYING...'
-              : tele?.online
-              ? `● ${tele.playersOnline} / ${tele.playersMax} ONLINE`
-              : '○ STANDBY'}
-          </span>
+      <div className="flex items-center justify-between gap-3 border-b border-slate-300 pb-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <img src={iconUrl} alt="" className="h-11 w-11 shrink-0 border border-slate-300 bg-white object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+          <div className="min-w-0"><h3 className="truncate text-base font-display font-bold">{srv.name}</h3><div className="truncate font-mono-code text-xs text-slate-600">{srv.ip}</div></div>
         </div>
-        <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <img
-              src={iconUrl}
-              alt={srv.name}
-              className="w-10 h-10 rounded-lg border border-white/20 bg-slate-900 shrink-0"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-            <div className="min-w-0">
-              <h3 className="text-base font-display font-extrabold text-white truncate">
-                {srv.name}
-              </h3>
-              <div className="text-[11px] font-mono-code text-emerald-300 truncate">{srv.ip}</div>
-            </div>
-          </div>
-          {tele?.rttMs && (
-            <span className="text-[11px] font-mono-code text-emerald-300 bg-black/75 px-2 py-0.5 rounded border border-emerald-500/30 shrink-0">
-              {tele.rttMs} ms
-            </span>
-          )}
+        <div className="shrink-0 text-right text-xs">
+          <div className="font-bold">{tele?.loading ? 'Checking...' : !tele?.checkedAt ? 'Not checked' : tele.rttMs == null ? 'Status API unavailable' : tele.online ? 'Online' : 'No response from address'}</div>
+          <div className="font-mono-code text-slate-600">{tele?.online ? (tele.playersOnline == null ? 'Player count not returned' : tele.playersOnline + ' / ' + (tele.playersMax ?? 'not returned') + ' players') : 'Listing details unconfirmed'}</div>
         </div>
       </div>
-
-      {/* Live Capacity Progress Bar */}
-      <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
-        <div
-          className="h-full bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 transition-all duration-500"
-          style={{ width: `${tele?.online ? Math.max(6, pct) : 0}%` }}
-        />
-      </div>
+      <div className="h-1 w-full bg-slate-200"><div className="h-full bg-[#1E5138]" style={{ width: `${tele?.online ? Math.max(6, pct) : 0}%` }} /></div>
     </div>
   );
 };
@@ -3984,231 +356,50 @@ function formatDhakaTime(dateObj) {
   }
 }
 
-function computeEventStatus(evt, nowMs, simulateLive) {
-  if (simulateLive && evt.id === 'evt-01') {
-    return { isLive: true, status: 'LIVE NOW', countdownText: 'ACTIVE BROADCAST IN BST' };
-  }
-  const startMs = new Date(evt.startTimeIso).getTime();
-  const endMs = new Date(evt.endTimeIso).getTime();
-  if (nowMs >= startMs && nowMs <= endMs) {
-    return { isLive: true, status: 'LIVE NOW', countdownText: 'IN PROGRESS (BST)' };
-  }
-  if (nowMs < startMs) {
-    const diffSec = Math.max(0, Math.floor((startMs - nowMs) / 1000));
-    const d = Math.floor(diffSec / 86400);
-    const h = Math.floor((diffSec % 86400) / 3600);
-    const m = Math.floor((diffSec % 3600) / 60);
-    return {
-      isLive: false,
-      status: 'UPCOMING',
-      countdownText: `${d}d ${h}h ${m}m`
-    };
-  }
-  return { isLive: false, status: 'ARCHIVED', countdownText: 'Completed' };
-}
-
 // ============================================================================
 // 4. MAIN APPLICATION COMPONENT (`export default function App()`)
 // ============================================================================
 export default function App() {
-  const { threeReady } = useExternalMotionEngines();
-
   const [activeTab, setActiveTab] = useState('home');
   const [lang, setLang] = useState('en');
-  const [atmosphere, setAtmosphere] = useState('dusk'); // 'dusk' | 'midnight' | 'monsoon'
   const [reducedMotion, setReducedMotion] = useState(false);
-  const [sfxEnabled, setSfxEnabled] = useState(true);
-  const [cursorLabel, setCursorLabel] = useState(null);
-  const [routeTransitionTitle, setRouteTransitionTitle] = useState(null);
   const [scrollProgressPct, setScrollProgressPct] = useState(0);
   const [headerScrolled, setHeaderScrolled] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
 
   // Navigation & Modal States
-  const [exploreDropdownOpen, setExploreDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [globalQuery, setGlobalQuery] = useState('');
   const [activeModal, setActiveModal] = useState(null);
   const [selectedDetailItem, setSelectedDetailItem] = useState(null);
-  const [lightboxAsset, setLightboxAsset] = useState(null);
-  const [deployModalOpen, setDeployModalOpen] = useState(false);
   const [copiedKey, setCopiedKey] = useState(null);
 
-  // Homepage Guided Matcher & Progressive Disclosure States
-  const [showStatusDisclosure, setShowStatusDisclosure] = useState(false);
-  const [matcherDevice, setMatcherDevice] = useState('ALL');
-  const [matcherMode, setMatcherMode] = useState('ALL');
-  const [matcherBeginnerOnly, setMatcherBeginnerOnly] = useState(true);
-  const [showExtendedHomeLabs, setShowExtendedHomeLabs] = useState(false);
-
-  // Server Directory & Live Telemetry States
+  // Server directory and current status checks
   const [servers] = useState(INITIAL_SERVERS);
   const [serverTelemetry, setServerTelemetry] = useState({});
   const [serverSearch, setServerSearch] = useState('');
-  const [serverEditionFilter, setServerEditionFilter] = useState('ALL');
-  const [customIpInput, setCustomIpInput] = useState('play.bdzonemc.com');
+  const [customIpInput, setCustomIpInput] = useState('');
   const [customEditionInput, setCustomEditionInput] = useState('java');
   const [isPingingCustom, setIsPingingCustom] = useState(false);
   const [customPingResult, setCustomPingResult] = useState(null);
   const [autoPollServers, setAutoPollServers] = useState(true);
-  const [heartbeatPulseCount, setHeartbeatPulseCount] = useState(1);
-  const [lastHeartbeatTime, setLastHeartbeatTime] = useState(() => formatDhakaTime(new Date()));
-  const [securityAuditMode, setSecurityAuditMode] = useState('velocity-modern');
-  const [velocityForwardingSecret, setVelocityForwardingSecret] = useState(() =>
-    generateSecureVelocitySecret()
-  );
-  const [savedServerIds] = useState(['srv-bdzone', 'srv-bms']);
 
-  // Events & Tournament States
-  const [events] = useState(INITIAL_EVENTS);
-  const [simulateLiveTournament, setSimulateLiveTournament] = useState(false);
-  const [eventViewMode, setEventViewMode] = useState('list');
-  const [eventCategoryFilter, setEventCategoryFilter] = useState('ALL');
-  const [registeredEventIds, setRegisteredEventIds] = useState(['evt-01']);
-
-  // Creators & YouTube Data API v3 States
-  const [creators] = useState(INITIAL_CREATORS);
-  const [creatorSearch, setCreatorSearch] = useState('');
-  const [creatorCategoryFilter, setCreatorCategoryFilter] = useState('ALL');
-  const [ytQuery, setYtQuery] = useState('Minecraft Bangla');
-  const [ytVideos, setYtVideos] = useState([]);
-  const [ytLoading, setYtLoading] = useState(false);
-  const [ytError, setYtError] = useState(null);
-  const [ytLastSynced, setYtLastSynced] = useState(null);
-
-  // Modrinth & GitHub Open-Source Ecosystem States
-  const [modrinthQuery, setModrinthQuery] = useState('sodium');
-  const [modrinthType, setModrinthType] = useState('all');
-  const [modrinthProjects, setModrinthProjects] = useState([]);
-  const [modrinthLoading, setModrinthLoading] = useState(false);
-  const [githubRepoStats, setGithubRepoStats] = useState({});
-  const [githubSyncing, setGithubSyncing] = useState(false);
-
-  // 14-in-1 Toolbox States
-  const [coordX, setCoordX] = useState(800);
-  const [coordZ, setCoordZ] = useState(-1200);
+  // Server tool states
+  const [coordX, setCoordX] = useState(0);
+  const [coordZ, setCoordZ] = useState(0);
   const [coordMode, setCoordMode] = useState('overworld-to-nether');
-  const [skinLookupUser, setSkinLookupUser] = useState('Notch');
-  const [skinLookupData, setSkinLookupData] = useState({
-    username: 'Notch',
-    uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5',
-    avatar: 'https://mc-heads.net/avatar/Notch/64'
-  });
+  const [skinLookupUser, setSkinLookupUser] = useState('');
+  const [skinLookupData, setSkinLookupData] = useState(null);
+  const [skinLookupError, setSkinLookupError] = useState(null);
   const [skinLookupLoading, setSkinLookupLoading] = useState(false);
-  const [wikiQuery, setWikiQuery] = useState('Mangrove Swamp');
-  const [wikiResults, setWikiResults] = useState([
-    { title: 'Mangrove Swamp', url: 'https://minecraft.wiki/w/Mangrove_Swamp' },
-    { title: 'Trial Chambers', url: 'https://minecraft.wiki/w/Trial_Chambers' },
-    { title: 'Mace', url: 'https://minecraft.wiki/w/Mace' }
-  ]);
+  const [wikiQuery, setWikiQuery] = useState('');
+  const [wikiResults, setWikiResults] = useState([]);
   const [wikiLoading, setWikiLoading] = useState(false);
-  const [motdLine1, setMotdLine1] = useState('&a&lBLOCKBANGLA &7— &fBangladesh Crossplay Network');
-  const [motdLine2, setMotdLine2] = useState('&e⚡ BDIX Low Ping &7• &bSurvival, BedWars & SkyBlock');
-  const [smpPlayerCount, setSmpPlayerCount] = useState(35);
-  const [smpServerType, setSmpServerType] = useState('papermc-geyser');
-  const [cmdBuilderType, setCmdBuilderType] = useState('give');
-  const [cmdTarget, setCmdTarget] = useState('@p');
-  const [cmdItemOrEntity, setCmdItemOrEntity] = useState('minecraft:mace');
-  const [cmdAmountOrLevel, setCmdAmountOrLevel] = useState(1);
-  const [selectedRecipeId, setSelectedRecipeId] = useState('mace');
-  const [deviceSpecTier, setDeviceSpecTier] = useState('budget-laptop');
-  const [troubleshootSymptom, setTroubleshootSymptom] = useState('high-ping-sg');
+  const [wikiError, setWikiError] = useState(null);
+  const [motdLine1, setMotdLine1] = useState('');
+  const [motdLine2, setMotdLine2] = useState('');
 
-  // Legacy Museum, Builds, Community & Learning States
-  const [timeline] = useState(HISTORICAL_TIMELINE);
-  const [selectedEraId, setSelectedEraId] = useState(HISTORICAL_TIMELINE[4].id);
-  const [builds, setBuilds] = useState(INITIAL_BUILDS);
-  const [selectedGuideId, setSelectedGuideId] = useState(LEARNING_GUIDES[0].id);
-  const [commandSearch, setCommandSearch] = useState('');
-  const [newsStreamFilter, setNewsStreamFilter] = useState('ALL');
-
-  // Cloudinary & Community Board States
-  const [cloudinaryStatus, setCloudinaryStatus] = useState('Ready for image validation');
-  const [cloudinaryProgress, setCloudinaryProgress] = useState(0);
-  const [cloudinaryPreviewUrl, setCloudinaryPreviewUrl] = useState(null);
-  const [newThreadTitle, setNewThreadTitle] = useState('');
-  const [newThreadBody, setNewThreadBody] = useState('');
-  const [newThreadCategory, setNewThreadCategory] = useState('Technical Q&A');
-  const [communityThreads, setCommunityThreads] = useState([
-    {
-      id: 'thd-1',
-      category: 'Technical Q&A',
-      author: 'DhakaBuilder_26',
-      badge: 'MC VERIFIED',
-      timeAgo: '2h ago',
-      titleEn: 'Best Complementary Shader settings for RX 6600 / RTX 3050 in Mangrove Swamps?',
-      titleBn: 'সুন্দরবন বায়োমে শেডার্স ব্যবহারের সেরা সেটিংস কোনটি?',
-      body: 'Set Shadow Distance to 12 chunks and enable RP Support: Integrated PBR+ for realistic water reflections.',
-      upvotes: 18,
-      replies: 4
-    },
-    {
-      id: 'thd-2',
-      category: 'Collaboration Request',
-      author: 'ChattogramVoxel',
-      badge: 'ARCHITECT',
-      timeAgo: '5h ago',
-      titleEn: 'Recruiting 3 WorldEdit / Axiom builders for Ahsan Manzil 1:1 recreation',
-      titleBn: 'আহসান মঞ্জিল ১:১ ভক্সেল প্রজেক্টের জন্য ৩ জন বিল্ডার প্রয়োজন',
-      body: 'We have completed the riverfront foundation on 1.21.4 and need dome detailers.',
-      upvotes: 24,
-      replies: 7
-    }
-  ]);
-  const [communityPollVotes, setCommunityPollVotes] = useState({
-    'poll-opt-1': 64,
-    'poll-opt-2': 49,
-    'poll-opt-3': 38,
-    'poll-opt-4': 42
-  });
-  const [userVotedOption, setUserVotedOption] = useState(null);
-
-  // Auth & Player Identity States
-  const [playerProfile, setPlayerProfile] = useState(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState('microsoft');
-  const [msUsernameInput, setMsUsernameInput] = useState('');
-  const [freeUsernameInput, setFreeUsernameInput] = useState('');
-  const [freeEmailInput, setFreeEmailInput] = useState('');
-  const [freeAvatarChoice, setFreeAvatarChoice] = useState('steve');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState(null);
-
-  // Admin CMS, Formspree & Diagnostics States
-  const [contactRole, setContactRole] = useState('Creator / Builder');
-  const [fsContactState, submitToFormspreeContact, resetFsContact] = useFormspree(FORMSPREE_FORM_ID);
-  const [fsModalState, submitToFormspreeModal] = useFormspree(FORMSPREE_FORM_ID);
-  const [devReceiverEndpoint, setDevReceiverEndpoint] = useState(FORMSPREE_ENDPOINT);
-  const [remoteForwardStatus, setRemoteForwardStatus] = useState(null);
-  const [wafBlockedCount, setWafBlockedCount] = useState(0);
-  const [runtimeYtKey, setRuntimeYtKey] = useState('');
-  const [runtimeUnsplashKey, setRuntimeUnsplashKey] = useState('');
-  const [unsplashQuery] = useState('Bangladesh landscape');
-  const [autonomousMediaPools] = useState({
-    gaming: [{ thumbUrl: VISUAL_ASSET_MANIFEST[4].originalUrl }],
-    environment: [{ thumbUrl: VISUAL_ASSET_MANIFEST[3].originalUrl }]
-  });
-  const [moderationQueue, setModerationQueue] = useState([
-    {
-      id: 'mod-101',
-      type: 'SERVER',
-      title: 'BDZONE Network — Season 6 Update Verification',
-      submittedBy: 'JoynalBokhsho',
-      timestamp: '2026-11-08 18:30 BST',
-      details: 'Verified Java play.bdzonemc.com & Bedrock pe.bdzonemc.com:19132 crossplay telemetry.',
-      status: 'Approved'
-    },
-    {
-      id: 'mod-102',
-      type: 'MEMORY',
-      title: '2013 Hamachi 5-Player Server Screenshot (Dhaka Dorm LAN)',
-      submittedBy: 'VeteranCrafter_BD',
-      timestamp: '2026-11-09 21:15 BST',
-      details: 'Archival screenshot showing Beta 1.8.1 LAN session over LogMeIn Hamachi.',
-      status: 'Pending Review'
-    }
-  ]);
   const [formData, setFormData] = useState({
     email: '',
     title: '',
@@ -4217,32 +408,20 @@ export default function App() {
     description: ''
   });
   const [formNotice, setFormNotice] = useState(null);
-  const [apiDiagnostics, setApiDiagnostics] = useState({});
-  const [runningDiagnostics, setRunningDiagnostics] = useState(false);
 
   // Navigation Lists
   const primaryNavItems = useMemo(
     () => [
       { id: 'home', labelEn: 'Home', labelBn: 'হোম', icon: Compass },
-      { id: 'servers', labelEn: 'Servers', labelBn: 'সার্ভার', icon: Server },
-      { id: 'events', labelEn: 'Events', labelBn: 'ইভেন্ট', icon: Calendar },
-      { id: 'legacy', labelEn: 'The Legacy', labelBn: 'ইতিহাস', icon: History }
+      { id: 'servers', labelEn: 'Server directory', labelBn: 'সার্ভার ডিরেক্টরি', icon: Server },
+      { id: 'toolbox', labelEn: 'Server tools', labelBn: 'সার্ভার টুলস', icon: Wrench },
+      { id: 'about', labelEn: 'About', labelBn: 'পরিচিতি', icon: Award }
     ],
     []
   );
 
   const secondaryNavItems = useMemo(
-    () => [
-      { id: 'smp', labelEn: 'SMP Hub', labelBn: 'এসএমপি হাব', icon: Users },
-      { id: 'creators', labelEn: 'Creators', labelBn: 'ক্রিয়েটর', icon: Video },
-      { id: 'resources', labelEn: 'Modrinth Hub', labelBn: 'মডরিন্থ হাব', icon: Package },
-      { id: 'toolbox', labelEn: '14-in-1 Toolbox', labelBn: 'টুলবক্স', icon: Wrench },
-      { id: 'community', labelEn: 'Builds & Photos', labelBn: 'বিল্ড ও ছবি', icon: Camera },
-      { id: 'learn', labelEn: 'Learn Academy', labelBn: 'লার্নিং গাইড', icon: BookOpen },
-      { id: 'news', labelEn: 'News Dispatch', labelBn: 'সংবাদ', icon: Newspaper },
-      { id: 'about', labelEn: 'About & TANXIM', labelBn: 'পরিচিতি', icon: Award },
-      { id: 'admin', labelEn: 'CMS & Assets', labelBn: 'সিএমএস', icon: Database }
-    ],
+    () => [],
     []
   );
 
@@ -4268,32 +447,25 @@ export default function App() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Route Switching with Voxel Curtain & Sound
   const switchTabWithMotion = useCallback(
-    (tabId, label = '') => {
-      playVoxelSound('portal', sfxEnabled);
-      if (!reducedMotion && label) {
-        setRouteTransitionTitle(label);
-        setTimeout(() => setRouteTransitionTitle(null), 580);
-      }
+    (tabId) => {
       setActiveTab(tabId);
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
       }
     },
-    [reducedMotion, sfxEnabled]
+    [reducedMotion]
   );
 
   const handleCopyText = useCallback(
     (text, key) => {
-      playVoxelSound('xp', sfxEnabled);
       try {
         navigator.clipboard.writeText(text);
       } catch (e) {}
       setCopiedKey(key);
       setTimeout(() => setCopiedKey(null), 2200);
     },
-    [sfxEnabled]
+    []
   );
 
   // Live Server Status Query (mcsrvstat.us v3 + mcstatus.io v2 fallback)
@@ -4320,12 +492,12 @@ export default function App() {
       const payload = {
         ip: cleanIp,
         online: Boolean(data.online),
-        playersOnline: data.players?.online ?? 0,
-        playersMax: data.players?.max ?? 0,
-        version: data.version || data.protocol?.name || '1.8–1.21.x',
+        playersOnline: data.players?.online ?? null,
+        playersMax: data.players?.max ?? null,
+        version: data.version || data.protocol?.name || 'Not returned by API',
         motd:
           (Array.isArray(data.motd?.clean) ? data.motd.clean.join(' ') : data.motd?.clean) ||
-          'Verified Bangladesh Crossplay Node',
+          'No MOTD returned by status API',
         icon: data.icon || null,
         rttMs,
         checkedAt: formatDhakaTime(new Date()),
@@ -4341,9 +513,9 @@ export default function App() {
       const fallback = {
         ip: cleanIp,
         online: false,
-        playersOnline: 0,
-        playersMax: 0,
-        version: 'Standby',
+        playersOnline: null,
+        playersMax: null,
+        version: 'Not returned by API',
         motd: 'Unable to reach public status API right now',
         rttMs: null,
         checkedAt: formatDhakaTime(new Date()),
@@ -4367,8 +539,6 @@ export default function App() {
   useEffect(() => {
     if (!autoPollServers) return undefined;
     const id = setInterval(() => {
-      setHeartbeatPulseCount((c) => c + 1);
-      setLastHeartbeatTime(formatDhakaTime(new Date()));
       servers.forEach((srv, idx) => {
         setTimeout(() => queryLiveServerStatus(srv.ip, 'java', srv.id), idx * 180);
       });
@@ -4379,575 +549,139 @@ export default function App() {
   const liveEcosystemStats = useMemo(() => {
     const vals = Object.values(serverTelemetry);
     const onlineList = vals.filter((v) => v?.online);
-    const totalPlayers = onlineList.reduce((acc, v) => acc + (Number(v.playersOnline) || 0), 0);
-    const rtts = onlineList.map((v) => v.rttMs).filter(Boolean);
-    const avgRtt = rtts.length > 0 ? Math.round(rtts.reduce((a, b) => a + b, 0) / rtts.length) : null;
+    const checkedCount = vals.filter((v) => v?.checkedAt && !v.loading).length;
     return {
       totalTracked: servers.length,
       onlineNodes: onlineList.length,
-      totalPlayers,
-      avgRtt
+      checkedCount
     };
   }, [serverTelemetry, servers.length]);
 
-  const guidedMatchedServers = useMemo(() => {
-    return servers.filter((srv) => {
-      if (srv.id === 'srv-hypixel-ref') return false;
-      if (matcherBeginnerOnly && !srv.edition.toLowerCase().includes('crossplay')) return false;
-      if (matcherDevice === 'BEDROCK_MOBILE' && !srv.edition.toLowerCase().includes('crossplay'))
-        return false;
-      if (
-        matcherMode !== 'ALL' &&
-        !srv.modes.some((m) => m.toLowerCase().includes(matcherMode.toLowerCase()))
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [servers, matcherBeginnerOnly, matcherDevice, matcherMode]);
-
   const filteredServers = useMemo(() => {
-    return servers.filter((srv) => {
-      const q = serverSearch.toLowerCase();
-      const matchText =
-        !q ||
-        srv.name.toLowerCase().includes(q) ||
-        srv.ip.toLowerCase().includes(q) ||
-        srv.modes.some((m) => m.toLowerCase().includes(q));
-      const matchEd =
-        serverEditionFilter === 'ALL' ||
-        srv.edition.toLowerCase().includes(serverEditionFilter.toLowerCase());
-      return matchText && matchEd;
-    });
-  }, [servers, serverSearch, serverEditionFilter]);
-
-  const enrichedEvents = useMemo(() => {
-    return events
-      .filter((e) => eventCategoryFilter === 'ALL' || e.category === eventCategoryFilter)
-      .map((evt) => ({
-        ...evt,
-        timing: computeEventStatus(evt, nowMs, simulateLiveTournament)
-      }));
-  }, [events, eventCategoryFilter, nowMs, simulateLiveTournament]);
-
-  const liveNowEvents = useMemo(
-    () => enrichedEvents.filter((e) => e.timing.isLive),
-    [enrichedEvents]
-  );
-
-  // YouTube Live Fetcher
-  const fetchLiveYouTubeBangladesh = useCallback(async (queryStr = 'Minecraft Bangla', customKey) => {
-    setYtLoading(true);
-    setYtError(null);
-    const key = customKey || LIVE_API_CONFIG.youtube.apiKey;
-    try {
-      const searchUrl = `${LIVE_API_CONFIG.youtube.baseUrl}/search?part=snippet&q=${encodeURIComponent(
-        queryStr
-      )}&type=video&maxResults=6&key=${encodeURIComponent(key)}`;
-      const res = await fetch(searchUrl);
-      const data = await res.json();
-      if (!res.ok || !Array.isArray(data.items)) {
-        throw new Error(data.error?.message || 'YouTube quota or network fallback');
-      }
-      const mapped = data.items.map((it) => ({
-        videoId: it.id?.videoId,
-        title: it.snippet?.title,
-        channelTitle: it.snippet?.channelTitle,
-        publishedAt: (it.snippet?.publishedAt || '').slice(0, 10),
-        thumbnail: it.snippet?.thumbnails?.high?.url || it.snippet?.thumbnails?.medium?.url,
-        viewCount: 'Verified YT',
-        likeCount: 'Public'
-      }));
-      setYtVideos(mapped);
-      setYtLastSynced(formatDhakaTime(new Date()));
-    } catch (e) {
-      setYtError(e.message);
-      setYtVideos([
-        {
-          videoId: 'results?search_query=The+Bangla+Gamer+Minecraft',
-          title: 'Minecraft Bangla Survival Series — The Bangla Gamer',
-          channelTitle: 'The Bangla Gamer',
-          publishedAt: '2026',
-          thumbnail: VISUAL_ASSET_MANIFEST[4].originalUrl,
-          viewCount: '2.8M+',
-          likeCount: '95K+'
-        }
-      ]);
-    } finally {
-      setYtLoading(false);
-    }
-  }, []);
-
-  const fetchUnsplashBangladeshPhotos = useCallback(async () => {}, []);
-
-  // Modrinth Live Fetcher
-  const fetchModrinthResources = useCallback(async (q = 'sodium', type = 'all') => {
-    setModrinthLoading(true);
-    try {
-      const facet =
-        type !== 'all' ? `&facets=${encodeURIComponent(`[["project_type:${type}"]]`)}` : '';
-      const res = await fetch(
-        `https://api.modrinth.com/v2/search?query=${encodeURIComponent(q)}&limit=8${facet}`
-      );
-      const data = await res.json();
-      if (Array.isArray(data.hits)) {
-        setModrinthProjects(data.hits);
-      }
-    } catch (e) {
-    } finally {
-      setModrinthLoading(false);
-    }
-  }, []);
-
-  const syncGitHubOpenSourceEcosystem = useCallback(async () => {
-    setGithubSyncing(true);
-    const repos = ['PaperMC/Paper', 'GeyserMC/Geyser', 'PaperMC/Velocity', 'ViaVersion/ViaVersion'];
-    const next = {};
-    await Promise.all(
-      repos.map(async (r) => {
-        try {
-          const res = await fetch(`https://api.github.com/repos/${r}`);
-          if (res.ok) {
-            const d = await res.json();
-            next[r] = {
-              stars: d.stargazers_count || 0,
-              forks: d.forks_count || 0,
-              pushedAt: (d.pushed_at || '').slice(0, 10)
-            };
-          }
-        } catch (e) {}
-      })
+    const q = serverSearch.trim().toLowerCase();
+    return servers.filter((server) =>
+      !q || server.name.toLowerCase().includes(q) || server.ip.toLowerCase().includes(q)
     );
-    setGithubRepoStats((prev) => ({ ...prev, ...next }));
-    setGithubSyncing(false);
-  }, []);
-
-  useEffect(() => {
-    fetchLiveYouTubeBangladesh('Minecraft Bangla');
-    fetchModrinthResources('sodium', 'all');
-  }, [fetchLiveYouTubeBangladesh, fetchModrinthResources]);
+  }, [servers, serverSearch]);
 
   const lookupMinecraftSkin = useCallback(async (username) => {
-    if (!username) return;
+    const cleanUsername = String(username || '').trim();
+    if (!cleanUsername) {
+      setSkinLookupError('Enter a Minecraft username first.');
+      return;
+    }
+    setSkinLookupError(null);
+    setSkinLookupData(null);
     setSkinLookupLoading(true);
     try {
       const res = await fetch(
-        `https://playerdb.co/api/player/minecraft/${encodeURIComponent(username.trim())}`
+        `https://playerdb.co/api/player/minecraft/${encodeURIComponent(cleanUsername)}`
       );
       const data = await res.json();
       const player = data?.data?.player;
-      if (player) {
-        setSkinLookupData({
-          username: player.username,
-          uuid: player.id,
-          avatar: `https://mc-heads.net/avatar/${encodeURIComponent(player.username)}/64`
-        });
-      }
+      if (!res.ok || !player) throw new Error('No profile returned');
+      setSkinLookupData({
+        username: player.username,
+        uuid: player.id,
+        avatar: `https://mc-heads.net/avatar/${encodeURIComponent(player.username)}/64`
+      });
     } catch (e) {
+      setSkinLookupError('No public profile was returned. Check the name and try again.');
     } finally {
       setSkinLookupLoading(false);
     }
   }, []);
 
   const searchMinecraftWiki = useCallback(async (q) => {
-    if (!q) return;
+    const cleanQuery = String(q || '').trim();
+    if (!cleanQuery) {
+      setWikiError('Enter a search term first.');
+      return;
+    }
+    setWikiError(null);
+    setWikiResults([]);
     setWikiLoading(true);
     try {
       const res = await fetch(
         `https://minecraft.wiki/api.php?action=opensearch&search=${encodeURIComponent(
-          q
+          cleanQuery
         )}&limit=5&format=json&origin=*`
       );
       const data = await res.json();
-      if (Array.isArray(data[1]) && Array.isArray(data[3])) {
-        setWikiResults(
-          data[1].map((title, idx) => ({
-            title,
-            url: data[3][idx] || `https://minecraft.wiki/w/${encodeURIComponent(title)}`
-          }))
-        );
-      }
+      if (!res.ok || !Array.isArray(data[1]) || !Array.isArray(data[3])) throw new Error('No results returned');
+      const results = data[1].map((title, idx) => ({
+        title,
+        url: data[3][idx] || `https://minecraft.wiki/w/${encodeURIComponent(title)}`
+      }));
+      setWikiResults(results);
+      if (results.length === 0) setWikiError('No matching pages were returned.');
     } catch (e) {
+      setWikiError('The Minecraft Wiki search could not be reached. Try again later.');
     } finally {
       setWikiLoading(false);
     }
   }, []);
 
-  const recommendedRamGb = useMemo(() => {
-    const base = smpServerType === 'modded-fabric' ? 6 : 4;
-    return Math.min(32, Math.max(base, Math.ceil(base + smpPlayerCount / 14)));
-  }, [smpPlayerCount, smpServerType]);
-
-  const filteredCreators = useMemo(() => {
-    return creators.filter((cr) => {
-      const matchCat = creatorCategoryFilter === 'ALL' || cr.category === creatorCategoryFilter;
-      const q = creatorSearch.toLowerCase();
-      const matchText =
-        !q || cr.name.toLowerCase().includes(q) || cr.handle.toLowerCase().includes(q);
-      return matchCat && matchText;
-    });
-  }, [creators, creatorCategoryFilter, creatorSearch]);
-
-  const spotlightEra = useMemo(
-    () => timeline.find((e) => e.id === selectedEraId) || timeline[0],
-    [timeline, selectedEraId]
-  );
-
-  const activeGuide = useMemo(
-    () => LEARNING_GUIDES.find((g) => g.id === selectedGuideId) || LEARNING_GUIDES[0],
-    [selectedGuideId]
-  );
-
-  const handleCloudinaryFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setCloudinaryStatus('File exceeds 10MB client guard');
-      return;
-    }
-    setCloudinaryProgress(45);
-    const hash = await computeSha256Hex(`${file.name}-${file.size}`);
-    const url = URL.createObjectURL(file);
-    setCloudinaryPreviewUrl(url);
-    setCloudinaryProgress(100);
-    setCloudinaryStatus(`✓ Verified SHA-256 (${hash.slice(0, 12)}...) • Ready`);
-  };
-
-  const handleMicrosoftConnect = async (e) => {
-    e.preventDefault();
-    if (!msUsernameInput.trim()) return;
-    setAuthLoading(true);
-    setAuthError(null);
-    try {
-      const res = await fetch(
-        `https://playerdb.co/api/player/minecraft/${encodeURIComponent(msUsernameInput.trim())}`
-      );
-      const data = await res.json();
-      const p = data?.data?.player;
-      if (!p) throw new Error('Mojang profile not found. Use Free Account option if needed.');
-      setPlayerProfile({
-        blockbangla_user_id: `bb-mc-${p.raw_id.slice(0, 10)}`,
-        blockbangla_username: p.username,
-        minecraft_uuid: p.id,
-        minecraft_verified: true,
-        account_type: 'OFFICIAL_MOJANG_VERIFIED',
-        skin_url: `https://mc-heads.net/avatar/${encodeURIComponent(p.username)}/64`
-      });
-      setAuthModalOpen(false);
-    } catch (err) {
-      setAuthError(err.message);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleFreeAccountRegister = (e) => {
-    e.preventDefault();
-    if (!freeUsernameInput.trim()) return;
-    const clean = freeUsernameInput.trim().replace(/[<>]/g, '');
-    setPlayerProfile({
-      blockbangla_user_id: `bb-free-${Date.now().toString(36)}`,
-      blockbangla_username: clean,
-      minecraft_uuid: null,
-      minecraft_verified: false,
-      account_type: 'FREE_BLOCKBANGLA_ACCOUNT',
-      skin_url: `https://mc-heads.net/avatar/${freeAvatarChoice === 'alex' ? 'MHF_Alex' : 'MHF_Steve'}/64`
-    });
-    setAuthModalOpen(false);
-  };
-
   const handleSubmission = async (e) => {
     e.preventDefault();
-    const check = inspectSubmissionSecurity(formData);
-    if (!check.safe) {
-      setWafBlockedCount((c) => c + 1);
-      setFormNotice({ text: check.reason });
-      return;
-    }
-    const newItem = {
-      id: `mod-${Date.now()}`,
-      type: String(activeModal || 'SUBMISSION').toUpperCase(),
-      title: check.sanitizedTitle,
-      submittedBy: check.sanitizedSubtitle || formData.email || 'CommunityContributor',
-      timestamp: formatDhakaTime(new Date()),
-      details: `${check.sanitizedDescription} (${formData.link || 'No link'})`,
-      status: 'Pending Review'
-    };
-    setModerationQueue((prev) => [newItem, ...prev]);
-    await submitToFormspreeModal({
+    const title = String(formData.title || '').trim();
+    const result = await submitToFormspreeModal({
       email: formData.email,
-      _subject: `[BLOCKBANGLA ${newItem.type}] ${newItem.title}`,
-      title: newItem.title,
-      author: newItem.submittedBy,
-      link: formData.link,
-      message: newItem.details
+      _subject: '[BLOCKBANGLA ' + (activeModal || 'submission') + '] ' + title,
+      title,
+      author: String(formData.subtitle || '').trim() || formData.email,
+      link: String(formData.link || '').trim(),
+      message: String(formData.description || '').trim()
     });
     setFormNotice({
-      text: '✓ Delivered to Formspree (xkjjdnpr) & added to Moderation Queue!'
+      text: result.ok
+        ? 'Sent to the configured Formspree inbox. This page does not publish submissions.'
+        : 'Formspree did not accept the submission. Check the form details and try again.'
     });
-    setFormData({ email: '', title: '', subtitle: '', link: '', description: '' });
+    if (result.ok) setFormData({ email: '', title: '', subtitle: '', link: '', description: '' });
   };
-
-  const runAutonomousApiDiagnostics = useCallback(async () => {
-    setRunningDiagnostics(true);
-    const probes = [
-      { key: 'modrinth', name: 'Modrinth v2 Public API', url: 'https://api.modrinth.com/v2/search?query=sodium&limit=1' },
-      { key: 'mcsrvstat', name: 'MCSRVStat v3 Server Telemetry', url: 'https://api.mcsrvstat.us/3/play.bdzonemc.com' },
-      { key: 'playerdb', name: 'PlayerDB Mojang UUID Service', url: 'https://playerdb.co/api/player/minecraft/Notch' }
-    ];
-    const out = {};
-    await Promise.all(
-      probes.map(async (p) => {
-        const t0 = performance.now();
-        try {
-          const r = await fetch(p.url);
-          out[p.key] = {
-            name: p.name,
-            ok: r.ok,
-            status: r.status,
-            latencyMs: Math.round(performance.now() - t0),
-            checkedAt: formatDhakaTime(new Date())
-          };
-        } catch (e) {
-          out[p.key] = {
-            name: p.name,
-            ok: false,
-            status: 'ERR',
-            latencyMs: null,
-            checkedAt: formatDhakaTime(new Date())
-          };
-        }
-      })
-    );
-    setApiDiagnostics(out);
-    setRunningDiagnostics(false);
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'admin' && Object.keys(apiDiagnostics).length === 0) {
-      runAutonomousApiDiagnostics();
-    }
-  }, [activeTab, apiDiagnostics, runAutonomousApiDiagnostics]);
-
-  const navigateSmart = (url) => {
-    if (!url) return;
-    if (url.startsWith('INTERNAL:')) {
-      const target = url.replace('INTERNAL:', '');
-      switchTabWithMotion(target, target.toUpperCase());
-    } else if (typeof window !== 'undefined') {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
-
-  const downloadEventIcs = (evt) => {
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//BLOCKBANGLA//Events//EN',
-      'BEGIN:VEVENT',
-      `SUMMARY:${evt.titleEn}`,
-      `DESCRIPTION:${evt.descriptionEn}`,
-      `LOCATION:${evt.location}`,
-      'END:VEVENT',
-      'END:VCALENDAR'
-    ].join('\r\n');
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${evt.id}.ics`;
-    a.click();
-  };
-
-  const downloadCloudflareSetupScript = () => {
-    const script = `// Run: node setup-blockbangla.mjs\nconsole.log("BLOCKBANGLA Cloudflare Pages Scaffolder Ready");\n`;
-    const blob = new Blob([script], { type: 'text/javascript' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'setup-blockbangla.mjs';
-    a.click();
-  };
-
   const globalSearchResults = useMemo(() => {
     const q = globalQuery.trim().toLowerCase();
     if (!q) return [];
-    const results = [];
-    servers.forEach((s) => {
-      if (s.name.toLowerCase().includes(q) || s.ip.toLowerCase().includes(q)) {
-        results.push({ title: `${s.name} (${s.ip})`, type: 'Server', tab: 'servers' });
-      }
-    });
-    timeline.forEach((e) => {
-      if (e.titleEn.toLowerCase().includes(q) || e.period.toLowerCase().includes(q)) {
-        results.push({ title: `${e.period}: ${e.titleEn}`, type: 'History Era', tab: 'legacy' });
-      }
-    });
-    LEARNING_GUIDES.forEach((g) => {
-      if (g.titleEn.toLowerCase().includes(q)) {
-        results.push({ title: g.titleEn, type: 'Guide', tab: 'learn', guideId: g.id });
-      }
-    });
-    return results.slice(0, 10);
-  }, [globalQuery, servers, timeline]);
+    return servers
+      .filter((server) => server.name.toLowerCase().includes(q) || server.ip.toLowerCase().includes(q))
+      .map((server) => ({ title: server.name + " (" + server.ip + ")", type: 'Server', tab: 'servers' }))
+      .slice(0, 10);
+  }, [globalQuery, servers]);
 
   return (
     <div className="bb-app relative min-h-screen w-full max-w-full overflow-x-hidden shader-void-bg text-slate-100 font-sans-bd pb-20 xl:pb-0 selection:bg-emerald-500 selection:text-slate-950">
       <V2GlobalStyles />
 
-      {/* Background HTML5 Canvas Particle System Reacting to Dusk / Night / Monsoon */}
-      <ShaderAtmosphereParticleCanvas atmosphere={atmosphere} reducedMotion={reducedMotion} />
-
-      {/* Subtle 3D Perspective Isometric Grid Floor Fading into Obsidian Darkness */}
-      <div
-        className="pointer-events-none fixed inset-x-0 bottom-0 h-[48vh] z-[1] perspective-iso-floor"
-        aria-hidden="true"
-      />
-
-      {/* Custom Interactive Dual-Ring Reticle Cursor */}
-      <BlockBanglaCustomCursor cursorLabel={cursorLabel} reducedMotion={reducedMotion} />
-
       {/* Top Scroll Progress Indicator Bar */}
       <div className="fixed top-0 left-0 right-0 z-[70] h-1 bg-slate-950/60 pointer-events-none">
         <div
-          className="h-full bg-gradient-to-r from-emerald-400 via-amber-300 to-cyan-400 transition-all duration-75 shadow-[0_0_16px_#10B981]"
+          className="h-full bg-[#1E5138] transition-all duration-75"
           style={{ width: `${scrollProgressPct}%` }}
         />
       </div>
 
-      {/* Pixelated Voxel Curtain Route Transition Overlay */}
-      {routeTransitionTitle && (
-        <div className="fixed inset-0 z-[80] pointer-events-none grid grid-cols-6 grid-rows-3">
-          {Array.from({ length: 18 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-[#062E22] border border-emerald-500/20 animate-voxel-curtain"
-              style={{ animationDelay: `${(i % 6) * 25}ms` }}
-            />
-          ))}
-          <div className="fixed inset-0 flex items-center justify-center">
-            <div className="px-6 py-3 rounded-2xl bg-[#050807]/95 border border-emerald-400/50 shadow-2xl text-center">
-              <div className="text-[10px] font-mono-code text-amber-300 tracking-widest uppercase">
-                BLOCKBANGLA
-              </div>
-              <div className="text-2xl font-display font-extrabold text-white tracking-tight mt-0.5">
-                {routeTransitionTitle}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ================================================================== */}
-      {/* FLOATING GLASSMORPHIC HUD NAVBAR DOCK                              */}
+      {/* SITE NAVIGATION */}
       {/* ================================================================== */}
       <header className="bb-header sticky top-2 sm:top-3 z-50 w-full max-w-7xl mx-auto px-2.5 sm:px-4">
         <div
-          className={`rounded-2xl backdrop-blur-2xl bg-black/55 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.85),0_0_30px_rgba(16,185,129,0.12)] px-3 sm:px-5 transition-all duration-300 ${
+          className={`border-b border-slate-300 bg-[#F3EFE4] px-3 sm:px-5 transition-all duration-300 ${
             headerScrolled ? 'py-2' : 'py-3'
           }`}
         >
-          {/* Top Micro-HUD Telemetry Strip inside the Dock */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-white/10 text-[11px] font-mono-code">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="inline-flex items-center gap-1.5 text-emerald-300 font-semibold truncate">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
-                <span className="truncate">
-                  {lang === 'bn' ? 'ঢাকা:' : 'BST:'} {formatDhakaTime(new Date(nowMs))}
-                </span>
-              </span>
-              <span className="hidden md:inline text-white/20">|</span>
-              <span className="hidden md:inline-flex items-center gap-1 text-cyan-300">
-                <Wifi className="w-3 h-3 text-emerald-400" />
-                <span>BDIX: 8ms • {liveEcosystemStats.onlineNodes}/{servers.length} Nodes Online</span>
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-white/10 text-xs">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-500">
+              <span>{lang === 'bn' ? 'ঢাকা' : 'Dhaka'} · {formatDhakaTime(new Date(nowMs))}</span>
+              <span className="hidden sm:inline">{liveEcosystemStats.checkedCount} of {servers.length} listed addresses checked - {liveEcosystemStats.onlineNodes} last reported online</span>
             </div>
-
-            {/* Shader Atmosphere + Language + SFX + Motion Controls */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* Quick Shader Atmosphere Pills */}
-              <div className="hidden sm:flex items-center gap-0.5 bg-white/5 p-0.5 rounded-lg border border-white/10">
-                {[
-                  { id: 'dusk', label: '🌅 Dusk' },
-                  { id: 'midnight', label: '🌌 Night' },
-                  { id: 'monsoon', label: '🌧️ Monsoon' }
-                ].map((env) => (
-                  <button
-                    key={env.id}
-                    type="button"
-                    onClick={() => setAtmosphere(env.id)}
-                    className={`px-2 py-0.5 rounded text-[10px] transition ${
-                      atmosphere === env.id
-                        ? 'bg-emerald-500 text-slate-950 font-bold'
-                        : 'text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    {env.label}
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setLang((l) => (l === 'en' ? 'bn' : 'en'))}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 transition text-[11px]"
-              >
-                <Globe className="w-3 h-3 shrink-0" />
-                <span>{lang === 'en' ? 'বাংলা' : 'EN'}</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setLang((l) => (l === 'en' ? 'bn' : 'en'))} className="px-2.5 py-1 border border-slate-300 text-xs font-bold">
+                {lang === 'en' ? 'বাংলা' : 'EN'}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setReducedMotion((rm) => !rm)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] border transition ${
-                  reducedMotion
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
-                    : 'bg-white/5 text-slate-300 border-white/10 hover:text-white'
-                }`}
-              >
+              <button type="button" onClick={() => setReducedMotion((rm) => !rm)} className="px-2.5 py-1 border border-slate-300 text-xs">
                 {reducedMotion ? 'Motion: Off' : 'Motion: On'}
               </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !sfxEnabled;
-                  setSfxEnabled(next);
-                  if (next) playVoxelSound('xp', true);
-                }}
-                className={`px-2 py-0.5 rounded-lg text-[10px] border transition ${
-                  sfxEnabled
-                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40'
-                    : 'bg-white/5 text-slate-400 border-white/10'
-                }`}
-              >
-                {sfxEnabled ? '🔊 SFX' : '🔇'}
-              </button>
-
-              {playerProfile ? (
-                <button
-                  type="button"
-                  onClick={() => setAuthModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-[11px]"
-                >
-                  <img
-                    src={playerProfile.skin_url}
-                    alt={playerProfile.blockbangla_username}
-                    className="w-3.5 h-3.5 rounded-sm shrink-0"
-                  />
-                  <span className="max-w-[80px] truncate">{playerProfile.blockbangla_username}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthError(null);
-                    setAuthModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-400 text-slate-950 font-bold hover:bg-amber-300 transition text-[11px]"
-                >
-                  <UserCheck className="w-3 h-3 shrink-0" />
-                  <span>{lang === 'bn' ? 'লগইন' : 'Login'}</span>
-                </button>
-              )}
             </div>
           </div>
 
@@ -4956,8 +690,6 @@ export default function App() {
             <button
               type="button"
               onClick={() => switchTabWithMotion('home', 'BLOCKBANGLA')}
-              onMouseEnter={() => setCursorLabel('HOME')}
-              onMouseLeave={() => setCursorLabel(null)}
               className="flex items-center gap-2.5 text-left group min-w-0"
             >
               <BlockBanglaLogo size={headerScrolled ? 34 : 38} />
@@ -4967,13 +699,13 @@ export default function App() {
                     BLOCK<span className="text-emerald-400">BANGLA</span>
                   </span>
                   <span className="hidden sm:inline-block text-[10px] font-pixel-hud px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                    SHADER PORTAL v5.0
+                    SERVERS · STATUS · TOOLS
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 truncate">
                   {lang === 'bn'
                     ? 'বাংলাদেশের মাইনক্রাফট কমিউনিটির ঘর'
-                    : 'Next-Gen Bangladesh Minecraft Ecosystem'}
+                    : 'Bangladesh Minecraft server directory & tools'}
                 </p>
               </div>
             </button>
@@ -4999,53 +731,6 @@ export default function App() {
                   </button>
                 );
               })}
-
-              {/* Secondary Destinations Grouped Dropdown */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setExploreDropdownOpen((o) => !o)}
-                  className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition active:scale-95 ${
-                    secondaryNavItems.some((s) => s.id === activeTab)
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
-                      : 'bg-white/5 text-slate-200 border-white/10 hover:border-emerald-400/40'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{lang === 'bn' ? 'অন্যান্য ও টুলবক্স' : 'Explore & Tools'}</span>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-
-                {exploreDropdownOpen && (
-                  <div
-                    onMouseLeave={() => setExploreDropdownOpen(false)}
-                    className="absolute right-0 mt-2 w-64 rounded-2xl bg-[#070D0B]/95 backdrop-blur-2xl border border-emerald-500/40 shadow-2xl p-2 grid grid-cols-1 gap-1 z-50"
-                  >
-                    {secondaryNavItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activeTab === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            switchTabWithMotion(item.id, item.labelEn);
-                            setExploreDropdownOpen(false);
-                          }}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-left transition ${
-                            isActive
-                              ? 'bg-emerald-500 text-slate-950 font-bold'
-                              : 'text-slate-200 hover:bg-white/10'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 text-emerald-400 shrink-0" />
-                          <span>{lang === 'bn' ? item.labelBn : item.labelEn}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
 
               <button
                 type="button"
@@ -5083,7 +768,7 @@ export default function App() {
                 type="button"
                 onClick={() => setMobileMenuOpen((o) => !o)}
                 className="inline-flex items-center gap-1 px-2.5 py-2 rounded-xl bg-white/5 border border-white/10 text-slate-200 text-xs font-bold"
-                aria-label="Toggle Menu"
+                aria-label="Toggle navigation"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 <span>{lang === 'bn' ? 'মেনু' : 'HUD'}</span>
@@ -5118,30 +803,6 @@ export default function App() {
                   );
                 })}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {secondaryNavItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        switchTabWithMotion(item.id, item.labelEn);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium ${
-                        isActive
-                          ? 'bg-emerald-500 text-slate-950 font-bold'
-                          : 'bg-white/5 text-slate-300 border border-white/10'
-                      }`}
-                    >
-                      <Icon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                      <span className="truncate">{lang === 'bn' ? item.labelBn : item.labelEn}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
           )}
         </div>
@@ -5152,1002 +813,72 @@ export default function App() {
       {/* ================================================================== */}
       <main className="bb-main relative z-10 max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-10 space-y-16 overflow-x-hidden">
         {/* ================================================================ */}
-        {/* VIEW A: HOME — SHADER-LIT NEXT-GEN GAMING PORTAL                 */}
+        {/* HOME                 */}
         {/* ================================================================ */}
         {activeTab === 'home' && (
-          <div className="space-y-16">
-            {/* 1. FULL-BLEED ASYMMETRIC SHADER-LIT HERO (ZERO OUTER BOX WRAPPER) */}
-            <section className="bb-hero relative pt-2 sm:pt-6 pb-4">
-              {/* Ambient Complementary Shader Volumetric Backlights */}
-              <div
-                className="pointer-events-none absolute -top-24 -left-24 w-[480px] h-[480px] rounded-full blur-[130px] opacity-35"
-                style={{
-                  background:
-                    atmosphere === 'dusk'
-                      ? 'radial-gradient(circle, #F59E0B, #10B981, transparent)'
-                      : atmosphere === 'monsoon'
-                      ? 'radial-gradient(circle, #06B6D4, #0284C7, transparent)'
-                      : 'radial-gradient(circle, #10B981, #06B6D4, transparent)'
-                }}
-              />
-              <div
-                className="pointer-events-none absolute top-1/4 -right-24 w-[520px] h-[520px] rounded-full blur-[140px] opacity-30"
-                style={{
-                  background: 'radial-gradient(circle, #10B981 0%, #F59E0B 45%, transparent 75%)'
-                }}
-              />
-
-              {/* Asymmetric 12-Column Full-Bleed Grid */}
-              <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-                {/* Left 5 Columns: Unclipped Display Headline, 3D Bevel CTAs & Live Telemetry Badge */}
-                <div className="lg:col-span-5 space-y-6">
-                  <div className="inline-flex flex-wrap items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/35 shadow-[0_0_25px_rgba(16,185,129,0.2)]">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span className="font-pixel-hud text-[10px] text-emerald-300 uppercase tracking-wider">
-                      {lang === 'bn'
-                        ? 'বাংলাদেশ মাইনক্রাফট ইকোসিস্টেম পোর্টাল'
-                        : 'BANGLADESH MINECRAFT ECOSYSTEM PORTAL'}
-                    </span>
-                  </div>
-
-                  {/* Unclipped Hero Headline with Generous Line-Height */}
-                  <h1 className="text-4xl sm:text-5xl xl:text-[3.45rem] font-display font-black tracking-tight text-white leading-[1.16] overflow-visible py-1">
-                    <KineticSplitText
-                      text={
-                        lang === 'bn'
-                          ? 'বাংলাদেশের একটি নিজস্ব মাইনক্রাফট ইতিহাস আছে। চলুন পরবর্তী অধ্যায়টি গড়ি।'
-                          : "Bangladesh has a Minecraft story. Let's build its next chapter."
-                      }
-                      highlightWords={['Minecraft', 'story.', 'chapter.', 'মাইনক্রাফট', 'ইতিহাস']}
-                      reducedMotion={reducedMotion}
-                    />
-                  </h1>
-
-                  <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-xl">
-                    {lang === 'bn'
-                      ? '২০১১ সালের অফলাইন ল্যান থেকে শুরু করে আজকের পিসি ও মোবাইল ক্রসপ্লে সার্ভার এবং ৩,৬০০+ বাংলা ইউটিউব চ্যানেল—বাংলাদেশের মাইনক্রাফট ইতিহাস, সার্ভার এবং ইভেন্টের প্রামাণ্য ঠিকানা।'
-                      : 'From 2011 dorm-room LAN worlds to today’s low-latency BDIX/Singapore crossplay networks and 3,600+ Bengali creator channels—connect to live servers, compete in tournaments, and explore sixteen years of voxel heritage.'}
-                  </p>
-
-                  {/* 3D Beveled Next-Gen Gaming CTA Buttons */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                    <MagneticButton
-                      onClick={() => switchTabWithMotion('servers', 'SERVER DIRECTORY')}
-                      onCursorHover={setCursorLabel}
-                      cursorLabel="SERVERS"
-                      reducedMotion={reducedMotion}
-                      className="bevel-emerald-btn flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-slate-950 font-display font-extrabold text-xs sm:text-sm tracking-wide"
-                    >
-                      <Server className="w-4 h-4 shrink-0" />
-                      <span>{lang === 'bn' ? 'সার্ভার খুঁজুন' : 'Find a Server'}</span>
-                    </MagneticButton>
-
-                    <MagneticButton
-                      onClick={() => switchTabWithMotion('legacy', 'THE LEGACY ARCHIVE')}
-                      onCursorHover={setCursorLabel}
-                      cursorLabel="HISTORY"
-                      reducedMotion={reducedMotion}
-                      className="bevel-amber-btn flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-amber-200 border border-amber-400/50 font-display font-bold text-xs sm:text-sm"
-                    >
-                      <History className="w-4 h-4 text-amber-400 shrink-0" />
-                      <span>{lang === 'bn' ? 'ইতিহাস আর্কাইভ' : 'Explore History'}</span>
-                    </MagneticButton>
-
-                    <MagneticButton
-                      onClick={() => switchTabWithMotion('events', 'COMMUNITY EVENTS')}
-                      onCursorHover={setCursorLabel}
-                      cursorLabel="EVENTS"
-                      reducedMotion={reducedMotion}
-                      className="bevel-cyan-btn flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl text-cyan-200 border border-cyan-400/50 font-display font-bold text-xs sm:text-sm"
-                    >
-                      <Calendar className="w-4 h-4 text-cyan-300 shrink-0" />
-                      <span>{lang === 'bn' ? 'ইভেন্ট দেখুন' : 'Join Events'}</span>
-                    </MagneticButton>
-                  </div>
-                </div>
-
-                {/* Right 7 Columns: True 3D Isometric Voxel Engine & F3 Shader HUD */}
-                <div className="lg:col-span-7 animate-clip-reveal">
-                  <HeroVoxelBangladeshCanvas
-                    atmosphere={atmosphere}
-                    setAtmosphere={setAtmosphere}
-                    lang={lang}
-                  />
-                </div>
-              </div>
-
-              {/* High-Craft Interactive Bento Grid (3 Stat Cards + Plain-English Jargon Pills + Live BDIX Ping) */}
-              <div className="relative z-10 grid grid-cols-1 md:grid-cols-12 gap-4 mt-8">
-                {/* Bento Card 1: 2010–2026 Historical Eras */}
-                <ShaderBentoCard
-                  onClick={() => switchTabWithMotion('legacy', 'HISTORY ARCHIVE')}
-                  glowColor="rgba(245, 158, 11, 0.25)"
-                  className="md:col-span-3 p-5"
-                >
-                  <div className="flex items-center justify-between text-[10px] font-pixel-hud text-amber-400 uppercase">
-                    <span>ARCHIVE CHRONOLOGY</span>
-                    <History className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-display font-black text-white mt-2">
-                    2010–2026
-                  </div>
-                  <div className="text-xs font-bold text-amber-300 mt-0.5">
-                    10 Documented Eras
-                  </div>
-                  <div className="text-[11px] font-mono-code text-slate-400 mt-2 flex items-center justify-between">
-                    <span>7 primary citations</span>
-                    <span className="text-amber-300 group-hover:translate-x-1 transition-transform">
-                      Inspect →
-                    </span>
-                  </div>
-                </ShaderBentoCard>
-
-                {/* Bento Card 2: Live Servers & BDIX Ping Indicator */}
-                <ShaderBentoCard
-                  onClick={() => switchTabWithMotion('servers', 'SERVERS')}
-                  glowColor="rgba(16, 185, 129, 0.28)"
-                  className="md:col-span-3 p-5"
-                >
-                  <div className="flex items-center justify-between text-[10px] font-pixel-hud text-emerald-400 uppercase">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      BDIX &amp; SG LIVE
-                    </span>
-                    <Server className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-display font-black text-white mt-2">
-                    {liveEcosystemStats.onlineNodes} / {servers.length}
-                  </div>
-                  <div className="text-xs font-bold text-emerald-300 mt-0.5">
-                    Servers Responding Now
-                  </div>
-                  <div className="text-[11px] font-mono-code text-slate-400 mt-2 flex items-center justify-between">
-                    <span>mcsrvstat.us v3</span>
-                    <span className="text-emerald-300 group-hover:translate-x-1 transition-transform">
-                      Live Ping →
-                    </span>
-                  </div>
-                </ShaderBentoCard>
-
-                {/* Bento Card 3: 19,000+ Bangla Videos */}
-                <ShaderBentoCard
-                  onClick={() => switchTabWithMotion('creators', 'CREATORS')}
-                  glowColor="rgba(6, 182, 212, 0.28)"
-                  className="md:col-span-3 p-5"
-                >
-                  <div className="flex items-center justify-between text-[10px] font-pixel-hud text-cyan-400 uppercase">
-                    <span>YOUTUBE TELEMETRY</span>
-                    <Youtube className="w-4 h-4 text-cyan-400" />
-                  </div>
-                  <div className="text-2xl sm:text-3xl font-display font-black text-white mt-2">
-                    <AnimatedStatCounter targetValue={19000} suffix="+" reducedMotion={reducedMotion} />
-                  </div>
-                  <div className="text-xs font-bold text-cyan-300 mt-0.5">
-                    #minecraftbangla Videos
-                  </div>
-                  <div className="text-[11px] font-mono-code text-slate-400 mt-2 flex items-center justify-between">
-                    <span>3,600+ BD Channels</span>
-                    <span className="text-cyan-300 group-hover:translate-x-1 transition-transform">
-                      Watch →
-                    </span>
-                  </div>
-                </ShaderBentoCard>
-
-                {/* Bento Card 4: Interactive Plain-Language Decoder & BDIX Ping Radar */}
-                <ShaderBentoCard
-                  glowColor="rgba(16, 185, 129, 0.22)"
-                  className="md:col-span-3 p-5 flex flex-col justify-between"
-                >
-                  <div className="flex items-center justify-between text-[10px] font-pixel-hud text-emerald-300 uppercase">
-                    <span>NEW PLAYER DECODER</span>
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
-                      5–15ms BDIX
-                    </span>
-                  </div>
-                  <div className="text-xs text-slate-300 font-medium my-1.5">
-                    {lang === 'bn'
-                      ? 'যেকোনো টেকনিক্যাল শব্দের ওপর ক্লিক করে বাংলা ব্যাখ্যা দেখুন:'
-                      : 'Tap any term for an instant plain-language explanation:'}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <TermTooltip term="Geyser" label="Crossplay" lang={lang} />
-                    <TermTooltip term="BDIX" label="BDIX Ping" lang={lang} />
-                    <TermTooltip term="SMP" label="SMP" lang={lang} />
-                    <TermTooltip term="PBR" label="PBR Shaders" lang={lang} />
-                  </div>
-                </ShaderBentoCard>
-              </div>
-            </section>
-
-            {/* Kinetic Marquee Strip */}
-            <KineticMarqueeRibbon lang={lang} />
-
-            {/* 2. First-Visit "Find Your Server" Guided Matcher Flow */}
-            <section className="rounded-3xl bg-[#0C1311] border border-white/10 p-5 sm:p-8 space-y-6 shadow-xl">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
-                <div>
-                  <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                    {lang === 'bn' ? 'প্রথমবার এসেছেন? সার্ভার খুঁজুন' : 'Start Playing • Find a Bangladeshi Server'}
-                  </span>
-                  <h2 className="text-xl sm:text-2xl font-display font-extrabold text-white mt-0.5">
-                    {lang === 'bn'
-                      ? 'আপনার ডিভাইস ও পছন্দের গেম মোড অনুযায়ী সার্ভার বেছে নিন'
-                      : 'Choose Your Device and Preferred Game Mode'}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowStatusDisclosure((d) => !d)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 text-xs font-medium"
-                >
-                  <Info className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>{showStatusDisclosure ? 'Hide Verification Note' : 'How We Check Server Status'}</span>
-                </button>
-              </div>
-
-              {/* Transparent Data Freshness & Verification Disclosure */}
-              {showStatusDisclosure && (
-                <div className="p-4 rounded-2xl bg-[#070B0A] border border-cyan-500/30 text-xs text-slate-300 space-y-2">
-                  <div className="font-mono-code font-bold text-cyan-300 uppercase">
-                    How BLOCKBANGLA Verifies Server Status & Metadata
-                  </div>
-                  <p>
-                    • <strong>Live Telemetry (Automatic every 45s):</strong> Online/offline status, current player count, version string, and MOTD are queried live from your browser via <code className="text-emerald-300">api.mcsrvstat.us/3</code> (with fallback to <code className="text-emerald-300">api.mcstatus.io/v2</code>).
-                  </p>
-                  <p>
-                    • <strong>Community-Maintained Details:</strong> Founding dates (such as BDZONE on April 9, 2018 and Cyan Plex in June 2021), Bedrock ports (`19132`), and Discord links are maintained by BLOCKBANGLA editors from official server pages and registries. If a server goes offline or changes ports, click <strong>Report Inaccuracy</strong> on any listing.
-                  </p>
-                </div>
-              )}
-
-              {/* 3-Step Beginner-Friendly Filter Bar */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-3.5 rounded-2xl bg-[#070B0A] border border-slate-800 space-y-2">
-                  <label className="text-[11px] font-mono-code text-emerald-400 uppercase block">
-                    Step 1: What Device Do You Play On?
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { id: 'ALL', label: 'All Devices' },
-                      { id: 'BEDROCK_MOBILE', label: 'Mobile / Bedrock' },
-                      { id: 'JAVA_PC', label: 'PC / Java' }
-                    ].map((dev) => (
-                      <button
-                        key={dev.id}
-                        type="button"
-                        onClick={() => setMatcherDevice(dev.id)}
-                        className={`py-2 px-2 rounded-lg text-[11px] font-semibold transition ${
-                          matcherDevice === dev.id
-                            ? 'bg-emerald-500 text-slate-950 font-bold'
-                            : 'bg-slate-900 text-slate-300 hover:text-white'
-                        }`}
-                      >
-                        {dev.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-[#070B0A] border border-slate-800 space-y-2">
-                  <label className="text-[11px] font-mono-code text-cyan-400 uppercase block">
-                    Step 2: Preferred Game Mode
-                  </label>
-                  <select
-                    value={matcherMode}
-                    onChange={(e) => setMatcherMode(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-white font-semibold"
-                  >
-                    <option value="ALL">All Game Modes (Survival, PvP, Skyblock)</option>
-                    <option value="Survival SMP">Survival SMP (Towns & Building)</option>
-                    <option value="BedWars / PvP">BedWars & Competitive PvP</option>
-                    <option value="Skyblock">Skyblock & Economy</option>
-                    <option value="Lifesteal">Lifesteal & Clan Wars</option>
-                  </select>
-                </div>
-
-                <div className="p-3.5 rounded-2xl bg-[#070B0A] border border-slate-800 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono-code text-amber-400 uppercase">
-                      Step 3: Beginner Crossplay Filter
-                    </span>
-                    <input
-                      type="checkbox"
-                      checked={matcherBeginnerOnly}
-                      onChange={(e) => setMatcherBeginnerOnly(e.target.checked)}
-                      className="w-4 h-4 accent-emerald-500 rounded"
-                    />
-                  </div>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Only show servers supporting both PC Java and Mobile Bedrock (<TermTooltip term="Geyser" label="GeyserMC" lang={lang} />).
-                  </p>
-                </div>
-              </div>
-
-              {/*Matched Bangladeshi Servers Output */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {guidedMatchedServers.slice(0, 3).map((srv) => {
-                  const tele = serverTelemetry[srv.id];
-                  return (
-                    <div
-                      key={srv.id}
-                      className="rounded-2xl bg-[#070B0A] border border-slate-800 hover:border-emerald-500/40 p-4 flex flex-col justify-between gap-3 transition"
-                    >
-                      <div className="space-y-2.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-mono-code px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                            {srv.edition}
-                          </span>
-                          <span
-                            className={`text-[11px] font-mono-code font-bold ${
-                              tele?.online ? 'text-emerald-400' : 'text-amber-300'
-                            }`}
-                          >
-                            {tele?.loading
-                              ? 'Checking...'
-                              : tele?.online
-                              ? `● Online (${tele.playersOnline}/${tele.playersMax})`
-                              : '○ Standby / Check in Client'}
-                          </span>
-                        </div>
-                        <h3 className="text-base font-display font-bold text-white">{srv.name}</h3>
-                        <p className="text-xs text-slate-400 line-clamp-2">
-                          {lang === 'bn' ? srv.descriptionBn : srv.descriptionEn}
-                        </p>
-                        <div className="p-2.5 rounded-xl bg-[#0D1513] border border-slate-800 text-[11px] font-mono-code space-y-1">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">PC Java IP:</span>
-                            <span className="text-emerald-300 font-bold">{srv.ip}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Mobile Bedrock:</span>
-                            <span className="text-amber-300">{srv.bedrockIp}</span>
-                          </div>
-                          <div className="flex justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/80">
-                            <span>Port: {srv.port}</span>
-                            <span>Checked: {tele?.checkedAt || 'Just now'}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(srv.ip, `match-${srv.id}`)}
-                          className="flex-1 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition"
-                        >
-                          {copiedKey === `match-${srv.id}` ? (
-                            <>
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Copied IP!</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Copy IP</span>
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDetailItem({ type: 'server', data: srv })}
-                          className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-slate-700 text-xs font-mono-code"
-                        >
-                          How to Join
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* 2.5 OPRAAH-INSPIRED 3D CURVED CREATOR & BUILD PANORAMA STAGE */}
-            <OpraahCurvedPanoramaStage
-              lang={lang}
-              onNavigateTab={switchTabWithMotion}
-              onInspectLightbox={setLightboxAsset}
-            />
-
-            {/* 2.6 BDZONE-INSPIRED FLAGSHIP NETWORK HUB, IDEA BOARD, 4-STEP JOIN & SEASON GALLERY */}
-            <BdzoneInspiredNetworkShowcase
-              lang={lang}
-              bdzoneTelemetry={serverTelemetry['srv-bdzone']}
-              onCopyText={handleCopyText}
-              copiedKey={copiedKey}
-              onOpenSubmitModal={(m) => {
-                setFormNotice(null);
-                setActiveModal(m);
-              }}
-              devReceiverEndpoint={devReceiverEndpoint}
-            />
-
-            {/* 2.7 OPRAAH-INSPIRED SPLIT-SCREEN MANIFESTO & WAVY SVG RIBBON */}
-            <OpraahSplitManifestoAndRibbon
-              lang={lang}
-              onNavigateTab={switchTabWithMotion}
-            />
-
-            {/* 3. Sourced History Journey (Pinned on Desktop, Accessible Stack on Mobile) */}
-            <PinnedBengalStoryScrubber
-              lang={lang}
-              onNavigateTab={switchTabWithMotion}
-              onOpenSubmitMemory={() => {
-                setFormNotice(null);
-                setActiveModal('submit-memory');
-              }}
-            />
-
-            {/* 4. Focused Priority Grid: Upcoming Events & Community Contribution Path */}
-            <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Upcoming Tournaments & Events Preview */}
-              <div className="lg:col-span-7 rounded-2xl bg-[#0D1513] border border-emerald-500/25 p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                        PRIORITY 2 // ASIA/DHAKA (UTC+6) EVENT SCHEDULE
-                      </span>
-                      <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                        {lang === 'bn' ? 'আসন্ন ইভেন্ট ও টুর্নামেন্ট' : 'Upcoming Tournaments & Community Events'}
-                      </h2>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => switchTabWithMotion('events', 'EVENTS & BRACKETS')}
-                      className="text-xs font-semibold text-emerald-400 hover:underline"
-                    >
-                      All Events →
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {enrichedEvents.slice(0, 2).map((evt) => (
-                      <div
-                        key={evt.id}
-                        className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 hover:border-emerald-500/40 transition space-y-2 flex flex-col justify-between"
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px] font-mono-code">
-                            <span className="text-emerald-300">{evt.category}</span>
-                            <span className="text-amber-300 font-bold">{evt.timing.countdownText}</span>
-                          </div>
-                          <h4 className="text-sm font-bold text-white">
-                            {lang === 'bn' ? evt.titleBn : evt.titleEn}
-                          </h4>
-                          <div className="text-[11px] font-mono-code text-slate-400">
-                            Organizer: {evt.organizer}
-                          </div>
-                        </div>
-                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono-code">
-                          <span className="text-cyan-300">{evt.verifiedStatus}</span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDetailItem({ type: 'event', data: evt })}
-                            className="text-emerald-400 hover:underline"
-                          >
-                            Details →
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => switchTabWithMotion('events', 'EVENTS & BRACKETS')}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition"
-                >
-                  Open Full Event Schedule & Download .ICS Calendar →
-                </button>
-              </div>
-
-              {/* Visible Community Contribution Hub Card */}
-              <div className="lg:col-span-5 rounded-2xl bg-[#0D1513] border border-amber-500/30 p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-3">
-                  <span className="text-xs font-mono-code text-amber-400 uppercase">
-                    OPEN COMMUNITY ARCHIVE // CONTRIBUTE & VERIFY
-                  </span>
-                  <h2 className="text-xl font-display font-bold text-white">
-                    {lang === 'bn'
-                      ? 'আপনার সার্ভার, বিল্ড বা পুরনো স্মৃতি যুক্ত করুন'
-                      : 'Submit a Server, Creator, Build, or Historical Memory'}
-                  </h2>
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    Every submission passes through our transparent 3-step editorial workflow (<code className="text-emerald-300">Pending Review → Source Checked → Published</code>) and is tagged clearly as community-submitted or primary-sourced.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormNotice(null);
-                        setActiveModal('submit-server');
-                      }}
-                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-emerald-300 text-left"
-                    >
-                      + Submit a Server
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormNotice(null);
-                        setActiveModal('submit-creator');
-                      }}
-                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-cyan-300 text-left"
-                    >
-                      + Submit Creator
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormNotice(null);
-                        setActiveModal('submit-build');
-                      }}
-                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-amber-300 text-left"
-                    >
-                      + Submit Voxel Build
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormNotice(null);
-                        setActiveModal('submit-memory');
-                      }}
-                      className="p-2.5 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs font-semibold text-purple-300 text-left"
-                    >
-                      + Historical Memory
-                    </button>
-                  </div>
-                </div>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 flex items-center justify-between text-[11px] font-mono-code text-slate-400">
-                  <span>Queue Status: {moderationQueue.length} items in review</span>
-                  <button
-                    type="button"
-                    onClick={() => switchTabWithMotion('admin', 'CMS & STATUS')}
-                    className="text-emerald-400 hover:underline"
-                  >
-                    Inspect Queue →
+          <div className="bb-home-page">
+            <section className="bb-home-intro">
+              <div className="bb-home-copy">
+                <div className="bb-kicker">BLOCKBANGLA / BANGLADESH MINECRAFT DIRECTORY</div>
+                <h1>
+                  {lang === 'bn'
+                    ? 'বাংলাদেশের Minecraft সার্ভার খুঁজুন। দেখে নিন সার্ভারটি চালু আছে কি না।'
+                    : 'Find a Minecraft server in Bangladesh. Check if it’s online.'}
+                </h1>
+                <p>
+                  {lang === 'bn'
+                    ? 'তালিকায় থাকা সার্ভারের ঠিকানা পরীক্ষা করুন। যোগ দেওয়ার আগে সার্ভারের মালিকের কাছ থেকে সংস্করণ ও অন্যান্য তথ্য নিশ্চিত করুন।'
+                    : 'Check the listed server addresses. Confirm the edition and other details with the server owner before you join.'}
+                </p>
+                <div className="bb-home-actions">
+                  <button type="button" onClick={() => switchTabWithMotion('servers', 'Server directory')}>
+                    {lang === 'bn' ? 'সার্ভার দেখুন' : 'Browse servers'}
+                  </button>
+                  <button type="button" onClick={() => switchTabWithMotion('toolbox')}>
+                    {lang === 'bn' ? 'সার্ভার টুলস' : 'Server tools'}
                   </button>
                 </div>
               </div>
+
+              <aside className="bb-home-index" aria-label="In this directory">
+                <div className="bb-kicker">Start here</div>
+                <button className="bb-index-row" type="button" onClick={() => switchTabWithMotion('servers')}>
+                  <span>01</span><span><strong>Server directory</strong><small>See listed addresses and current connection responses.</small></span>
+                </button>
+                <button className="bb-index-row" type="button" onClick={() => switchTabWithMotion('toolbox')}>
+                  <span>02</span><span><strong>Server tools</strong><small>Coordinates, text preview, public profiles and wiki search.</small></span>
+                </button>
+                <button className="bb-index-row" type="button" onClick={() => switchTabWithMotion('about')}>
+                  <span>03</span><span><strong>Send an update</strong><small>Send a listing or correction.</small></span>
+                </button>
+              </aside>
             </section>
 
-            {/* 5. Progressive Disclosure Toggle for Extended 3D Labs, Builds & Photography */}
-            <div className="rounded-2xl bg-[#0A110F] border border-slate-800 p-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-display font-bold text-white">
-                  {lang === 'bn'
-                    ? 'অতিরিক্ত সেকশন: ৩ডি ভক্সেল দ্বীপ, ভক্সেল স্থাপত্য ও আনস্প্ল্যাশ গ্যালারি'
-                    : 'Extended Homepage Showcase: 3D WebGL Island, Voxel Builds & Photography'}
-                </div>
-                <p className="text-xs text-slate-400">
-                  Grouped here to keep the main homepage fast and focused for first-time visitors.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowExtendedHomeLabs((prev) => !prev)}
-                className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono-code font-bold transition"
-              >
-                {showExtendedHomeLabs ? 'Hide Extended Showcase ▲' : 'Expand 3D Scene & Galleries ▼'}
+            <section className="bb-home-note" aria-label={lang === 'bn' ? 'তথ্য যাচাই' : 'How information is checked'}>
+              <strong>{lang === 'bn' ? 'তথ্য যাচাই' : 'How information is checked'}</strong>
+              <p>
+                {lang === 'bn'
+                  ? 'নাম ও ঠিকানাগুলো দেওয়া অ্যাপ ফাইল থেকে নেওয়া। তালিকার তথ্য মালিকের কাছ থেকে নিশ্চিত করুন; লাইভ চেক শুধু পাবলিক স্ট্যাটাস API-এর বর্তমান উত্তর দেখায়।'
+                  : 'The listed server names and Java addresses are unconfirmed. Live checks show only the current response from a public status API.'}
+              </p>
+              <button type="button" onClick={() => switchTabWithMotion('about')}>
+                {lang === 'bn' ? 'তথ্য পাঠান' : 'Send an update'}
               </button>
-            </div>
-
-            {showExtendedHomeLabs && (
-              <div className="space-y-12">
-                {/* Interactive Three.js WebGL 3D Floating Voxel Bangladesh Delta */}
-                <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-                  <div className="lg:col-span-7">
-                    <WebGLVoxelBengalScene
-                      atmosphere={atmosphere}
-                      threeReady={threeReady}
-                      reducedMotion={reducedMotion}
-                    />
-                  </div>
-                  <div className="lg:col-span-5 space-y-4 p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/25">
-                    <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                      INTERACTIVE 3D VOXEL SCENE (AUTO-PAUSES OFF-SCREEN)
-                    </span>
-                    <h2 className="text-2xl font-display font-extrabold text-white">
-                      {lang === 'bn'
-                        ? 'ইন্টারেক্টিভ ৩ডি ভক্সেল বাংলাদেশ দ্বীপ'
-                        : 'Interactive 3D Voxel Bengal Delta & Landmarks'}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                      Drag across the viewport to orbit Jatiya Sangsad Bhaban, Paharpur Terracotta Stupa, and the Padma River span in 3D space. Automatically pauses when scrolled out of view.
-                    </p>
-                  </div>
-                </section>
-
-                {/* Reality vs. Voxel Bengal Asymmetric Split Showcase */}
-                <section className="space-y-5">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                      <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                        REAL PHOTOGRAPHY × VOXEL ARCHITECTURE PAIRING
-                      </span>
-                      <h2 className="text-2xl font-display font-bold text-white mt-0.5">
-                        {lang === 'bn'
-                          ? 'বাস্তব বাংলাদেশ বনাম মাইনক্রাফট ভক্সেল স্থাপত্য'
-                          : 'Bangladesh in Reality & Reconstructed in Voxels'}
-                      </h2>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => switchTabWithMotion('community', 'COMMUNITY BUILDS')}
-                      className="text-xs font-semibold text-emerald-400 hover:underline"
-                    >
-                      Explore Full Build Gallery →
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {builds.slice(0, 3).map((b, idx) => {
-                      const refPhoto = SECTION_VISUAL_CURATION.buildsRealPhotos[b.id];
-                      return (
-                        <Tilt3DCard
-                          key={b.id}
-                          staggerIndex={idx}
-                          reducedMotion={reducedMotion}
-                          className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                        >
-                          <div>
-                            <VoxelBuildArtwork
-                              artType={b.artType}
-                              title={b.titleEn}
-                              realPhotoUrl={refPhoto?.photoUrl}
-                              onInspectLightbox={() =>
-                                setLightboxAsset({
-                                  title: b.titleEn,
-                                  imageUrl: refPhoto?.photoUrl,
-                                  subtitle: `${b.coordinates} • Palette: ${b.palette.join(', ')}`,
-                                  attribution: refPhoto?.credit || 'Unsplash Verified Archive'
-                                })
-                              }
-                            />
-                            <div className="p-4 space-y-2">
-                              <div className="flex items-center justify-between text-[11px] font-mono-code text-emerald-400">
-                                <span>{b.coordinates}</span>
-                                <span className="text-amber-300">{b.edition}</span>
-                              </div>
-                              <h3 className="text-base font-display font-bold text-white">
-                                {lang === 'bn' ? b.titleBn : b.titleEn}
-                              </h3>
-                              <p className="text-xs text-slate-300 line-clamp-2">
-                                {lang === 'bn' ? b.descriptionBn : b.descriptionEn}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="px-4 py-2.5 bg-[#080D0C] border-t border-slate-800 flex items-center justify-between text-[11px] font-mono-code text-slate-400">
-                            <span>{refPhoto?.caption}</span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDetailItem({ type: 'build', data: b })}
-                              className="text-emerald-400 hover:underline"
-                            >
-                              Blueprint →
-                            </button>
-                          </div>
-                        </Tilt3DCard>
-                      );
-                    })}
-                  </div>
-                </section>
-              </div>
-            )}
+            </section>
           </div>
         )}
 
-        {/* ================================================================ */}
-        {/* VIEW B: LIVE EVENTS & TOURNAMENT ENGINE                          */}
-        {/* ================================================================ */}
-        {activeTab === 'events' && (
-          <div className="space-y-8">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
-              <div>
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  ASIA/DHAKA (UTC+6) TOURNAMENT & EVENT ENGINE
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn'
-                    ? 'লাইভ ইভেন্ট ও বাংলাদেশ টুর্নামেন্ট'
-                    : 'Live Events & Bangladesh Tournaments'}
-                </h1>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSimulateLiveTournament((s) => !s)}
-                  className={`px-3 py-2 rounded-xl text-xs font-mono-code font-bold border transition ${
-                    simulateLiveTournament
-                      ? 'bg-red-600 text-white border-red-400'
-                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-emerald-500/40'
-                  }`}
-                >
-                  {simulateLiveTournament ? '● Simulating LIVE NOW Window' : 'Test "LIVE NOW" State'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEventViewMode((v) => (v === 'list' ? 'calendar' : 'list'))}
-                  className="px-3 py-2 rounded-xl bg-slate-900 text-slate-200 border border-slate-700 text-xs font-mono-code"
-                >
-                  View: {eventViewMode === 'list' ? 'Cards' : 'Calendar Table'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormNotice(null);
-                    setActiveModal('submit-event');
-                  }}
-                  className="tactile-btn px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-                >
-                  + Submit Verified Event
-                </button>
-              </div>
-            </div>
-
-            {/* Honest Live Status Banner */}
-            <div className="p-4 rounded-2xl bg-[#0D1513] border border-emerald-500/30 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <Radio
-                  className={`w-5 h-5 ${
-                    liveNowEvents.length > 0 ? 'text-red-500 animate-ping' : 'text-emerald-400'
-                  }`}
-                />
-                <div className="text-xs sm:text-sm">
-                  {liveNowEvents.length > 0 ? (
-                    <span className="font-bold text-white">
-                      {liveNowEvents.length} Verified Event Window Active Right Now in Asia/Dhaka!
-                    </span>
-                  ) : (
-                    <span className="text-slate-300">
-                      No tournament broadcast is live at this exact second in BST. Countdown timers below are synchronized to Asia/Dhaka.
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {['ALL', 'Tournaments', 'PvP Competitions', 'Building Competitions', 'Community SMP Events'].map(
-                  (cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setEventCategoryFilter(cat)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono-code ${
-                        eventCategoryFilter === cat
-                          ? 'bg-emerald-500 text-slate-950 font-bold'
-                          : 'bg-slate-900 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-
-            {eventViewMode === 'list' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {enrichedEvents.map((evt, idx) => (
-                  <Tilt3DCard
-                    key={evt.id}
-                    staggerIndex={idx}
-                    reducedMotion={reducedMotion}
-                    className="rounded-2xl bg-[#0D1513] border border-slate-800 hover:border-emerald-500/40 flex flex-col justify-between overflow-hidden"
-                  >
-                    <div>
-                      <EventTournamentArtwork
-                        artTheme={evt.artTheme}
-                        category={evt.category}
-                        isLive={evt.timing.isLive}
-                        backdropPhotoUrl={
-                          autonomousMediaPools.gaming[idx % Math.max(1, autonomousMediaPools.gaming.length)]
-                            ?.thumbUrl
-                        }
-                      />
-                      <div className="p-5 space-y-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono-code">
-                          <span className="text-emerald-400">{evt.organizer}</span>
-                          <span
-                            className={`px-2.5 py-0.5 rounded font-bold ${
-                              evt.timing.isLive
-                                ? 'bg-red-600 text-white'
-                                : 'bg-slate-900 text-amber-300 border border-amber-500/30'
-                            }`}
-                          >
-                            {evt.timing.status} • {evt.timing.countdownText}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-display font-bold text-white">
-                          {lang === 'bn' ? evt.titleBn : evt.titleEn}
-                        </h3>
-                        <p className="text-xs text-slate-300 leading-relaxed">
-                          {lang === 'bn' ? evt.descriptionBn : evt.descriptionEn}
-                        </p>
-                        <div className="text-xs font-mono-code text-slate-400 space-y-1 pt-1">
-                          <div>📍 {evt.location}</div>
-                          <div>🕒 Start (BST): {formatDhakaTime(new Date(evt.startTimeIso))}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="px-5 py-3.5 bg-[#080D0C] border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!registeredEventIds.includes(evt.id)) {
-                              setRegisteredEventIds((prev) => [...prev, evt.id]);
-                            } else {
-                              navigateSmart(evt.registrationUrl);
-                            }
-                          }}
-                          className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
-                            registeredEventIds.includes(evt.id)
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                              : 'bg-emerald-500 text-slate-950'
-                          }`}
-                        >
-                          {registeredEventIds.includes(evt.id)
-                            ? '✓ Registered (Open Hub)'
-                            : '1-Click Register'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => downloadEventIcs(evt)}
-                          className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-mono-code"
-                        >
-                          + .ICS Calendar
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDetailItem({ type: 'event', data: evt })}
-                        className="text-xs font-mono-code text-cyan-400 hover:underline"
-                      >
-                        Rules & Bracket →
-                      </button>
-                    </div>
-                  </Tilt3DCard>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#080D0C] text-slate-400 font-mono-code border-b border-slate-800">
-                    <tr>
-                      <th className="p-3.5">Event</th>
-                      <th className="p-3.5">Category</th>
-                      <th className="p-3.5">Edition</th>
-                      <th className="p-3.5">Start (Asia/Dhaka)</th>
-                      <th className="p-3.5">Live Countdown</th>
-                      <th className="p-3.5">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/70">
-                    {enrichedEvents.map((evt) => (
-                      <tr key={evt.id} className="hover:bg-white/5">
-                        <td className="p-3.5 font-bold text-white">{evt.titleEn}</td>
-                        <td className="p-3.5 text-emerald-300">{evt.category}</td>
-                        <td className="p-3.5 text-slate-300">{evt.edition}</td>
-                        <td className="p-3.5 font-mono-code text-slate-400">
-                          {formatDhakaTime(new Date(evt.startTimeIso))}
-                        </td>
-                        <td className="p-3.5 font-mono-code text-amber-300">
-                          {evt.timing.countdownText}
-                        </td>
-                        <td className="p-3.5">
-                          <button
-                            type="button"
-                            onClick={() => downloadEventIcs(evt)}
-                            className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 font-mono-code"
-                          >
-                            .ICS
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Interactive Tournament Bracket & Match Schedule Visualizer */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                    TOURNAMENT BRACKET & MATCH PROGRESSION ENGINE (ASIA/DHAKA)
-                  </span>
-                  <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                    Featured Community Bracket Structure & Match Schedule
-                  </h2>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-xs font-mono-code text-emerald-300">
-                  FORMAT: 4-SQUAD ELIMINATION + UHC FINALE
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono-code">
-                {/* Semifinals */}
-                <div className="space-y-3">
-                  <div className="text-slate-400 uppercase">Stage 1 // Semifinal Lobbies</div>
-                  <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-emerald-300 font-bold">
-                      <span>Dhaka Vanguard (Java/Bedrock)</span>
-                      <span>2</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Sylhet Striker Squad</span>
-                      <span>1</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800">
-                      Match #01 • Bo3 BedWars / KitPvP
-                    </div>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-emerald-300 font-bold">
-                      <span>Chattogram Corsairs</span>
-                      <span>2</span>
-                    </div>
-                    <div className="flex justify-between text-slate-400">
-                      <span>Padma Redstone Titans</span>
-                      <span>0</span>
-                    </div>
-                    <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-800">
-                      Match #02 • Bo3 BedWars / KitPvP
-                    </div>
-                  </div>
-                </div>
-
-                {/* Grand Finale */}
-                <div className="space-y-3 flex flex-col justify-center">
-                  <div className="text-amber-400 uppercase">Stage 2 // Championship Finale</div>
-                  <div className="p-4 rounded-xl bg-[#070B0A] border border-amber-500/40 space-y-2.5 shadow-lg">
-                    <div className="flex justify-between text-white font-bold">
-                      <span>Dhaka Vanguard</span>
-                      <span className="text-amber-300"> qualified</span>
-                    </div>
-                    <div className="flex justify-between text-white font-bold">
-                      <span>Chattogram Corsairs</span>
-                      <span className="text-amber-300"> qualified</span>
-                    </div>
-                    <div className="text-[10px] text-emerald-300 pt-1 border-t border-slate-800">
-                      Scheduled: Friday 16:30 BST (Asia/Dhaka)
-                    </div>
-                  </div>
-                </div>
-
-                {/* Participant & Fair Play Ledger */}
-                <div className="space-y-3">
-                  <div className="text-cyan-400 uppercase">Anti-Cheat & Registration Rules</div>
-                  <div className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2 font-sans-bd text-slate-300">
-                    <p>
-                      • Open to both Verified Microsoft Accounts and Free BLOCKBANGLA IDs on GeyserMC crossplay lobbies.
-                    </p>
-                    <p>
-                      • Strict prohibition of autoclickers, reach mods, or X-ray texture packs.
-                    </p>
-                    <p className="text-emerald-300 font-mono-code text-[11px]">
-                      Active Registrations in Session: {registeredEventIds.length} Event(s)
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW C: SERVER DIRECTORY & LIVE STATUS INSPECTOR                 */}
+        {/* SERVER DIRECTORY                 */}
         {/* ================================================================ */}
         {activeTab === 'servers' && (
           <div className="space-y-8">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
               <div>
-                <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                  REAL-TIME PUBLIC API TELEMETRY • LIVE HEARTBEAT PULSE #{heartbeatPulseCount}
-                </span>
+                <span className="bb-kicker">DIRECTORY / CURRENT STATUS CHECKS</span>
                 <h1 className="text-3xl font-display font-extrabold text-white mt-1">
                   {lang === 'bn'
-                    ? 'বাংলাদেশ মাইনক্রাফট সার্ভার ডিরেক্টরি ও সিকিউরিটি হাব'
-                    : 'Bangladesh Minecraft Server Directory & Security Hub'}
+                    ? 'বাংলাদেশের Minecraft সার্ভার ডিরেক্টরি'
+                    : 'Minecraft servers in Bangladesh'}
                 </h1>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -6161,13 +892,11 @@ export default function App() {
                   }`}
                 >
                   <Radio className={`w-3.5 h-3.5 ${autoPollServers ? 'text-emerald-400 animate-pulse' : ''}`} />
-                  <span>{autoPollServers ? 'Auto-Heartbeat: ON (45s)' : 'Auto-Heartbeat: PAUSED'}</span>
+                  <span>{autoPollServers ? 'Auto-check: every 45 sec' : 'Auto-check: paused'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setHeartbeatPulseCount((c) => c + 1);
-                    setLastHeartbeatTime(formatDhakaTime(new Date()));
                     servers.forEach((srv, i) =>
                       setTimeout(() => queryLiveServerStatus(srv.ip, 'java', srv.id), i * 200)
                     );
@@ -6175,7 +904,7 @@ export default function App() {
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 text-xs font-mono-code"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Ping All Nodes</span>
+                  <span>Check listed addresses</span>
                 </button>
                 <button
                   type="button"
@@ -6185,74 +914,24 @@ export default function App() {
                   }}
                   className="tactile-btn px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
                 >
-                  + Submit Server
+                  Send a listing
                 </button>
               </div>
             </div>
 
-            {/* Lively Ecosystem Telemetry & Security Status Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-1">
-                <div className="text-[11px] font-mono-code text-emerald-400 uppercase flex items-center justify-between">
-                  <span>LIVE NODES RESPONDING</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                </div>
-                <div className="text-2xl font-display font-extrabold text-white">
-                  {liveEcosystemStats.onlineNodes} / {liveEcosystemStats.totalTracked}
-                </div>
-                <div className="text-[11px] font-mono-code text-slate-400">
-                  Last Checked: {lastHeartbeatTime}
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#0D1513] border border-cyan-500/30 space-y-1">
-                <div className="text-[11px] font-mono-code text-cyan-400 uppercase">
-                  TOTAL ONLINE PLAYERS (LIVE API)
-                </div>
-                <div className="text-2xl font-display font-extrabold text-cyan-300">
-                  {liveEcosystemStats.totalPlayers.toLocaleString()}
-                </div>
-                <div className="text-[11px] font-mono-code text-slate-400">
-                  Source: mcsrvstat.us / mcstatus.io
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#0D1513] border border-amber-500/30 space-y-1">
-                <div className="text-[11px] font-mono-code text-amber-400 uppercase flex items-center gap-1">
-                  <span>STATUS API RTT</span>
-                  <TermTooltip term="API RTT" label="?" lang={lang} />
-                </div>
-                <div className="text-2xl font-display font-extrabold text-amber-300">
-                  {liveEcosystemStats.avgRtt ? `${liveEcosystemStats.avgRtt} ms` : 'Measuring...'}
-                </div>
-                <div className="text-[11px] font-mono-code text-slate-400">
-                  <TermTooltip term="BDIX" label="BDIX Info" lang={lang} /> • SG (~50ms)
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-1">
-                <div className="text-[11px] font-mono-code text-emerald-400 uppercase flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>DATA VERIFICATION SCOPE</span>
-                </div>
-                <div className="text-base font-display font-extrabold text-emerald-300">
-                  LIVE PING + EDITORIAL
-                </div>
-                <div className="text-[11px] font-mono-code text-slate-400">
-                  Click &quot;Report&quot; on any stale listing
-                </div>
-              </div>
-            </div>
+            <p className="max-w-4xl border-l-4 border-[#A94F32] bg-[#E8E4D8] px-5 py-4 text-sm text-slate-700">
+              These six server names and Java addresses are unconfirmed. A status response shows what a public query service received at that moment; it does not verify ownership, safety, edition support, or in-game latency.
+            </p>
 
             {/* Live Any-Server Status Inspector */}
             <div className="p-5 rounded-2xl bg-[#0D1513] border border-cyan-500/30 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="text-xs font-mono-code text-cyan-400">
-                    ANY-SERVER LIVE TELEMETRY INSPECTOR (MCSRVSTAT.US / MCSTATUS.IO)
+                    PUBLIC STATUS API
                   </span>
                   <h3 className="text-base font-display font-bold text-white">
-                    Test Any Java or Bedrock Server IP Live
+                    Check a server address
                   </h3>
                 </div>
               </div>
@@ -6261,7 +940,7 @@ export default function App() {
                   type="text"
                   value={customIpInput}
                   onChange={(e) => setCustomIpInput(e.target.value)}
-                  placeholder="Enter IP (e.g. play.bdzonemc.com or mc.hypixel.net)"
+                  placeholder="Enter a Java or Bedrock server address"
                   className="flex-1 px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm font-mono-code text-white"
                 />
                 <select
@@ -6285,21 +964,20 @@ export default function App() {
                 <div className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs font-mono-code">
                   <div>
                     <div className="text-white font-bold">
-                      {customPingResult.ip} —{' '}
+                      {customPingResult.ip}:{' '}
                       <span
                         className={
                           customPingResult.online ? 'text-emerald-400' : 'text-rose-400'
                         }
                       >
-                        {customPingResult.online ? 'ONLINE' : 'OFFLINE / UNREACHABLE'}
+                        {customPingResult.rttMs == null ? 'STATUS API UNAVAILABLE' : customPingResult.online ? 'ONLINE' : 'NO RESPONSE FROM ADDRESS'}
                       </span>
                     </div>
-                    <div className="text-slate-400 mt-1">MOTD: {customPingResult.motd}</div>
+                    <div className="text-slate-400 mt-1">MOTD: {customPingResult.motd || 'Not returned'}</div>
                   </div>
                   <div className="text-right">
                     <div className="text-emerald-300 font-bold">
-                      Players: {customPingResult.playersOnline ?? 0} /{' '}
-                      {customPingResult.playersMax ?? 0}
+                      Players: {customPingResult.playersOnline == null ? 'Not returned' : `${customPingResult.playersOnline} / ${customPingResult.playersMax ?? 'not returned'}`}
                     </div>
                     <div className="text-slate-500">
                       Version: {customPingResult.version} • Checked: {customPingResult.checkedAt}
@@ -6315,25 +993,9 @@ export default function App() {
                 type="text"
                 value={serverSearch}
                 onChange={(e) => setServerSearch(e.target.value)}
-                placeholder="Search by server name, IP, or game mode (Survival, BedWars, Lifesteal)..."
+                placeholder="Search by server name or address"
                 className="flex-1 px-4 py-2.5 rounded-xl bg-[#0D1513] border border-slate-800 text-sm text-white"
               />
-              <div className="flex items-center gap-2">
-                {['ALL', 'Crossplay', 'Java'].map((ed) => (
-                  <button
-                    key={ed}
-                    type="button"
-                    onClick={() => setServerEditionFilter(ed)}
-                    className={`px-3 py-2 rounded-xl text-xs font-mono-code ${
-                      serverEditionFilter === ed
-                        ? 'bg-cyan-500 text-slate-950 font-bold'
-                        : 'bg-[#0D1513] text-slate-300 border border-slate-800'
-                    }`}
-                  >
-                    {ed}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Server Cards Grid */}
@@ -6341,7 +1003,7 @@ export default function App() {
               {filteredServers.map((srv, idx) => {
                 const tele = serverTelemetry[srv.id];
                 return (
-                  <Tilt3DCard
+                  <EditorialCard
                     key={srv.id}
                     staggerIndex={idx}
                     reducedMotion={reducedMotion}
@@ -6354,50 +1016,27 @@ export default function App() {
                       <div className="p-2.5 rounded-xl bg-[#060A09] border border-emerald-500/20 flex items-center justify-between gap-2 text-[11px] font-mono-code">
                         <div className="truncate text-emerald-300">
                           <span className="text-slate-500 mr-1.5">MOTD:</span>
-                          {tele?.motd || 'Awaiting live packet query...'}
+                          {tele?.motd || 'No status data yet'}
                         </div>
                         <span className="shrink-0 px-2 py-0.5 rounded bg-slate-900 text-cyan-300">
-                          {tele?.version || srv.versions}
+                          {tele?.version || 'Version not returned'}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-slate-400">
-                        <span>{srv.founded}</span>
-                        <span className="font-mono-code text-amber-300">{srv.routing}</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono-code">
-                        <div className="p-2.5 rounded-lg bg-[#070B0A] border border-slate-800">
-                          <span className="text-slate-500 block text-[10px]">JAVA IP</span>
-                          <span className="text-emerald-300">{srv.ip}</span>
-                        </div>
-                        <div className="p-2.5 rounded-lg bg-[#070B0A] border border-slate-800">
-                          <span className="text-slate-500 block text-[10px]">BEDROCK / PORT</span>
-                          <span className="text-amber-300">{srv.bedrockIp} ({srv.port})</span>
-                        </div>
+                      <div className="border-l-2 border-[#A94F32] pl-3 text-xs font-mono-code">
+                        <span className="block text-slate-500 text-[10px]">ADDRESS FROM SUPPLIED FILE</span>
+                        <span className="text-emerald-800">{srv.ip}</span>
                       </div>
 
                       <p className="text-xs text-slate-300 leading-relaxed">
-                        {lang === 'bn' ? srv.descriptionBn : srv.descriptionEn}
+                        {srv.descriptionEn}
                       </p>
 
-                      {/* Transparent Provenance, Last-Checked Timestamp & Game Modes */}
-                      <div className="p-2.5 rounded-xl bg-[#070B0A] border border-slate-800/90 text-[11px] font-mono-code text-slate-400 flex flex-wrap items-center justify-between gap-2">
+                      <div className="p-2.5 border-t border-slate-300 text-[11px] font-mono-code text-slate-400 flex flex-wrap items-center justify-between gap-2">
                         <span>
-                          Last Checked: <strong className="text-slate-200">{tele?.checkedAt || 'Querying...'}</strong>
+                          Status query: <strong className="text-slate-700">{tele?.checkedAt || 'Waiting for first check'}</strong>
                         </span>
-                        <span className="text-emerald-400">{srv.verifiedSource}</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5">
-                        {srv.modes.map((m) => (
-                          <span
-                            key={m}
-                            className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px] text-slate-300"
-                          >
-                            {m}
-                          </span>
-                        ))}
+                        <span>Listing details need confirmation</span>
                       </div>
                     </div>
 
@@ -6429,7 +1068,7 @@ export default function App() {
                             setActiveModal('report-inaccuracy');
                           }}
                           className="px-2.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-800 text-xs font-mono-code"
-                          title="Report outdated IP, port, or status"
+                          title="Send a correction for this listing"
                         >
                           Report
                         </button>
@@ -6439,3077 +1078,192 @@ export default function App() {
                         onClick={() => setSelectedDetailItem({ type: 'server', data: srv })}
                         className="text-xs font-mono-code text-slate-300 hover:text-white underline"
                       >
-                        How to Join →
+                        Listing details →
                       </button>
                     </div>
-                  </Tilt3DCard>
+                  </EditorialCard>
                 );
               })}
             </div>
 
-            {/* Interactive Bangladeshi Server Security Hardening & Anti-Exploit Studio */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/40 space-y-5 shadow-2xl">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>ADVANCED SERVER SECURITY HARDENING & ANTI-EXPLOIT GENERATOR</span>
-                  </span>
-                  <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                    Protect Bangladeshi Crossplay Networks Against UUID Spoofing & Backend Takeovers
-                  </h2>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { id: 'velocity-modern', label: 'Velocity Modern Forwarding' },
-                    { id: 'bungeeguard-firewall', label: 'BungeeGuard + UFW Firewall' },
-                    { id: 'geyser-floodgate', label: 'Floodgate + LibreLogin Auth' }
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setSecurityAuditMode(tab.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-mono-code transition ${
-                        securityAuditMode === tab.id
-                          ? 'bg-emerald-500 text-slate-950 font-bold'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-                <div className="lg:col-span-7 space-y-3 text-xs text-slate-300">
-                  {securityAuditMode === 'velocity-modern' && (
-                    <>
-                      <div className="font-bold text-emerald-300 text-sm">
-                        Defense #1: Cryptographic Velocity HMAC Forwarding (`forwarding.secret`)
-                      </div>
-                      <p>
-                        The #1 reason Bangladeshi SMPs get griefed by fake &quot;Admin&quot; accounts is leaving backend PaperMC ports (`25566`, `25567`) open with legacy `bungeecord: true`. Switch `velocity.toml` to `player-info-forwarding-mode = &quot;modern&quot;` and paste this cryptographically random 256-bit secret into both Velocity and `config/paper-global.yml`:
-                      </p>
-                    </>
-                  )}
-                  {securityAuditMode === 'bungeeguard-firewall' && (
-                    <>
-                      <div className="font-bold text-cyan-300 text-sm">
-                        Defense #2: Linux UFW / iptables Backend Port Isolation
-                      </div>
-                      <p>
-                        Never expose backend sub-server ports (`25566–25599`) to the public internet. Only allow TCP `25565` (Velocity Proxy) and UDP `19132` (GeyserMC Bedrock) through your VPS firewall, and drop all direct backend connections.
-                      </p>
-                    </>
-                  )}
-                  {securityAuditMode === 'geyser-floodgate' && (
-                    <>
-                      <div className="font-bold text-amber-300 text-sm">
-                        Defense #3: Floodgate Prefix (`*` or `.`) & LibreLogin Session Pinning
-                      </div>
-                      <p>
-                        Set `username-prefix: &quot;.&quot;` inside Floodgate so Bedrock players cannot register a username matching a Java OP admin, and enforce `LibreLogin` or `AuthMe` with Argon2id password hashing and session IP pinning.
-                      </p>
-                    </>
-                  )}
-
-                  <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 flex flex-wrap items-center justify-between gap-2 font-mono-code">
-                    <div className="truncate text-emerald-300">
-                      Secret: <span className="text-white font-bold">{velocityForwardingSecret}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setVelocityForwardingSecret(generateSecureVelocitySecret())}
-                        className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-amber-300 border border-slate-700"
-                      >
-                        Regenerate 256-bit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyText(velocityForwardingSecret, 'vel-sec')}
-                        className="px-2.5 py-1 rounded bg-emerald-500 text-slate-950 font-bold"
-                      >
-                        {copiedKey === 'vel-sec' ? 'Copied!' : 'Copy Secret'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-5 p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2 text-[11px] font-mono-code">
-                  <div className="text-cyan-400 font-bold uppercase">
-                    Hardened Linux UFW & Paper Global Snippet
-                  </div>
-                  <pre className="text-slate-300 overflow-x-auto leading-relaxed">
-{`# Allow only Velocity (25565) & Geyser UDP (19132)
-sudo ufw allow 25565/tcp
-sudo ufw allow 19132/udp
-sudo ufw deny 25566:25599/tcp
-
-# config/paper-global.yml
-proxies:
-  velocity:
-    enabled: true
-    online-mode: true
-    secret: "${velocityForwardingSecret.slice(0, 16)}..."`}
-                  </pre>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
-        {/* ================================================================ */}
-        {/* VIEW D: SMP HUB & RECRUITMENT DIRECTORY                          */}
-        {/* ================================================================ */}
-        {activeTab === 'smp' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  SURVIVAL MULTIPLAYER SEASONS & RECRUITMENT
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn' ? 'বাংলাদেশ এসএমপি (SMP) ডিরেক্টরি' : 'Bangladesh SMP Directory & Recruitment'}
-                </h1>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormNotice(null);
-                  setActiveModal('submit-server');
-                }}
-                className="tactile-btn px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-              >
-                + List Your SMP Season
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {INITIAL_SMP_PROJECTS.map((smp, idx) => (
-                <Tilt3DCard
-                  key={smp.id}
-                  staggerIndex={idx}
-                  reducedMotion={reducedMotion}
-                  className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="relative h-36 bg-slate-950 overflow-hidden">
-                      <img
-                        src={
-                          autonomousMediaPools.environment[
-                            idx % Math.max(1, autonomousMediaPools.environment.length)
-                          ]?.thumbUrl ||
-                          VISUAL_ASSET_MANIFEST[3].originalUrl
-                        }
-                        alt={smp.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover opacity-55 hover:scale-105 transition duration-700"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-transparent to-black/50" />
-                      <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs font-mono-code">
-                        <span className="px-2.5 py-0.5 rounded bg-black/80 text-emerald-300 border border-emerald-500/40">
-                          {smp.recruitmentStatus}
-                        </span>
-                        <span className="px-2 py-0.5 rounded bg-black/80 text-amber-300">
-                          {smp.season}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-5 space-y-3">
-                      <h3 className="text-lg font-display font-bold text-white">{smp.name}</h3>
-                    <p className="text-xs font-mono-code text-cyan-300 bg-[#070B0A] p-2 rounded border border-slate-800">
-                      IP: {smp.ip} ({smp.edition})
-                    </p>
-                    <p className="text-xs text-slate-300 leading-relaxed">{smp.loreEn}</p>
-                    <div className="space-y-1 pt-1">
-                      <div className="text-[11px] font-mono-code text-slate-400 uppercase">
-                        Server Ruleset:
-                      </div>
-                      {smp.rules.map((r) => (
-                        <div key={r} className="text-xs text-slate-300 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span>{r}</span>
-                        </div>
-                      ))}
-                    </div>
-                    </div>
-                  </div>
-                  <div className="px-5 py-3.5 border-t border-slate-800 flex items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCopyText(smp.ip, smp.id)}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs"
-                    >
-                      {copiedKey === smp.id ? 'Copied IP!' : 'Copy SMP IP'}
-                    </button>
-                    <a
-                      href={smp.discordUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-mono-code text-emerald-400 hover:underline"
-                    >
-                      Discord / Apply ↗
-                    </a>
-                  </div>
-                </Tilt3DCard>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW E: CREATORS & LIVE YOUTUBE DATA API V3 FEED                 */}
-        {/* ================================================================ */}
-        {activeTab === 'creators' && (
-          <div className="space-y-10">
-            <div className="border-b border-slate-800 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  LIVE YOUTUBE DATA API V3 SYNCHRONIZATION • #MINECRAFTBANGLA (19K+ VIDEOS)
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn'
-                    ? 'বাংলাদেশি মাইনক্রাফট ক্রিয়েটর ও লাইভ ইউটিউব ফিড'
-                    : 'Bangladeshi Minecraft Creators & Live YouTube Feed'}
-                </h1>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormNotice(null);
-                  setActiveModal('submit-creator');
-                }}
-                className="tactile-btn px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-              >
-                + Submit Creator Channel
-              </button>
-            </div>
-
-            {/* Live YouTube Data API v3 Explorer */}
-            <div className="p-5 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400">
-                    LIVE YOUTUBE DATA API V3 SYNC • LAST UPDATED: {ytLastSynced || 'Syncing...'}
-                  </span>
-                  <h3 className="text-lg font-display font-bold text-white">
-                    Verified Bangladeshi Minecraft Video Stream
-                  </h3>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {[
-                    'Minecraft Bangla',
-                    'Minecraft Bangladesh Server',
-                    'The Bangla Gamer Minecraft',
-                    'Minecraft Bangla Survival'
-                  ].map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => {
-                        setYtQuery(q);
-                        fetchLiveYouTubeBangladesh(q);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-mono-code transition ${
-                        ytQuery === q
-                          ? 'bg-emerald-500 text-slate-950 font-bold'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800'
-                      }`}
-                    >
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {ytLoading ? (
-                <div className="py-10 text-center text-sm font-mono-code text-slate-400">
-                  Fetching live Bangladeshi Minecraft videos from YouTube Data API v3...
-                </div>
-              ) : ytError ? (
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-                  YouTube API Notice: {ytError}. Showing verified public #minecraftbangla directory records below.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {ytVideos.map((vid, idx) => (
-                    <Tilt3DCard
-                      key={vid.videoId || idx}
-                      staggerIndex={idx}
-                      reducedMotion={reducedMotion}
-                      className="rounded-xl bg-[#070B0A] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="relative h-40 bg-slate-950 overflow-hidden">
-                          {vid.thumbnail && (
-                            <img
-                              src={vid.thumbnail}
-                              alt={vid.title}
-                              loading="lazy"
-                              className="w-full h-full object-cover"
-                            />
-                          )}
-                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/80 text-[10px] font-mono-code text-emerald-300">
-                            {vid.viewCount} views
-                          </span>
-                        </div>
-                        <div className="p-3.5 space-y-1.5">
-                          <div className="text-[11px] font-mono-code text-emerald-400">
-                            {vid.channelTitle} • {vid.publishedAt}
-                          </div>
-                          <h4 className="text-sm font-bold text-white line-clamp-2">{vid.title}</h4>
-                        </div>
-                      </div>
-                      <div className="px-3.5 py-2.5 border-t border-slate-800 flex items-center justify-between text-xs font-mono-code">
-                        <span className="text-slate-400">👍 {vid.likeCount}</span>
-                        <a
-                          href={`https://www.youtube.com/watch?v=${vid.videoId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-emerald-400 hover:underline font-bold"
-                        >
-                          Watch on YouTube ↗
-                        </a>
-                      </div>
-                    </Tilt3DCard>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Curated Creator Directory */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  value={creatorSearch}
-                  onChange={(e) => setCreatorSearch(e.target.value)}
-                  placeholder="Search Bangladeshi creators..."
-                  className="flex-1 px-4 py-2.5 rounded-xl bg-[#0D1513] border border-slate-800 text-sm text-white"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  {['ALL', 'YouTubers', 'Streamers', 'PvP Creators', 'Builders', 'Educators'].map(
-                    (cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setCreatorCategoryFilter(cat)}
-                        className={`px-3 py-2 rounded-xl text-xs font-mono-code ${
-                          creatorCategoryFilter === cat
-                            ? 'bg-emerald-500 text-slate-950 font-bold'
-                            : 'bg-[#0D1513] text-slate-300 border border-slate-800'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    )
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filteredCreators.map((cr, idx) => {
-                  const syncedVid = ytVideos[idx % Math.max(1, ytVideos.length)];
-                  return (
-                    <Tilt3DCard
-                      key={cr.id}
-                      staggerIndex={idx}
-                      reducedMotion={reducedMotion}
-                      className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Visual Banner with Synchronized YouTube Thumbnail & Creator Avatar */}
-                        <div className="relative h-36 bg-slate-950 overflow-hidden">
-                          <img
-                            src={
-                              syncedVid?.thumbnail ||
-                              VISUAL_ASSET_MANIFEST[4].originalUrl
-                            }
-                            alt={cr.name}
-                            loading="lazy"
-                            className="w-full h-full object-cover opacity-45 hover:scale-105 transition duration-700"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-[#0D1513]/40 to-transparent" />
-                          <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
-                            <span className="px-2.5 py-0.5 rounded bg-black/80 text-emerald-300 text-xs font-mono-code border border-emerald-500/30">
-                              {cr.category}
-                            </span>
-                            <span className="px-2 py-0.5 rounded bg-black/80 text-[11px] font-mono-code text-amber-300">
-                              {cr.verificationStatus}
-                            </span>
-                          </div>
-                          <div className="absolute bottom-2 left-4 flex items-center gap-3">
-                            <img
-                              src={`https://mc-heads.net/avatar/${encodeURIComponent(
-                                cr.name.split(' ')[0]
-                              )}/64`}
-                              alt={cr.name}
-                              className="w-11 h-11 rounded-xl border-2 border-emerald-400 shadow-lg bg-slate-900"
-                            />
-                            <div>
-                              <h3 className="text-lg font-display font-bold text-white leading-tight">
-                                {cr.name}
-                              </h3>
-                              <div className="text-xs font-mono-code text-cyan-300">{cr.handle}</div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="p-5 space-y-2.5">
-                          <p className="text-xs text-slate-300 leading-relaxed">
-                            {lang === 'bn' ? cr.bioBn : cr.bioEn}
-                          </p>
-                          <div className="p-2.5 rounded-lg bg-[#070B0A] border border-slate-800 text-xs text-slate-300">
-                            <span className="text-emerald-400 font-semibold">Notable Work: </span>
-                            {cr.featuredVideoTitle}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="px-5 py-3.5 border-t border-slate-800 flex items-center justify-between">
-                        <span className="text-[11px] font-mono-code text-slate-400">
-                          {cr.subscriberBadge}
-                        </span>
-                        <a
-                          href={cr.channelUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs"
-                        >
-                          Open Channel ↗
-                        </a>
-                      </div>
-                    </Tilt3DCard>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW F: MODRINTH PUBLIC API RESOURCE HUB                         */}
-        {/* ================================================================ */}
-        {activeTab === 'resources' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  LIVE MODRINTH V2 PUBLIC API • ZERO API KEY REQUIRED
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn'
-                    ? 'মডরিন্থ (Modrinth) রিসোর্স ডিসকভারি হাব'
-                    : 'Modrinth Resource Hub: Mods, Shaders & Packs'}
-                </h1>
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="text"
-                value={modrinthQuery}
-                onChange={(e) => setModrinthQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') fetchModrinthResources(modrinthQuery, modrinthType);
-                }}
-                placeholder="Search Modrinth live (e.g., sodium, iris, complementary, geyser, lithium)..."
-                className="flex-1 px-4 py-2.5 rounded-xl bg-[#0D1513] border border-slate-800 text-sm text-white"
-              />
-              <select
-                value={modrinthType}
-                onChange={(e) => {
-                  setModrinthType(e.target.value);
-                  fetchModrinthResources(modrinthQuery, e.target.value);
-                }}
-                className="px-3.5 py-2.5 rounded-xl bg-[#0D1513] border border-slate-800 text-xs font-mono-code text-slate-200"
-              >
-                <option value="all">All Resource Types</option>
-                <option value="mod">Mods & Plugins</option>
-                <option value="shader">Shaders</option>
-                <option value="resourcepack">Resource Packs</option>
-                <option value="modpack">Modpacks</option>
-              </select>
-              <button
-                type="button"
-                onClick={() => fetchModrinthResources(modrinthQuery, modrinthType)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
-              >
-                {modrinthLoading ? 'Searching...' : 'Search Modrinth'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {modrinthProjects.map((proj, idx) => {
-                const galleryBanner =
-                  proj.featured_gallery ||
-                  (Array.isArray(proj.gallery) && proj.gallery.length > 0 ? proj.gallery[0] : null);
-                return (
-                  <Tilt3DCard
-                    key={proj.project_id || idx}
-                    staggerIndex={idx}
-                    reducedMotion={reducedMotion}
-                    className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                  >
-                    <div>
-                      {/* Live Modrinth Screenshot / Gallery Header */}
-                      <div className="relative h-32 bg-slate-950 overflow-hidden border-b border-slate-800/80">
-                        {galleryBanner ? (
-                          <img
-                            src={galleryBanner}
-                            alt={proj.title}
-                            loading="lazy"
-                            onClick={() =>
-                              setLightboxAsset({
-                                title: `${proj.title} (${proj.project_type})`,
-                                imageUrl: galleryBanner,
-                                subtitle: proj.description,
-                                attribution: `Modrinth Author: ${proj.author}`
-                              })
-                            }
-                            className="w-full h-full object-cover hover:scale-105 transition duration-500 cursor-zoom-in"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-emerald-950 via-slate-900 to-cyan-950 flex items-center justify-center">
-                            <Package className="w-8 h-8 text-emerald-400/40" />
-                          </div>
-                        )}
-                        <span className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/75 text-[10px] font-mono-code text-emerald-300 uppercase">
-                          {proj.project_type}
-                        </span>
-                      </div>
-
-                      <div className="p-4 space-y-2.5">
-                        <div className="flex items-center gap-3">
-                          {proj.icon_url ? (
-                            <img
-                              src={proj.icon_url}
-                              alt={proj.title}
-                              className="w-10 h-10 rounded-lg object-cover bg-slate-900 border border-slate-700"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">
-                              M
-                            </div>
-                          )}
-                          <div className="min-w-0">
-                            <h3 className="font-bold text-white text-sm truncate">{proj.title}</h3>
-                            <span className="text-[11px] font-mono-code text-emerald-400">
-                              by {proj.author}
-                            </span>
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-300 line-clamp-3">{proj.description}</p>
-                      </div>
-                    </div>
-                    <div className="px-4 py-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono-code">
-                      <span className="text-amber-300">
-                        ⬇ {Number(proj.downloads || 0).toLocaleString()}
-                      </span>
-                      <a
-                        href={`https://modrinth.com/${proj.project_type}/${proj.slug}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-emerald-400 hover:underline font-bold"
-                      >
-                        Modrinth Page ↗
-                      </a>
-                    </div>
-                  </Tilt3DCard>
-                );
-              })}
-            </div>
-
-            {/* Section 6.5: Open-Source GitHub Minecraft Ecosystem Directory */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-cyan-500/30 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                    LIVE GITHUB REST API (API.GITHUB.COM) // OPEN-SOURCE MINECRAFT INFRASTRUCTURE
-                  </span>
-                  <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                    Essential Open-Source Projects Powering Bangladesh Servers & Clients
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={syncGitHubOpenSourceEcosystem}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-cyan-300 border border-cyan-500/30 text-xs font-mono-code"
-                >
-                  {githubSyncing ? 'Syncing GitHub API...' : '↻ Refresh Live Stars & Forks'}
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 text-xs">
-                {[
-                  {
-                    name: 'PaperMC / Paper',
-                    fullRepo: 'PaperMC/Paper',
-                    repo: 'https://github.com/PaperMC/Paper',
-                    license: 'GPL-3.0',
-                    role: 'High-performance Java server core used by Bangladeshi SMPs.'
-                  },
-                  {
-                    name: 'GeyserMC & Floodgate',
-                    fullRepo: 'GeyserMC/Geyser',
-                    repo: 'https://github.com/GeyserMC/Geyser',
-                    license: 'MIT',
-                    role: 'Enables Android/Windows Bedrock players to join Java servers.'
-                  },
-                  {
-                    name: 'PaperMC Velocity',
-                    fullRepo: 'PaperMC/Velocity',
-                    repo: 'https://github.com/PaperMC/Velocity',
-                    license: 'GPL-3.0',
-                    role: 'Next-gen proxy linking Lobby, Survival, and BedWars nodes.'
-                  },
-                  {
-                    name: 'ViaVersion',
-                    fullRepo: 'ViaVersion/ViaVersion',
-                    repo: 'https://github.com/ViaVersion/ViaVersion',
-                    license: 'GPL-3.0',
-                    role: 'Allows newer clients (1.21.x) to connect to older server versions.'
-                  },
-                  {
-                    name: 'PurpurMC',
-                    fullRepo: 'PurpurMC/Purpur',
-                    repo: 'https://github.com/PurpurMC/Purpur',
-                    license: 'MIT',
-                    role: 'Drop-in Paper fork with deep gameplay customization for Lifesteal.'
-                  },
-                  {
-                    name: 'FabricMC Loader',
-                    fullRepo: 'FabricMC/fabric-loader',
-                    repo: 'https://github.com/FabricMC/fabric-loader',
-                    license: 'Apache-2.0',
-                    role: 'Lightweight client & server mod loader powering Sodium & Iris.'
-                  },
-                  {
-                    name: 'PrismarineJS / minecraft-data',
-                    fullRepo: 'PrismarineJS/minecraft-data',
-                    repo: 'https://github.com/PrismarineJS/minecraft-data',
-                    license: 'MIT',
-                    role: 'Language-independent game data powering the BLOCKBANGLA Toolbox.'
-                  },
-                  {
-                    name: 'Spark Profiler',
-                    fullRepo: 'lucko/spark',
-                    repo: 'https://github.com/lucko/spark',
-                    license: 'GPL-3.0',
-                    role: 'Performance profiler for diagnosing TPS drops and lag spikes.'
-                  }
-                ].map((oss) => {
-                  const liveStat = githubRepoStats[oss.fullRepo];
-                  return (
-                    <div
-                      key={oss.name}
-                      className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 flex flex-col justify-between gap-2"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between font-mono-code">
-                          <span className="font-bold text-white">{oss.name}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 text-[10px]">
-                            {oss.license}
-                          </span>
-                        </div>
-                        <p className="text-slate-400 mt-1.5">{oss.role}</p>
-                        {liveStat && (
-                          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono-code text-amber-300">
-                            <span>★ {Number(liveStat.stars).toLocaleString()}</span>
-                            <span>⑂ {Number(liveStat.forks).toLocaleString()}</span>
-                            <span className="text-emerald-400">Push: {liveStat.pushedAt}</span>
-                          </div>
-                        )}
-                      </div>
-                      <a
-                        href={oss.repo}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-400 font-mono-code hover:underline text-[11px]"
-                      >
-                        GitHub Repository ↗
-                      </a>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW G: 14-IN-1 PRISMARINEJS MINECRAFT TOOLBOX                   */}
+        {/* SERVER TOOLS                   */}
         {/* ================================================================ */}
         {activeTab === 'toolbox' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5">
-              <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                PRISMARINEJS GAME DATA + LIVE PLAYERDB & MINECRAFT WIKI UTILITIES
-              </span>
-              <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                {lang === 'bn'
-                  ? 'মাইনক্রাফট ইউটিলিটি টুলবক্স'
-                  : 'Minecraft Utility Toolbox & Reference Suite'}
-              </h1>
-            </div>
+          <div className="bb-tool-page grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <aside className="lg:col-span-3 lg:sticky lg:top-28 h-fit border-t-4 border-[#A94F32] bg-[#E8E4D8] p-5">
+              <div className="bb-kicker">TOOLS / FOUR SHORTCUTS</div>
+              <h1 className="mt-3 text-3xl">Minecraft tools</h1>
+              <p className="mt-4 text-sm text-slate-600">Small utilities for coordinates, server list text and public Minecraft references.</p>
+              <nav aria-label="Tool index" className="mt-5 divide-y divide-slate-400">
+                <a className="block py-3 text-sm font-bold" href="#coordinates">01 / Coordinate converter</a>
+                <a className="block py-3 text-sm font-bold" href="#motd">02 / MOTD preview</a>
+                <a className="block py-3 text-sm font-bold" href="#profile">03 / Public profile lookup</a>
+                <a className="block py-3 text-sm font-bold" href="#wiki">04 / Minecraft Wiki search</a>
+              </nav>
+            </aside>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Tool 1: Overworld <-> Nether & Chunk Calculator */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                <span className="text-xs font-mono-code text-emerald-400">
-                  01 // NETHER PORTAL & CHUNK CALCULATOR
-                </span>
-                <h3 className="text-lg font-display font-bold text-white">
-                  Coordinate & Region Converter
-                </h3>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[11px] font-mono-code text-slate-400">X Coordinate</label>
-                    <input
-                      type="number"
-                      value={coordX}
-                      onChange={(e) => setCoordX(Number(e.target.value) || 0)}
-                      className="w-full mt-1 px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-sm font-mono-code text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-mono-code text-slate-400">Z Coordinate</label>
-                    <input
-                      type="number"
-                      value={coordZ}
-                      onChange={(e) => setCoordZ(Number(e.target.value) || 0)}
-                      className="w-full mt-1 px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-sm font-mono-code text-white"
-                    />
-                  </div>
+            <div className="lg:col-span-9 divide-y divide-slate-300">
+              <section id="coordinates" className="grid grid-cols-1 md:grid-cols-12 gap-5 py-6 scroll-mt-28">
+                <div className="md:col-span-4">
+                  <div className="bb-kicker">01 / COORDINATES</div>
+                  <h2 className="mt-2 text-xl">Overworld and Nether</h2>
+                  <p className="mt-2 text-sm text-slate-600">Enter X and Z. The converter uses the 8-to-1 coordinate scale.</p>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCoordMode('overworld-to-nether')}
-                    className={`flex-1 py-1.5 rounded text-xs font-mono-code ${
-                      coordMode === 'overworld-to-nether'
-                        ? 'bg-emerald-500 text-slate-950 font-bold'
-                        : 'bg-slate-900 text-slate-400'
-                    }`}
-                  >
-                    Overworld → Nether (÷8)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCoordMode('nether-to-overworld')}
-                    className={`flex-1 py-1.5 rounded text-xs font-mono-code ${
-                      coordMode === 'nether-to-overworld'
-                        ? 'bg-emerald-500 text-slate-950 font-bold'
-                        : 'bg-slate-900 text-slate-400'
-                    }`}
-                  >
-                    Nether → Overworld (×8)
-                  </button>
-                </div>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 text-xs font-mono-code space-y-1">
-                  <div className="text-emerald-300 font-bold">
-                    Target Portal:{' '}
-                    {coordMode === 'overworld-to-nether'
-                      ? `X: ${Math.floor(coordX / 8)}, Z: ${Math.floor(coordZ / 8)}`
-                      : `X: ${coordX * 8}, Z: ${coordZ * 8}`}
-                  </div>
-                  <div className="text-cyan-300">
-                    Chunk: [{Math.floor(coordX / 16)}, {Math.floor(coordZ / 16)}] • Region File: r.
-                    {Math.floor(coordX / 512)}.{Math.floor(coordZ / 512)}.mca
-                  </div>
-                </div>
-              </div>
-
-              {/* Tool 2: Official Minecraft Skin & UUID Inspector */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                <span className="text-xs font-mono-code text-amber-400">
-                  02 // OFFICIAL MOJANG UUID & SKIN INSPECTOR
-                </span>
-                <h3 className="text-lg font-display font-bold text-white">PlayerDB Skin Lookup</h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={skinLookupUser}
-                    onChange={(e) => setSkinLookupUser(e.target.value)}
-                    placeholder="Minecraft Username..."
-                    className="flex-1 px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-sm font-mono-code text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => lookupMinecraftSkin(skinLookupUser)}
-                    className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs font-mono-code"
-                  >
-                    {skinLookupLoading ? '...' : 'Inspect'}
-                  </button>
-                </div>
-                {skinLookupData && (
-                  <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 flex items-center gap-3">
-                    <img
-                      src={skinLookupData.avatar}
-                      alt={skinLookupData.username}
-                      className="w-12 h-12 rounded-lg border border-emerald-500/40"
-                    />
-                    <div className="min-w-0 text-xs font-mono-code">
-                      <div className="text-white font-bold">{skinLookupData.username}</div>
-                      <div className="text-slate-400 truncate text-[10px]">
-                        UUID: {skinLookupData.uuid}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Tool 3: Live Minecraft Wiki API Search */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                <span className="text-xs font-mono-code text-cyan-400">
-                  03 // MINECRAFT.WIKI REST/ACTION SEARCH
-                </span>
-                <h3 className="text-lg font-display font-bold text-white">
-                  Official Minecraft Wiki Reference
-                </h3>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={wikiQuery}
-                    onChange={(e) => setWikiQuery(e.target.value)}
-                    placeholder="Search mechanics, blocks..."
-                    className="flex-1 px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-sm text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => searchMinecraftWiki(wikiQuery)}
-                    className="px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold text-xs font-mono-code"
-                  >
-                    {wikiLoading ? '...' : 'Wiki'}
-                  </button>
-                </div>
-                <div className="space-y-1.5">
-                  {wikiResults.map((w) => (
-                    <a
-                      key={w.url}
-                      href={w.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block p-2 rounded-lg bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-xs text-emerald-300 font-mono-code truncate"
-                    >
-                      📖 {w.title} ↗
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Tools 4 & 5: Live MOTD Formatting Generator + Bangladesh SMP RAM & JVM Flag Calculator */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Tool 4: Live MOTD & Formatting Code Previewer */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono-code text-emerald-400">
-                    04 // SERVER MOTD & FORMATTING CODE GENERATOR
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopyText(`${motdLine1}\n${motdLine2}`, 'motd-copy')
-                    }
-                    className="px-2.5 py-1 rounded bg-slate-900 text-emerald-300 text-xs font-mono-code border border-slate-700"
-                  >
-                    {copiedKey === 'motd-copy' ? 'Copied MOTD!' : 'Copy Raw MOTD'}
-                  </button>
-                </div>
-                <h3 className="text-lg font-display font-bold text-white">
-                  Live Server List MOTD Previewer
-                </h3>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={motdLine1}
-                    onChange={(e) => setMotdLine1(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                    placeholder="Line 1 MOTD..."
-                  />
-                  <input
-                    type="text"
-                    value={motdLine2}
-                    onChange={(e) => setMotdLine2(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                    placeholder="Line 2 MOTD..."
-                  />
-                </div>
-                {/* Simulated Minecraft Multiplayer Server List Row */}
-                <div className="p-3.5 rounded-xl bg-[#050807] border border-emerald-500/30 flex items-center gap-3.5">
-                  <BlockBanglaLogo size={42} />
-                  <div className="flex-1 min-w-0 font-mono-code text-xs space-y-0.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-white font-bold">BLOCKBANGLA Verified Node</span>
-                      <span className="text-emerald-400">48/100 ▂▄▆█</span>
-                    </div>
-                    <div className="text-emerald-300 truncate">
-                      {motdLine1.replace(/&[0-9a-fk-or]/gi, '')}
-                    </div>
-                    <div className="text-amber-300 truncate">
-                      {motdLine2.replace(/&[0-9a-fk-or]/gi, '')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tool 5: Bangladesh SMP RAM & Aikar's JVM Startup Flag Calculator */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono-code text-amber-400">
-                    05 // SMP RAM & AIKAR&apos;S JVM FLAGS CALCULATOR
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono-code font-bold">
-                    Recommended: {recommendedRamGb} GB RAM
-                  </span>
-                </div>
-                <h3 className="text-lg font-display font-bold text-white">
-                  PaperMC / GeyserMC Server Memory & Flag Generator
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-mono-code text-slate-400">
-                      Concurrent Players: {smpPlayerCount}
+                <div className="md:col-span-8 space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-xs font-bold">X
+                      <input type="number" value={coordX} onChange={(e) => setCoordX(Number(e.target.value) || 0)} className="mt-1 w-full px-3 py-2 font-mono-code" />
                     </label>
-                    <input
-                      type="range"
-                      min={5}
-                      max={120}
-                      value={smpPlayerCount}
-                      onChange={(e) => setSmpPlayerCount(Number(e.target.value))}
-                      className="w-full mt-2 accent-emerald-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-mono-code text-slate-400">
-                      Server Architecture
+                    <label className="text-xs font-bold">Z
+                      <input type="number" value={coordZ} onChange={(e) => setCoordZ(Number(e.target.value) || 0)} className="mt-1 w-full px-3 py-2 font-mono-code" />
                     </label>
-                    <select
-                      value={smpServerType}
-                      onChange={(e) => setSmpServerType(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                    >
-                      <option value="papermc-geyser">PaperMC + GeyserMC Crossplay</option>
-                      <option value="purpur-lifesteal">Purpur Lifesteal / BedWars</option>
-                      <option value="modded-fabric">Fabric / NeoForge Modpack SMP</option>
-                    </select>
                   </div>
-                </div>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] font-mono-code text-slate-400">
-                    <span>OPTIMIZED AIKAR&apos;S G1GC STARTUP COMMAND</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopyText(
-                          `java -Xms${recommendedRamGb}G -Xmx${recommendedRamGb}G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -jar paper.jar --nogui`,
-                          'jvm-flags'
-                        )
-                      }
-                      className="text-emerald-400 hover:underline"
-                    >
-                      {copiedKey === 'jvm-flags' ? 'Copied!' : 'Copy Flags'}
-                    </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setCoordMode('overworld-to-nether')} className={coordMode === 'overworld-to-nether' ? 'bg-[#1E5138] px-3 py-2 text-sm font-bold text-[#F3EFE4]' : 'border border-slate-400 px-3 py-2 text-sm'}>Overworld to Nether</button>
+                    <button type="button" onClick={() => setCoordMode('nether-to-overworld')} className={coordMode === 'nether-to-overworld' ? 'bg-[#1E5138] px-3 py-2 text-sm font-bold text-[#F3EFE4]' : 'border border-slate-400 px-3 py-2 text-sm'}>Nether to Overworld</button>
                   </div>
-                  <code className="block text-[11px] font-mono-code text-emerald-300 break-all">
-                    java -Xms{recommendedRamGb}G -Xmx{recommendedRamGb}G -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -jar paper.jar --nogui
-                  </code>
-                </div>
-              </div>
-            </div>
-
-            {/* PrismarineJS Reference Tables (Items, Enchantments, Potions & Protocol Matrix) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <h3 className="text-base font-display font-bold text-white">
-                  06 // PrismarineJS Item & Block Technical Dataset
-                </h3>
-                <div className="space-y-2">
-                  {PRISMARINE_GAME_DATA.items.map((it) => (
-                    <div
-                      key={it.id}
-                      className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 text-xs space-y-1"
-                    >
-                      <div className="flex items-center justify-between font-mono-code">
-                        <span className="text-emerald-300 font-bold">{it.name}</span>
-                        <span className="text-slate-400">
-                          {it.id} • Blast Res: {it.blastRes}
-                        </span>
-                      </div>
-                      <p className="text-slate-400">{it.note}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <h3 className="text-base font-display font-bold text-white">
-                  07 // Enchantments & Conflict Matrix
-                </h3>
-                <div className="space-y-2">
-                  {PRISMARINE_GAME_DATA.enchantments.map((en) => (
-                    <div
-                      key={en.name}
-                      className="p-2.5 rounded-xl bg-[#070B0A] border border-slate-800 text-xs flex items-center justify-between"
-                    >
-                      <div>
-                        <span className="font-bold text-white">
-                          {en.name} {en.maxLevel}
-                        </span>
-                        <span className="text-slate-400 block">Target: {en.target}</span>
-                      </div>
-                      <span className="text-[11px] font-mono-code text-amber-300">
-                        Conflict: {en.conflict}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tool 8: Potion Brewing Reference */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <h3 className="text-base font-display font-bold text-white">
-                  08 // Potion Brewing Recipe Reference Chart
-                </h3>
-                <div className="space-y-2">
-                  {PRISMARINE_GAME_DATA.potions.map((pot) => (
-                    <div
-                      key={pot.name}
-                      className="p-2.5 rounded-xl bg-[#070B0A] border border-slate-800 text-xs flex flex-wrap items-center justify-between gap-2"
-                    >
-                      <div>
-                        <span className="font-bold text-emerald-300">{pot.name}</span>
-                        <span className="text-slate-400 block">
-                          {pot.base} + <strong className="text-white">{pot.reagent}</strong>
-                        </span>
-                      </div>
-                      <span className="text-[11px] font-mono-code text-cyan-300">
-                        {pot.duration}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tool 9: Protocol & Version Compatibility Matrix */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <h3 className="text-base font-display font-bold text-white">
-                  09 // Protocol, Java Runtime & Geyser Crossplay Matrix
-                </h3>
-                <div className="space-y-2">
-                  {PRISMARINE_GAME_DATA.versions.map((ver) => (
-                    <div
-                      key={ver.version}
-                      className="p-2.5 rounded-xl bg-[#070B0A] border border-slate-800 text-xs flex items-center justify-between"
-                    >
-                      <div>
-                        <span className="font-bold text-white">{ver.version}</span>
-                        <span className="text-slate-400 block font-mono-code">
-                          Protocol #{ver.protocol} • Requires {ver.javaReq}
-                        </span>
-                      </div>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 text-[11px] font-mono-code">
-                        {ver.geyserSupport}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Tools 10, 11, 12, 13 & 14: Complete 14-in-1 Utility Suite */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Tool 10: Interactive Command Generator */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <span className="text-xs font-mono-code text-emerald-400">
-                  10 // INTERACTIVE COMMAND GENERATOR
-                </span>
-                <h3 className="text-base font-display font-bold text-white">
-                  /give, /effect & /summon Builder
-                </h3>
-                <div className="grid grid-cols-3 gap-2 text-xs font-mono-code">
-                  {['give', 'effect', 'summon'].map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setCmdBuilderType(t);
-                        setCmdItemOrEntity(
-                          t === 'give'
-                            ? 'minecraft:mace'
-                            : t === 'effect'
-                            ? 'minecraft:night_vision'
-                            : 'minecraft:breeze'
-                        );
-                      }}
-                      className={`py-1.5 rounded uppercase ${
-                        cmdBuilderType === t
-                          ? 'bg-emerald-500 text-slate-950 font-bold'
-                          : 'bg-slate-900 text-slate-400'
-                      }`}
-                    >
-                      /{t}
-                    </button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={cmdTarget}
-                    onChange={(e) => setCmdTarget(e.target.value)}
-                    placeholder="Target (@p, @a, @s)"
-                    className="px-2.5 py-1.5 rounded bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  />
-                  <input
-                    type="number"
-                    min={1}
-                    max={255}
-                    value={cmdAmountOrLevel}
-                    onChange={(e) => setCmdAmountOrLevel(Number(e.target.value) || 1)}
-                    className="px-2.5 py-1.5 rounded bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  />
-                </div>
-                <input
-                  type="text"
-                  value={cmdItemOrEntity}
-                  onChange={(e) => setCmdItemOrEntity(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-emerald-300"
-                />
-                {(() => {
-                  const builtCmd =
-                    cmdBuilderType === 'give'
-                      ? `/give ${cmdTarget} ${cmdItemOrEntity} ${cmdAmountOrLevel}`
-                      : cmdBuilderType === 'effect'
-                      ? `/effect give ${cmdTarget} ${cmdItemOrEntity} infinite ${cmdAmountOrLevel} true`
-                      : `/summon ${cmdItemOrEntity} ~ ~1 ~`;
-                  return (
-                    <div className="p-2.5 rounded-xl bg-[#070B0A] border border-slate-800 flex items-center justify-between gap-2">
-                      <code className="text-[11px] font-mono-code text-amber-300 truncate">
-                        {builtCmd}
-                      </code>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyText(builtCmd, 'built-cmd')}
-                        className="px-2 py-1 rounded bg-emerald-500 text-slate-950 font-bold text-[10px] font-mono-code shrink-0"
-                      >
-                        {copiedKey === 'built-cmd' ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Tool 11: 3x3 Crafting Table Recipe Reference */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <span className="text-xs font-mono-code text-amber-400">
-                  11 // 3x3 CRAFTING RECIPE MATRIX
-                </span>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-display font-bold text-white">
-                    1.21+ & Bengal Block Recipes
-                  </h3>
-                  <select
-                    value={selectedRecipeId}
-                    onChange={(e) => setSelectedRecipeId(e.target.value)}
-                    className="px-2 py-1 rounded bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  >
-                    <option value="mace">Mace (1.21)</option>
-                    <option value="crafter">Crafter (1.21)</option>
-                    <option value="mud_bricks">Mud Bricks (Bengal)</option>
-                  </select>
-                </div>
-                {(() => {
-                  const recipes = {
-                    mace: {
-                      grid: ['', 'Heavy Core', '', '', 'Breeze Rod', '', '', '', ''],
-                      output: '1× Mace (Smash Weapon)'
-                    },
-                    crafter: {
-                      grid: [
-                        'Iron Ingot',
-                        'Iron Ingot',
-                        'Iron Ingot',
-                        'Iron Ingot',
-                        'Crafting Table',
-                        'Iron Ingot',
-                        'Redstone',
-                        'Dropper',
-                        'Redstone'
-                      ],
-                      output: '1× Automated Crafter'
-                    },
-                    mud_bricks: {
-                      grid: [
-                        'Packed Mud',
-                        'Packed Mud',
-                        '',
-                        'Packed Mud',
-                        'Packed Mud',
-                        '',
-                        '',
-                        '',
-                        ''
-                      ],
-                      output: '4× Mud Bricks (Paharpur Palette)'
-                    }
-                  };
-                  const activeRec = recipes[selectedRecipeId] || recipes.mace;
-                  return (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-1.5 bg-[#070B0A] p-2.5 rounded-xl border border-slate-800">
-                        {activeRec.grid.map((slot, idx) => (
-                          <div
-                            key={idx}
-                            className="h-11 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] font-mono-code text-center text-emerald-300 px-1"
-                          >
-                            {slot || '—'}
-                          </div>
-                        ))}
-                      </div>
-                      <div className="text-xs font-mono-code text-amber-300 text-center">
-                        Output: {activeRec.output}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Tool 12: Formatting & Color Code Quick-Copy Matrix */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <span className="text-xs font-mono-code text-cyan-400">
-                  12 // MINECRAFT COLOR & STYLE CODES (§ / &)
-                </span>
-                <h3 className="text-base font-display font-bold text-white">
-                  Click Any Code to Copy
-                </h3>
-                <div className="grid grid-cols-3 gap-1.5 text-xs font-mono-code">
-                  {[
-                    { code: '&a', label: 'Green', color: '#4ADE80' },
-                    { code: '&b', label: 'Aqua', color: '#38BDF8' },
-                    { code: '&c', label: 'Red', color: '#F87171' },
-                    { code: '&e', label: 'Yellow', color: '#FACC15' },
-                    { code: '&6', label: 'Gold', color: '#FB923C' },
-                    { code: '&d', label: 'Light Purple', color: '#E879F9' },
-                    { code: '&l', label: 'Bold', color: '#FFFFFF' },
-                    { code: '&n', label: 'Underline', color: '#CBD5E1' },
-                    { code: '&r', label: 'Reset', color: '#94A3B8' }
-                  ].map((c) => (
-                    <button
-                      key={c.code}
-                      type="button"
-                      onClick={() => handleCopyText(c.code, `fmt-${c.code}`)}
-                      className="p-2 rounded-lg bg-[#070B0A] hover:bg-slate-900 border border-slate-800 text-left transition"
-                    >
-                      <div className="font-bold" style={{ color: c.color }}>
-                        {c.code} ({c.label})
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        {copiedKey === `fmt-${c.code}` ? 'Copied!' : 'Tap to copy'}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Tools 13 & 14: Hardware Compatibility Finder + BDIX/Crossplay Troubleshooting */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Tool 13: Resource & Shader Compatibility Finder */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <span className="text-xs font-mono-code text-emerald-400">
-                  13 // RESOURCE & SHADER COMPATIBILITY FINDER
-                </span>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-base font-display font-bold text-white">
-                    Recommended Optimization Stack by Device
-                  </h3>
-                  <select
-                    value={deviceSpecTier}
-                    onChange={(e) => setDeviceSpecTier(e.target.value)}
-                    className="px-2.5 py-1.5 rounded bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  >
-                    <option value="budget-laptop">Budget PC / Intel UHD iGPU (4–8GB RAM)</option>
-                    <option value="mid-gaming">Mid-Range GTX/RTX or Ryzen APU (16GB RAM)</option>
-                    <option value="android-bedrock">Android Smartphone (Bedrock / Pojav)</option>
-                  </select>
-                </div>
-                <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 text-xs space-y-1.5 text-slate-300">
-                  {deviceSpecTier === 'budget-laptop' && (
-                    <>
-                      <div className="font-bold text-emerald-300">
-                        Recommended Stack: Fabric 1.21 + Sodium + Lithium + FerriteCore + EntityCulling
-                      </div>
-                      <p>
-                        • Shaders: Use &quot;MakeUp - Ultra Fast&quot; or &quot;Potato Shaders&quot; on Iris at 8–10 chunk render distance for 60+ FPS.
-                      </p>
-                    </>
-                  )}
-                  {deviceSpecTier === 'mid-gaming' && (
-                    <>
-                      <div className="font-bold text-emerald-300">
-                        Recommended Stack: Fabric 1.21 + Sodium + Iris Shaders + Distant Horizons
-                      </div>
-                      <p>
-                        • Shaders: &quot;Complementary Unbound&quot; or &quot;BSL Shaders&quot; at 12–16 chunks for cinematic Bengal river reflections.
-                      </p>
-                    </>
-                  )}
-                  {deviceSpecTier === 'android-bedrock' && (
-                    <>
-                      <div className="font-bold text-emerald-300">
-                        Recommended Stack: Official Bedrock 1.21 (Render Dragon Optimized)
-                      </div>
-                      <p>
-                        • Tip: Disable &quot;Fancy Bubbles&quot; and set Render Distance to 6–8 chunks when joining crowded GeyserMC hubs like BDZONE or BMS.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Tool 14: Server Crossplay & BDIX Troubleshooting Guide */}
-              <div className="p-5 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <span className="text-xs font-mono-code text-amber-400">
-                  14 // SERVER CROSSPLAY & BDIX TROUBLESHOOTING DIAGNOSTIC
-                </span>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-base font-display font-bold text-white">
-                    Select Connection Issue
-                  </h3>
-                  <select
-                    value={troubleshootSymptom}
-                    onChange={(e) => setTroubleshootSymptom(e.target.value)}
-                    className="px-2.5 py-1.5 rounded bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  >
-                    <option value="high-ping-sg">180ms+ High Ping to BD/Singapore Server</option>
-                    <option value="geyser-unable">Bedrock Mobile: &quot;Unable to Connect to World&quot;</option>
-                    <option value="invalid-session">Java: &quot;Failed to Verify Username / Session&quot;</option>
-                  </select>
-                </div>
-                <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 text-xs space-y-1.5 text-slate-300">
-                  {troubleshootSymptom === 'high-ping-sg' && (
-                    <>
-                      <div className="font-bold text-amber-300">
-                        Diagnosis: Suboptimal ISP Submarine Cable / BGP Route
-                      </div>
-                      <p>
-                        Set Primary DNS to Cloudflare (`1.1.1.1`) and Secondary to Google (`8.8.8.8`). Normal Dhaka-to-Singapore latency is 45–65ms; BDIX domestic nodes should be 5–15ms.
-                      </p>
-                    </>
-                  )}
-                  {troubleshootSymptom === 'geyser-unable' && (
-                    <>
-                      <div className="font-bold text-amber-300">
-                        Diagnosis: Bedrock UDP Port Mismatch or Outdated Geyser Protocol
-                      </div>
-                      <p>
-                        Ensure you entered the exact Bedrock UDP port (`19132` for BDZONE/Cyan Plex, `19035` for Maven&apos;s Hive, or `5555` for BMS) and signed in to Xbox Live.
-                      </p>
-                    </>
-                  )}
-                  {troubleshootSymptom === 'invalid-session' && (
-                    <>
-                      <div className="font-bold text-amber-300">
-                        Diagnosis: Expired Microsoft Token or Premium-Only Lobby
-                      </div>
-                      <p>
-                        Restart your official launcher to refresh your Mojang session token, or join a Geyser/AuthMe crossplay-enabled Bangladeshi lobby.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW H: THE LEGACY — DIGITAL MUSEUM OF MINECRAFT BANGLADESH      */}
-        {/* ================================================================ */}
-        {activeTab === 'legacy' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono-code text-amber-400 uppercase">
-                  INTERACTIVE DIGITAL MUSEUM • 10 CHRONOLOGICAL ERAS (2010–2026)
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn'
-                    ? 'দ্য লিগ্যাসি: বাংলাদেশে মাইনক্রাফটের প্রামাণ্য ইতিহাস'
-                    : 'The Legacy: History of Minecraft in Bangladesh'}
-                </h1>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormNotice(null);
-                  setActiveModal('submit-memory');
-                }}
-                className="tactile-btn px-4 py-2 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs"
-              >
-                + Help Preserve Our History
-              </button>
-            </div>
-
-            {/* 10-Era Chronology Scrubber */}
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {timeline.map((era) => (
-                <button
-                  key={era.id}
-                  type="button"
-                  onClick={() => setSelectedEraId(era.id)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-mono-code shrink-0 border transition ${
-                    selectedEraId === era.id
-                      ? 'bg-amber-500 text-slate-950 font-bold border-amber-400'
-                      : 'bg-[#0D1513] text-slate-300 border-slate-800 hover:border-amber-500/40'
-                  }`}
-                >
-                  {era.period}
-                </button>
-              ))}
-            </div>
-
-            {/* Museum Spotlight Stage */}
-            <div className="rounded-2xl bg-[#0D1513] border border-amber-500/40 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
-              {/* Visual Exhibit Plate */}
-              <div className="lg:col-span-5 relative min-h-[260px] bg-slate-950 overflow-hidden group">
-                <img
-                  src={
-                    SECTION_VISUAL_CURATION.eraVisuals[spotlightEra.id] ||
-                    VISUAL_ASSET_MANIFEST[0].originalUrl
-                  }
-                  alt={spotlightEra.titleEn}
-                  className="w-full h-full object-cover opacity-75 group-hover:scale-105 transition duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-transparent to-black/60" />
-                <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded bg-black/80 text-amber-300 text-xs font-mono-code border border-amber-500/30">
-                    MUSEUM PLATE // {spotlightEra.id}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setLightboxAsset({
-                        title: `${spotlightEra.period} — ${spotlightEra.titleEn}`,
-                        imageUrl:
-                          SECTION_VISUAL_CURATION.eraVisuals[spotlightEra.id] ||
-                          VISUAL_ASSET_MANIFEST[0].originalUrl,
-                        subtitle: spotlightEra.summaryEn,
-                        attribution: spotlightEra.sourceTitle
-                      })
-                    }
-                    className="px-2.5 py-1 rounded bg-black/80 text-emerald-300 text-xs font-mono-code hover:bg-emerald-500 hover:text-slate-950 transition"
-                  >
-                    Inspect HD
-                  </button>
-                </div>
-                <div className="absolute bottom-4 left-4 right-4 text-xs font-mono-code text-slate-300 bg-black/75 backdrop-blur-md p-2.5 rounded-xl border border-white/10">
-                  <div className="text-amber-300 font-bold">{spotlightEra.eraTag}</div>
-                  <div className="text-[11px] text-slate-400">{spotlightEra.coordinates}</div>
-                </div>
-              </div>
-
-              {/* Archival Narrative Details */}
-              <div className="lg:col-span-7 p-6 space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-mono-code font-bold text-amber-400">
-                        {spotlightEra.period} • {spotlightEra.eraTag}
-                      </span>
-                      <EpistemicBadge status={spotlightEra.epistemicStatus} />
-                    </div>
-                  </div>
-                  <h2 className="text-2xl font-display font-extrabold text-white">
-                    {lang === 'bn' ? spotlightEra.titleBn : spotlightEra.titleEn}
-                  </h2>
-                  <p className="text-sm text-slate-200 leading-relaxed">
-                    {lang === 'bn' ? spotlightEra.summaryBn : spotlightEra.summaryEn}
+                  <p className="border-l-2 border-[#1E5138] pl-3 font-mono-code text-sm">
+                    X: {coordMode === 'overworld-to-nether' ? Math.floor(coordX / 8) : coordX * 8}
+                    {' -> '}
+                    Z: {coordMode === 'overworld-to-nether' ? Math.floor(coordZ / 8) : coordZ * 8}
                   </p>
-                  <div className="space-y-2 pt-2">
-                    <div className="text-xs font-mono-code text-amber-300 uppercase">
-                      Documented Era Milestones:
+                </div>
+              </section>
+
+              <section id="motd" className="grid grid-cols-1 md:grid-cols-12 gap-5 py-6 scroll-mt-28">
+                <div className="md:col-span-4">
+                  <div className="bb-kicker">02 / MOTD</div>
+                  <h2 className="mt-2 text-xl">Preview your server-list MOTD</h2>
+                  <p className="mt-2 text-sm text-slate-600">This shows plain text after removing basic &amp; color codes. It stays in your browser and does not contact a server.</p>
+                </div>
+                <div className="md:col-span-8 space-y-3">
+                  <input aria-label="MOTD line one" value={motdLine1} onChange={(e) => setMotdLine1(e.target.value)} className="w-full px-3 py-2 font-mono-code" placeholder="Line one" />
+                  <input aria-label="MOTD line two" value={motdLine2} onChange={(e) => setMotdLine2(e.target.value)} className="w-full px-3 py-2 font-mono-code" placeholder="Line two" />
+                  <div className="border-l-2 border-[#A94F32] bg-[#E8E4D8] p-4 font-mono-code text-sm">
+                    <div className="font-bold">MOTD preview - local only</div>
+                    <div>{motdLine1 ? motdLine1.replace(/&[0-9a-fk-or]/gi, '') : 'Enter the first line above.'}</div>
+                    <div>{motdLine2 ? motdLine2.replace(/&[0-9a-fk-or]/gi, '') : 'Enter the second line above.'}</div>
+                  </div>
+                  <button type="button" onClick={() => handleCopyText(motdLine1 + String.fromCharCode(10) + motdLine2, 'motd-copy')} className="border-b border-[#1E5138] py-2 text-sm font-bold">
+                    {copiedKey === 'motd-copy' ? 'Copied' : 'Copy raw text'}
+                  </button>
+                </div>
+              </section>
+
+              <section id="profile" className="grid grid-cols-1 md:grid-cols-12 gap-5 py-6 scroll-mt-28">
+                <div className="md:col-span-4">
+                  <div className="bb-kicker">03 / PUBLIC PROFILE</div>
+                  <h2 className="mt-2 text-xl">Look up a Minecraft username</h2>
+                  <p className="mt-2 text-sm text-slate-600">Looks up public profile data through PlayerDB. It does not sign you in or confirm account ownership.</p>
+                </div>
+                <div className="md:col-span-8 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <input aria-label="Minecraft username" value={skinLookupUser} onChange={(e) => setSkinLookupUser(e.target.value)} placeholder="Minecraft username" className="min-w-0 flex-1 px-3 py-2 font-mono-code" />
+                    <button type="button" onClick={() => lookupMinecraftSkin(skinLookupUser)} disabled={skinLookupLoading} className="bg-[#1E5138] px-4 py-2 text-sm font-bold text-[#F3EFE4] disabled:opacity-50">{skinLookupLoading ? 'Looking up...' : 'Look up'}</button>
+                  </div>
+                  {skinLookupError && <p className="text-sm text-[#A94F32]" role="status">{skinLookupError}</p>}
+                  {skinLookupData && (
+                    <div className="flex items-center gap-3 border-y border-slate-300 py-3">
+                      <img src={skinLookupData.avatar} alt="" className="h-12 w-12 border border-slate-300" />
+                      <div className="text-sm"><strong>{skinLookupData.username}</strong><div className="font-mono-code text-xs text-slate-500">UUID: {skinLookupData.uuid}</div></div>
                     </div>
-                    {spotlightEra.keyMilestones.map((m, idx) => (
-                      <div key={idx} className="text-xs text-slate-300 flex items-start gap-2">
-                        <span className="text-emerald-400 font-bold">■</span>
-                        <span>{m}</span>
-                      </div>
+                  )}
+                </div>
+              </section>
+
+              <section id="wiki" className="grid grid-cols-1 md:grid-cols-12 gap-5 py-6 scroll-mt-28">
+                <div className="md:col-span-4">
+                  <div className="bb-kicker">04 / MINECRAFT WIKI</div>
+                  <h2 className="mt-2 text-xl">Search the wiki</h2>
+                  <p className="mt-2 text-sm text-slate-600">Results link to Minecraft Wiki pages.</p>
+                </div>
+                <div className="md:col-span-8 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <input aria-label="Wiki search" value={wikiQuery} onChange={(e) => setWikiQuery(e.target.value)} placeholder="Item, block, biome?" className="min-w-0 flex-1 px-3 py-2" />
+                    <button type="button" onClick={() => searchMinecraftWiki(wikiQuery)} disabled={wikiLoading} className="border border-slate-400 px-4 py-2 text-sm font-bold disabled:opacity-50">{wikiLoading ? 'Searching...' : 'Search'}</button>
+                  </div>
+                  {wikiError && <p className="text-sm text-[#A94F32]" role="status">{wikiError}</p>}
+                  {wikiResults.length === 0 && !wikiError && !wikiLoading && <p className="py-2 text-sm text-slate-500">Search for a Minecraft item, block or biome.</p>}
+                  <div className="divide-y divide-slate-300">
+                    {wikiResults.map((result) => (
+                      <a key={result.url} href={result.url} target="_blank" rel="noopener noreferrer" className="flex justify-between gap-4 py-3 text-sm hover:text-[#1E5138]">
+                        <span>{result.title}</span><span className="text-xs" aria-hidden="true">Open</span>
+                      </a>
                     ))}
                   </div>
                 </div>
-                <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs font-mono-code">
-                  <span className="text-slate-400">
-                    Primary Source Record: {spotlightEra.sourceId} — {spotlightEra.sourceTitle}
-                  </span>
-                  <a
-                    href={spotlightEra.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-amber-400 hover:underline"
-                  >
-                    Verify Primary Source ↗
-                  </a>
-                </div>
-              </div>
+              </section>
             </div>
           </div>
         )}
 
-        {/* ================================================================ */}
-        {/* VIEW I: COMMUNITY HUB, BUILDS & CLOUDINARY MEDIA PIPELINE        */}
-        {/* ================================================================ */}
-        {activeTab === 'community' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  VOXEL BENGAL SHOWCASE • CLOUDINARY OPTIMIZED PIPELINE
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn'
-                    ? 'কমিউনিটি হাব ও ভক্সেল স্থাপত্য গ্যালারি'
-                    : 'Community Hub & Bengal Voxel Build Gallery'}
-                </h1>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFormNotice(null);
-                  setActiveModal('submit-build');
-                }}
-                className="tactile-btn px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-              >
-                + Submit Your Minecraft Build
-              </button>
-            </div>
-
-            {/* Cloudinary Upload & Validation Sandbox */}
-            <div className="p-5 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-xs font-mono-code text-emerald-300">
-                  <UploadCloud className="w-4 h-4 text-emerald-400" />
-                  <span>
-                    CLOUDINARY MEDIA VALIDATOR & TRANSFORMATION PIPELINE ({LIVE_API_CONFIG.cloudinary.transformationPreset})
-                  </span>
-                </div>
-                <span className="text-xs font-mono-code text-slate-400">{cloudinaryStatus}</span>
-              </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCloudinaryFileSelect}
-                  className="text-xs text-slate-300 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-emerald-500 file:text-slate-950 file:font-bold"
-                />
-                {cloudinaryProgress > 0 && (
-                  <div className="w-48 h-2 rounded-full bg-slate-900 overflow-hidden">
-                    <div
-                      className="h-full bg-emerald-400 transition-all"
-                      style={{ width: `${cloudinaryProgress}%` }}
-                    />
-                  </div>
-                )}
-                {cloudinaryPreviewUrl && (
-                  <img
-                    src={cloudinaryPreviewUrl}
-                    alt="Preview"
-                    className="h-14 w-24 object-cover rounded-lg border border-emerald-500/40"
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Builds Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {builds.map((b, idx) => {
-                const refPhoto = SECTION_VISUAL_CURATION.buildsRealPhotos[b.id];
-                return (
-                  <Tilt3DCard
-                    key={b.id}
-                    staggerIndex={idx}
-                    reducedMotion={reducedMotion}
-                    className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                  >
-                    <div>
-                      <VoxelBuildArtwork
-                        artType={b.artType}
-                        title={b.titleEn}
-                        realPhotoUrl={refPhoto?.photoUrl}
-                        onInspectLightbox={() =>
-                          setLightboxAsset({
-                            title: b.titleEn,
-                            imageUrl: refPhoto?.photoUrl,
-                            subtitle: `${b.coordinates} • Builder: ${b.builder}`,
-                            attribution: refPhoto?.credit || 'BLOCKBANGLA Curated Visual'
-                          })
-                        }
-                      />
-                      <div className="p-5 space-y-2.5">
-                        <div className="flex items-center justify-between text-xs font-mono-code">
-                          <span className="text-emerald-400">{b.edition}</span>
-                          <span className="text-amber-300">{b.coordinates}</span>
-                        </div>
-                        <h3 className="text-lg font-display font-bold text-white">
-                          {lang === 'bn' ? b.titleBn : b.titleEn}
-                        </h3>
-                        <div className="text-xs text-slate-400">Builder: {b.builder}</div>
-                        <p className="text-xs text-slate-300 leading-relaxed">
-                          {lang === 'bn' ? b.descriptionBn : b.descriptionEn}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="px-5 py-3 bg-[#080D0C] border-t border-slate-800 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setBuilds((prev) =>
-                            prev.map((item) =>
-                              item.id === b.id ? { ...item, likes: item.likes + 1 } : item
-                            )
-                          )
-                        }
-                        className="inline-flex items-center gap-1.5 text-xs font-mono-code text-rose-400 hover:text-rose-300"
-                      >
-                        <Heart className="w-3.5 h-3.5 fill-current" />
-                        <span>{b.likes}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDetailItem({ type: 'build', data: b })}
-                        className="text-xs font-mono-code text-emerald-400 hover:underline"
-                      >
-                        Inspect Block Palette →
-                      </button>
-                    </div>
-                  </Tilt3DCard>
-                );
-              })}
-            </div>
-
-            {/* Interactive Community Discussions, Q&A, Collaboration Requests & Live Poll */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-4">
-              {/* Left 8 Columns: Discussions, Q&A & Collaboration Board */}
-              <div className="lg:col-span-8 p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                      WAF-PROTECTED COMMUNITY BOARD // DISCUSSIONS, Q&A & COLLABS
-                    </span>
-                    <h2 className="text-xl font-display font-bold text-white mt-0.5">
-                      {lang === 'bn'
-                        ? 'কমিউনিটি আলোচনা, প্রশ্নোত্তর ও কোলাবোরেশন বোর্ড'
-                        : 'Community Discussions, Technical Q&A & Builder Collabs'}
-                    </h2>
-                  </div>
-                </div>
-
-                {/* New Thread Composer (Protected by WAF Sanitizer) */}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!newThreadTitle.trim() || !newThreadBody.trim()) return;
-                    const check = inspectSubmissionSecurity({
-                      title: newThreadTitle,
-                      description: newThreadBody
-                    });
-                    if (!check.safe) {
-                      setWafBlockedCount((c) => c + 1);
-                      return;
-                    }
-                    setCommunityThreads((prev) => [
-                      {
-                        id: `thd-${Date.now()}`,
-                        category: newThreadCategory,
-                        author: playerProfile?.blockbangla_username || 'CommunityPlayer_BD',
-                        badge: playerProfile?.minecraft_verified ? 'MC VERIFIED' : 'MEMBER',
-                        timeAgo: 'Just now',
-                        titleEn: check.sanitizedTitle,
-                        titleBn: check.sanitizedTitle,
-                        body: check.sanitizedDescription,
-                        upvotes: 1,
-                        replies: 0
-                      },
-                      ...prev
-                    ]);
-                    setNewThreadTitle('');
-                    setNewThreadBody('');
-                  }}
-                  className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-3"
-                >
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={newThreadTitle}
-                      onChange={(e) => setNewThreadTitle(e.target.value)}
-                      placeholder="Start a discussion, ask a technical question, or request builders..."
-                      className="flex-1 px-3 py-2 rounded-lg bg-[#0D1513] border border-slate-700 text-xs text-white"
-                    />
-                    <select
-                      value={newThreadCategory}
-                      onChange={(e) => setNewThreadCategory(e.target.value)}
-                      className="px-3 py-2 rounded-lg bg-[#0D1513] border border-slate-700 text-xs font-mono-code text-emerald-300"
-                    >
-                      <option value="Technical Q&A">Technical Q&A</option>
-                      <option value="Collaboration Request">Collaboration Request</option>
-                      <option value="SMP Recruitment">SMP Recruitment</option>
-                    </select>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="text"
-                      value={newThreadBody}
-                      onChange={(e) => setNewThreadBody(e.target.value)}
-                      placeholder="Add details, Minecraft version (1.21.4), or coordinates..."
-                      className="flex-1 px-3 py-2 rounded-lg bg-[#0D1513] border border-slate-700 text-xs text-slate-200"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code shrink-0"
-                    >
-                      Post Thread (WAF Checked)
-                    </button>
-                  </div>
-                </form>
-
-                {/* Threads List */}
-                <div className="space-y-3">
-                  {communityThreads.map((thd) => (
-                    <div
-                      key={thd.id}
-                      className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 hover:border-emerald-500/30 transition space-y-2"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono-code">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300">
-                            {thd.category}
-                          </span>
-                          <span className="text-white font-bold">{thd.author}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-slate-900 text-amber-300 text-[10px]">
-                            {thd.badge}
-                          </span>
-                        </div>
-                        <span className="text-slate-500">{thd.timeAgo}</span>
-                      </div>
-                      <h4 className="text-sm font-bold text-white">
-                        {lang === 'bn' ? thd.titleBn : thd.titleEn}
-                      </h4>
-                      <p className="text-xs text-slate-300 leading-relaxed">{thd.body}</p>
-                      <div className="flex items-center gap-4 pt-1 text-xs font-mono-code text-slate-400">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCommunityThreads((prev) =>
-                              prev.map((x) =>
-                                x.id === thd.id ? { ...x, upvotes: x.upvotes + 1 } : x
-                              )
-                            )
-                          }
-                          className="text-emerald-400 hover:underline"
-                        >
-                          ▲ Upvote ({thd.upvotes})
-                        </button>
-                        <span>💬 {thd.replies} Replies</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right 4 Columns: Live Community Poll */}
-              <div className="lg:col-span-4 p-6 rounded-2xl bg-[#0D1513] border border-amber-500/30 space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-xs font-mono-code text-amber-400 uppercase">
-                      COMMUNITY PULSE POLL // NOVEMBER 2026
-                    </span>
-                    <h3 className="text-lg font-display font-bold text-white mt-0.5">
-                      {lang === 'bn'
-                        ? 'বাংলাদেশের পরবর্তী মেগা ভক্সেল প্রজেক্ট কোনটি হওয়া উচিত?'
-                        : 'Which Bangladesh Landmark Should Our Builders Recreate Next?'}
-                    </h3>
-                  </div>
-
-                  {(() => {
-                    const options = [
-                      { id: 'poll-opt-1', label: 'Ahsan Manzil (Pink Palace, Sadarghat)' },
-                      { id: 'poll-opt-2', label: 'Kantajew Terracotta Temple (Dinajpur)' },
-                      { id: 'poll-opt-3', label: 'Sajek Valley Cloud Hills & Helipad' },
-                      { id: 'poll-opt-4', label: 'Sixty Dome Mosque (Bagerhat UNESCO)' }
-                    ];
-                    const totalVotes = Object.values(communityPollVotes).reduce(
-                      (a, b) => a + b,
-                      0
-                    );
-                    return (
-                      <div className="space-y-2.5">
-                        {options.map((opt) => {
-                          const count = communityPollVotes[opt.id] || 0;
-                          const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-                          const isSelected = userVotedOption === opt.id;
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() => {
-                                if (userVotedOption !== opt.id) {
-                                  setCommunityPollVotes((prev) => ({
-                                    ...prev,
-                                    [opt.id]: (prev[opt.id] || 0) + 1
-                                  }));
-                                  setUserVotedOption(opt.id);
-                                }
-                              }}
-                              className={`w-full text-left p-3 rounded-xl border transition space-y-1.5 ${
-                                isSelected
-                                  ? 'bg-amber-500/15 border-amber-400 text-white'
-                                  : 'bg-[#070B0A] border-slate-800 text-slate-300 hover:border-amber-500/40'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="font-bold">{opt.label}</span>
-                                <span className="font-mono-code text-amber-300">{pct}%</span>
-                              </div>
-                              <div className="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
-                                <div
-                                  className="h-full bg-gradient-to-r from-amber-400 to-emerald-400"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <div className="text-[10px] font-mono-code text-slate-400">
-                                {count} votes {isSelected ? '• ✓ Your Vote' : ''}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 text-[11px] font-mono-code text-slate-400">
-                  Saved Servers in Your Session: <span className="text-emerald-300 font-bold">{savedServerIds.length}</span> • Registered Events: <span className="text-amber-300 font-bold">{registeredEventIds.length}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW J: LEARN MINECRAFT (BILINGUAL EN/BN ACADEMY)                */}
-        {/* ================================================================ */}
-        {activeTab === 'learn' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5">
-              <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                BILINGUAL ENGLISH + বাংলা LEARNING ACADEMY
-              </span>
-              <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                {lang === 'bn'
-                  ? 'মাইনক্রাফট লার্নিং একাডেমি ও কমান্ড গাইড'
-                  : 'Learn Minecraft: Bilingual Guides & SMP Engineering'}
-              </h1>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-4 space-y-2">
-                {LEARNING_GUIDES.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setSelectedGuideId(g.id)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition ${
-                      selectedGuideId === g.id
-                        ? 'bg-emerald-500/15 border-emerald-500 text-white'
-                        : 'bg-[#0D1513] border-slate-800 text-slate-300 hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="text-[10px] font-mono-code text-emerald-400 uppercase">
-                      {g.category} • {g.readTime}
-                    </div>
-                    <div className="text-xs sm:text-sm font-bold mt-0.5">
-                      {lang === 'bn' ? g.titleBn : g.titleEn}
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <div className="lg:col-span-8 space-y-6">
-                <div className="p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-4">
-                  <span className="text-xs font-mono-code text-emerald-400">
-                    {activeGuide.category} • {activeGuide.readTime}
-                  </span>
-                  <h2 className="text-2xl font-display font-bold text-white">
-                    {lang === 'bn' ? activeGuide.titleBn : activeGuide.titleEn}
-                  </h2>
-                  <p className="text-sm text-slate-300">
-                    {lang === 'bn' ? activeGuide.summaryBn : activeGuide.summaryEn}
-                  </p>
-                  <div className="space-y-3 pt-2">
-                    {(lang === 'bn' ? activeGuide.contentBn : activeGuide.contentEn).map(
-                      (para, i) => (
-                        <div
-                          key={i}
-                          className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 text-xs sm:text-sm text-slate-200 leading-relaxed"
-                        >
-                          {para}
-                        </div>
-                      )
-                    )}
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200">
-                    <strong>Pro Tip:</strong> {activeGuide.proTip}
-                  </div>
-                </div>
-
-                {/* Interactive Command Cheat Sheet */}
-                <div className="p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-lg font-display font-bold text-white">
-                      One-Click Minecraft & WorldEdit Command Cheat Sheet
-                    </h3>
-                    <input
-                      type="text"
-                      value={commandSearch}
-                      onChange={(e) => setCommandSearch(e.target.value)}
-                      placeholder="Filter commands..."
-                      className="px-3 py-1.5 rounded-lg bg-[#070B0A] border border-slate-700 text-xs text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    {COMMANDS_CHEATSHEET.filter(
-                      (c) =>
-                        c.cmd.toLowerCase().includes(commandSearch.toLowerCase()) ||
-                        c.purposeEn.toLowerCase().includes(commandSearch.toLowerCase())
-                    ).map((c) => (
-                      <div
-                        key={c.cmd}
-                        className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 flex flex-wrap items-center justify-between gap-2"
-                      >
-                        <div>
-                          <code className="text-xs font-mono-code text-emerald-300 font-bold">
-                            {c.cmd}
-                          </code>
-                          <div className="text-xs text-slate-400 mt-0.5">
-                            {lang === 'bn' ? c.purposeBn : c.purposeEn}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(c.cmd, c.cmd)}
-                          className="px-2.5 py-1 rounded bg-slate-900 hover:bg-emerald-500 hover:text-slate-950 text-xs font-mono-code text-slate-300 transition"
-                        >
-                          {copiedKey === c.cmd ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW K: NEWS & ANNOUNCEMENTS                                     */}
-        {/* ================================================================ */}
-        {activeTab === 'news' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                  VERIFIED COMMUNITY DISPATCHES vs OFFICIAL GLOBAL MOJANG UPDATES
-                </span>
-                <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                  {lang === 'bn' ? 'সংবাদ ও কমিউনিটি ঘোষণা' : 'News & Community Announcements'}
-                </h1>
-              </div>
-              <div className="flex gap-2">
-                {['ALL', 'BANGLADESH COMMUNITY', 'OFFICIAL GLOBAL MINECRAFT'].map((st) => (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => setNewsStreamFilter(st)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-mono-code ${
-                      newsStreamFilter === st
-                        ? 'bg-emerald-500 text-slate-950 font-bold'
-                        : 'bg-[#0D1513] text-slate-300 border border-slate-800'
-                    }`}
-                  >
-                    {st}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {NEWS_ARTICLES.filter(
-                (n) => newsStreamFilter === 'ALL' || n.stream === newsStreamFilter
-              ).map((art, idx) => {
-                const thumbUrl =
-                  SECTION_VISUAL_CURATION.newsThumbnails[art.id] ||
-                  VISUAL_ASSET_MANIFEST[4].originalUrl;
-                return (
-                  <Tilt3DCard
-                    key={art.id}
-                    staggerIndex={idx}
-                    reducedMotion={reducedMotion}
-                    className="rounded-2xl bg-[#0D1513] border border-slate-800 overflow-hidden flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="relative h-44 bg-slate-950 overflow-hidden">
-                        <img
-                          src={thumbUrl}
-                          alt={art.titleEn}
-                          loading="lazy"
-                          className="w-full h-full object-cover opacity-75 hover:scale-105 transition duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0D1513] via-transparent to-black/50" />
-                        <div className="absolute top-3 left-3 right-3 flex items-center justify-between text-xs font-mono-code">
-                          <span className="px-2.5 py-1 rounded bg-black/80 text-emerald-300 border border-emerald-500/30">
-                            {art.stream} • {art.badge}
-                          </span>
-                          <span className="px-2.5 py-1 rounded bg-black/80 text-slate-300">
-                            {art.date}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-6 space-y-3">
-                        <h3 className="text-xl font-display font-bold text-white">
-                          {lang === 'bn' ? art.titleBn : art.titleEn}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                          {lang === 'bn' ? art.summaryBn : art.summaryEn}
-                        </p>
-                        <p className="text-xs text-slate-400 leading-relaxed">{art.fullBodyEn}</p>
-                      </div>
-                    </div>
-                    <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between text-xs font-mono-code">
-                      <span className="text-slate-400">{art.author}</span>
-                      <button
-                        type="button"
-                        onClick={() => navigateSmart(art.sourceUrl)}
-                        className="text-emerald-400 hover:underline"
-                      >
-                        Source: {art.sourceName} →
-                      </button>
-                    </div>
-                  </Tilt3DCard>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ================================================================ */}
-        {/* VIEW K.5: ABOUT BLOCKBANGLA & FOUNDER IDENTITY (TANXIM)          */}
-        {/* ================================================================ */}
         {activeTab === 'about' && (
           <div className="space-y-10">
-            <div className="border-b border-slate-800 pb-5">
-              <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                PLATFORM CHARTER, ARCHITECTURAL VISION & FOUNDER IDENTITY
-              </span>
-              <h1 className="text-3xl font-display font-extrabold text-white mt-1">
+            <header className="max-w-4xl border-b border-slate-300 pb-6">
+              <div className="bb-kicker">ABOUT / DIRECTORY NOTES</div>
+              <h1 className="mt-3">{lang === 'bn' ? 'বাংলাদেশের Minecraft সার্ভার ডিরেক্টরি' : 'A Minecraft server directory for Bangladesh'}</h1>
+              <p className="mt-5 max-w-3xl text-slate-600">
                 {lang === 'bn'
-                  ? 'ব্লকবাংলা পরিচিতি ও প্রতিষ্ঠাতা (TANXIM)'
-                  : 'About BLOCKBANGLA & Founder Identity — TANXIM'}
-              </h1>
-            </div>
+                  ? 'BLOCKBANGLA-তে থাকা সার্ভারের নাম ও ঠিকানা দেওয়া অ্যাপ ফাইল থেকে এসেছে। পাবলিক স্ট্যাটাস API শুধু সেই মুহূর্তে ঠিকানাটি কী উত্তর দিয়েছে তা দেখায়; মালিকানা, নিরাপত্তা বা সার্ভারের সব তথ্য যাচাই করে না।'
+                  : 'The server names and addresses currently listed are unconfirmed. A public status API shows only how an address answered at that moment; it does not confirm ownership, safety, or every listing detail.'}
+              </p>
+            </header>
 
-            {/* Founder Identity Card for TANXIM (Zero Fabricated Photos or Fake Biography) */}
-            <div className="rounded-3xl bg-gradient-to-br from-[#0A1412] via-[#0D1A17] to-[#070B0A] border border-emerald-500/35 p-6 sm:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center shadow-2xl">
-              <div className="lg:col-span-5 flex flex-col items-center justify-center p-4 rounded-2xl bg-[#060A09] border border-emerald-500/20">
-                <TanximFounderCrestSVG />
-                <div className="mt-3 text-center">
-                  <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-mono-code text-emerald-300">
-                    ORIGINAL ARCHITECTURAL MONOGRAM CREST
-                  </span>
-                </div>
+            <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 border-y border-slate-300 py-7">
+              <div className="lg:col-span-4"><div className="bb-kicker">STATUS CHECK</div><h2 className="mt-2 text-xl">A status reply is not an endorsement.</h2></div>
+              <p className="lg:col-span-7 text-slate-600">The directory queries a public status API for online state, player count, version, and response time. The response time measures the browser-to-API request, not in-game ping. Check the server’s own site before joining or paying.</p>
+            </section>
+
+            <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              <div className="lg:col-span-4">
+                <div className="bb-kicker">SEND A CORRECTION OR LISTING</div>
+                <h2 className="mt-2 text-2xl">Send a server listing or correction.</h2>
+                <p className="mt-3 text-sm text-slate-600">The form sends to the configured Formspree inbox. This page has no connected CMS or public submission queue.</p>
               </div>
-
-              <div className="lg:col-span-7 space-y-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono-code">
-                  <Award className="w-3.5 h-3.5" />
-                  <span>FOUNDER & VISIONARY // TANXIM</span>
-                </div>
-
-                <h2 className="text-2xl sm:text-4xl font-display font-extrabold text-white tracking-tight">
-                  {lang === 'bn'
-                    ? 'তানজিম (TANXIM) — বাংলাদেশের মাইনক্রাফট ইকোসিস্টেমের স্থপতি'
-                    : 'TANXIM — Unifying Bangladesh’s Minecraft Ecosystem Under One Roof'}
-                </h2>
-
-                <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-                  {lang === 'bn'
-                    ? 'BLOCKBANGLA প্রতিষ্ঠিত হয়েছে একটি সুস্পষ্ট লক্ষ্য নিয়ে: বাংলাদেশের সকল জাভা ও বেডরক প্লেয়ার, সার্ভার ওনার, বিল্ডার এবং কন্টেন্ট ক্রিয়েটরদের জন্য একটি নির্ভরযোগ্য, প্রামাণ্য এবং বিশ্বমানের ডিজিটাল প্ল্যাটফর্ম গড়ে তোলা। কোনো কাল্পনিক তথ্য বা ভুয়া পরিসংখ্যান ছাড়াই এই প্ল্যাটফর্মটি পরিচালনা ও তত্ত্বাবধান করছেন TANXIM।'
-                    : 'Conceived and directed by TANXIM, BLOCKBANGLA was built to end fragmented server lists, fabricated player counters, and lost community history. Rather than relying on generic templates or unverified claims, the platform pairs real-time API verification with an interactive digital museum honoring every generation of Bangladeshi Minecraft players.'}
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800">
-                    <div className="text-xs font-mono-code text-emerald-400 font-bold">
-                      01 // VERIFIED TRUTH
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Strict epistemic separation between live API telemetry, primary historical facts, and oral memories.
-                    </p>
+              <div className="lg:col-span-8 bg-[#F8FAFC] p-5 sm:p-8">
+                {fsContactState.succeeded ? (
+                  <div className="space-y-4 py-4">
+                    <h3 className="text-xl font-bold">Message sent.</h3>
+                    <p className="text-sm text-slate-600">Your submission was accepted by Formspree. It has not been published on the site.</p>
+                    <button type="button" onClick={resetFsContact} className="border-b border-emerald-700 py-2 text-sm font-bold">Send another</button>
                   </div>
-                  <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800">
-                    <div className="text-xs font-mono-code text-amber-400 font-bold">
-                      02 // CROSS-EDITION PARITY
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Built for both PC Java veterans and Bangladesh’s massive Android Bedrock community.
-                    </p>
-                  </div>
-                  <div className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800">
-                    <div className="text-xs font-mono-code text-cyan-400 font-bold">
-                      03 // OPEN HERITAGE
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Preserving Bangladeshi SMP worlds, tournament brackets, and Bengali tutorials for the next decade.
-                    </p>
-                  </div>
-                </div>
+                ) : (
+                  <form action={FORMSPREE_ENDPOINT} method="POST" onSubmit={submitToFormspreeContact} className="space-y-4">
+                    <label className="block text-sm font-bold">Name or Minecraft username<input type="text" name="name" required className="mt-1 w-full px-3 py-2" /></label>
+                    <label className="block text-sm font-bold">Email<input type="email" name="email" required className="mt-1 w-full px-3 py-2" /></label>
+                    <label className="block text-sm font-bold">What is this about?
+                      <select name="topic" className="mt-1 w-full px-3 py-2">
+                        <option>Server listing</option><option>Correction</option><option>General feedback</option>
+                      </select>
+                    </label>
+                    <label className="block text-sm font-bold">Public link or server address<input type="text" name="link" placeholder="https://… or server.example" className="mt-1 w-full px-3 py-2" /></label>
+                    <label className="block text-sm font-bold">Details<textarea name="message" required rows={4} placeholder="Include dates and sources when available." className="mt-1 w-full px-3 py-2" /></label>
+                    <FormspreeValidationError prefix="Form" field="form" errors={fsContactState.errors} />
+                    <button type="submit" disabled={fsContactState.submitting} className="bg-[#1E5138] px-5 py-3 text-sm font-bold text-[#F3EFE4] disabled:opacity-50">
+                      {fsContactState.submitting ? 'Sending…' : 'Send to BLOCKBANGLA'}
+                    </button>
+                    <p className="text-xs text-slate-500">Only include contact details you’re comfortable sharing. Do not send passwords or private account data.</p>
+                  </form>
+                )}
               </div>
-            </div>
-
-            {/* Verified Community Leaderboards & Ecosystem Partnerships */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Community Recognition & Archival Leaderboards */}
-              <div className="lg:col-span-6 p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-                <div>
-                  <span className="text-xs font-mono-code text-amber-400 uppercase">
-                    VERIFIED COMMUNITY RECOGNITION (NON-FABRICATED)
-                  </span>
-                  <h3 className="text-xl font-display font-bold text-white mt-0.5">
-                    Community Contributions & Archival Standings
-                  </h3>
-                </div>
-                <div className="space-y-2.5 text-xs">
-                  {[
-                    {
-                      rank: '#01',
-                      entity: 'BDZONE Network (Founded Apr 9, 2018)',
-                      metric: '8+ Years Continuous Bangladeshi Server Uptime',
-                      badge: 'INFRASTRUCTURE PIONEER'
-                    },
-                    {
-                      rank: '#02',
-                      entity: '#minecraftbangla Creator Collective',
-                      metric: '19,000+ Public Videos Across 3,600+ Channels',
-                      badge: 'VERIFIED YT INDEX'
-                    },
-                    {
-                      rank: '#03',
-                      entity: 'Bangladeshi Minecraft Society (BMS) & Cyan Plex',
-                      metric: 'Active Java + Bedrock GeyserMC Crossplay Hubs',
-                      badge: 'CROSSPLAY LEADERS'
-                    },
-                    {
-                      rank: '#04',
-                      entity: "Maven's Hive SMP (Season 8)",
-                      metric: '8 Consecutive Multi-Mode Survival & UHC Seasons',
-                      badge: 'SMP LONGEVITY'
-                    }
-                  ].map((row) => (
-                    <div
-                      key={row.rank}
-                      className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 flex items-center justify-between gap-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono-code font-extrabold text-amber-400">
-                          {row.rank}
-                        </span>
-                        <div>
-                          <div className="font-bold text-white">{row.entity}</div>
-                          <div className="text-slate-400">{row.metric}</div>
-                        </div>
-                      </div>
-                      <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-mono-code text-[10px]">
-                        {row.badge}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Partnerships & Ecosystem Directory */}
-              <div className="lg:col-span-6 p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4 flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div>
-                    <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                      PARTNERSHIPS & INFRASTRUCTURE ALLIANCE
-                    </span>
-                    <h3 className="text-xl font-display font-bold text-white mt-0.5">
-                      Partner With BLOCKBANGLA
-                    </h3>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-                    Are you a Bangladeshi SMP owner, tournament organizer, BDIX/Singapore node provider, or open-source plugin developer? Apply for verified directory integration and live event syndication.
-                  </p>
-                  <div className="grid grid-cols-2 gap-2.5 text-xs">
-                    <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800">
-                      <div className="font-bold text-emerald-300">Server Owners</div>
-                      <p className="text-slate-400 mt-0.5">
-                        Direct `mcsrvstat.us` status verification & custom Bedrock port indexing.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800">
-                      <div className="font-bold text-amber-300">Tournament Hosts</div>
-                      <p className="text-slate-400 mt-0.5">
-                        Asia/Dhaka countdown brackets, `.ICS` calendar feeds, and stream embeds.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormNotice(null);
-                    setActiveModal('submit-partnership');
-                  }}
-                  className="tactile-btn w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-                >
-                  + Submit Partnership Application
-                </button>
-              </div>
-            </div>
-
-            {/* Opraah 01:39 Inspired Direct Contact & Formspree (`xkjjdnpr`) Form */}
-            <div className="rounded-3xl bg-[#050606] border border-white/15 p-6 sm:p-10 space-y-6 shadow-2xl">
-              <div className="text-center max-w-2xl mx-auto space-y-1.5">
-                <span className="text-[11px] font-mono-code text-orange-400 uppercase tracking-widest">
-                  DIRECT FORMSPREE REACT INBOX // ENDPOINT: XKJJDNPR
-                </span>
-                <h2 className="text-2xl sm:text-4xl font-display font-extrabold text-white tracking-tight uppercase">
-                  Let&apos;s Make Something Worth Talking About.
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-400">
-                  Connected directly to <code className="text-emerald-300">https://formspree.io/f/xkjjdnpr</code>. Messages submitted here arrive immediately in your Formspree Submissions tab.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-                {/* Left Info Column */}
-                <div className="lg:col-span-5 rounded-2xl bg-[#0B0E0D] border border-white/10 p-6 flex flex-col justify-between space-y-6">
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-display font-bold text-white">
-                      Have a server, tournament, or build in mind?
-                    </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Whether you are a Bangladeshi SMP owner, YouTuber, builder, or player reporting a historical screenshot, use this verified Formspree form to message TANXIM directly.
-                    </p>
-                  </div>
-
-                  <div className="space-y-3 text-xs font-mono-code border-t border-white/10 pt-4">
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">FORMSPREE ENDPOINT</span>
-                      <span className="text-emerald-400 font-bold">{FORMSPREE_ENDPOINT}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block text-[10px]">PLATFORM LOCATION</span>
-                      <span className="text-white">Dhaka &amp; Chattogram, Bangladesh (UTC+6)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right React Formspree Form (`useForm('xkjjdnpr')`) */}
-                <div className="lg:col-span-7 rounded-2xl bg-[#F8FAFC] text-slate-950 p-6 sm:p-8">
-                  {fsContactState.succeeded ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center py-8 space-y-3">
-                      <CheckCircle2 className="w-12 h-12 text-emerald-600" />
-                      <h4 className="text-2xl font-display font-extrabold text-slate-950">
-                        Thanks! Message Delivered to Formspree (`xkjjdnpr`).
-                      </h4>
-                      <p className="text-xs sm:text-sm text-slate-600 max-w-md">
-                        Open your Formspree dashboard under the <strong>Submissions</strong> tab to view this entry.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={resetFsContact}
-                        className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-mono-code font-bold"
-                      >
-                        Send Another Message
-                      </button>
-                    </div>
-                  ) : (
-                    <form
-                      action={FORMSPREE_ENDPOINT}
-                      method="POST"
-                      onSubmit={submitToFormspreeContact}
-                      className="space-y-4"
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-sm font-display font-extrabold text-slate-900">
-                          Choose Your Role
-                        </span>
-                        <div className="inline-flex rounded-xl bg-slate-200 p-1">
-                          {['Creator / Builder', 'Server / Brand'].map((role) => (
-                            <button
-                              key={role}
-                              type="button"
-                              onClick={() => setContactRole(role)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                                contactRole === role
-                                  ? 'bg-[#FF5500] text-white shadow'
-                                  : 'text-slate-700 hover:text-slate-950'
-                              }`}
-                            >
-                              {role}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <input type="hidden" name="role" value={contactRole} />
-                      <input
-                        type="hidden"
-                        name="_subject"
-                        value={`[BLOCKBANGLA Contact — ${contactRole}] New Message`}
-                      />
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label
-                            htmlFor="fs-name"
-                            className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
-                          >
-                            Your Name / Minecraft IGN
-                          </label>
-                          <input
-                            id="fs-name"
-                            type="text"
-                            name="name"
-                            required
-                            placeholder="e.g. Tanxim / BDPlayer"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
-                          />
-                        </div>
-                        <div>
-                          <label
-                            htmlFor="fs-email"
-                            className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
-                          >
-                            Your Email (Required by Formspree)
-                          </label>
-                          <input
-                            id="fs-email"
-                            type="email"
-                            name="email"
-                            required
-                            placeholder="you@example.com"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
-                          />
-                          <FormspreeValidationError
-                            prefix="Email"
-                            field="email"
-                            errors={fsContactState.errors}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="fs-link"
-                          className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
-                        >
-                          Server IP / YouTube Channel / Discord Link (Optional)
-                        </label>
-                        <input
-                          id="fs-link"
-                          type="text"
-                          name="link"
-                          placeholder="play.example.com or https://youtube.com/@..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
-                        />
-                      </div>
-
-                      <div>
-                        <label
-                          htmlFor="fs-message"
-                          className="block text-[11px] font-mono-code font-bold text-slate-700 uppercase mb-1"
-                        >
-                          Your Message / Brief
-                        </label>
-                        <textarea
-                          id="fs-message"
-                          name="message"
-                          rows={3}
-                          required
-                          placeholder="Tell us about your server, build, tournament, or feedback..."
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-950"
-                        />
-                        <FormspreeValidationError
-                          prefix="Message"
-                          field="message"
-                          errors={fsContactState.errors}
-                        />
-                      </div>
-
-                      <FormspreeValidationError
-                        prefix="Form"
-                        field="form"
-                        errors={fsContactState.errors}
-                      />
-
-                      <button
-                        type="submit"
-                        disabled={fsContactState.submitting}
-                        className="w-full py-3 rounded-xl bg-[#FF5500] hover:bg-[#E04800] disabled:opacity-50 text-white font-display font-extrabold text-sm transition shadow-lg"
-                      >
-                        {fsContactState.submitting
-                          ? 'Sending to Formspree (xkjjdnpr)...'
-                          : "Let's Talk — Send to Formspree"}
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </div>
-            </div>
+            </section>
           </div>
         )}
 
-        {/* ================================================================ */}
-        {/* VIEW L: ADMIN CMS, VERIFIED SOURCE LEDGER & API HEALTH           */}
-        {/* ================================================================ */}
-        {activeTab === 'admin' && (
-          <div className="space-y-8">
-            <div className="border-b border-slate-800 pb-5">
-              <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                OPERATIONS CMS, LIVE API TELEMETRY & CLOUDFLARE PAGES (৳0) DEPLOYMENT KIT
-              </span>
-              <h1 className="text-3xl font-display font-extrabold text-white mt-1">
-                Platform Administration, Live API Diagnostics & Deployment Center
-              </h1>
-            </div>
-
-            {/* Autonomous Live API Health Probe & Runtime Secret Session Vault */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              <div className="lg:col-span-7 p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                      REAL-TIME BROWSER API VERIFICATION SUITE
-                    </span>
-                    <h2 className="text-lg font-display font-bold text-white mt-0.5">
-                      Autonomous Live Endpoint Status & Latency
-                    </h2>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={runAutonomousApiDiagnostics}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
-                  >
-                    {runningDiagnostics ? 'Testing Endpoints...' : '↻ Re-Run Live API Probes'}
-                  </button>
-                </div>
-                <div className="space-y-2 text-xs font-mono-code">
-                  {Object.values(apiDiagnostics).map((diag) => (
-                    <div
-                      key={diag.name}
-                      className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 flex items-center justify-between gap-2"
-                    >
-                      <div>
-                        <span className="text-white font-bold">{diag.name}</span>
-                        <span className="text-slate-500 block text-[10px]">
-                          Verified at: {diag.checkedAt}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <span
-                          className={`px-2 py-0.5 rounded font-bold ${
-                            diag.ok
-                              ? 'bg-emerald-500/20 text-emerald-300'
-                              : 'bg-rose-500/20 text-rose-300'
-                          }`}
-                        >
-                          HTTP {diag.status}
-                        </span>
-                        {diag.latencyMs !== null && (
-                          <span className="text-cyan-300 ml-2">{diag.latencyMs} ms</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Runtime Ephemeral Key Vault (Keeps Keys Out of Git Source Code) */}
-              <div className="lg:col-span-5 p-6 rounded-2xl bg-[#0D1513] border border-amber-500/30 space-y-4">
-                <div>
-                  <span className="text-xs font-mono-code text-amber-400 uppercase">
-                    PRE-INSTALLED API KEYS + WAF SECURITY MONITOR
-                  </span>
-                  <h2 className="text-lg font-display font-bold text-white mt-0.5">
-                    Active API Credentials & WAF Shield Telemetry
-                  </h2>
-                </div>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-emerald-500/30 text-xs font-mono-code space-y-1">
-                  <div className="text-emerald-300 font-bold">
-                    ✓ YouTube v3 Key: {LIVE_API_CONFIG.youtube.apiKey.slice(0, 12)}... (Active)
-                  </div>
-                  <div className="text-cyan-300 font-bold">
-                    ✓ Unsplash App #{LIVE_API_CONFIG.unsplash.appId}: {LIVE_API_CONFIG.unsplash.accessKey.slice(0, 12)}... (Active)
-                  </div>
-                  <div className="text-amber-300 font-bold">
-                    ✓ Cloudinary Token: {LIVE_API_CONFIG.cloudinary.tokenFingerprint.slice(0, 12)}... (Active)
-                  </div>
-                  <div className="text-rose-300 pt-1 border-t border-slate-800">
-                    🛡️ WAF Blocked Payloads in Session: {wafBlockedCount}
-                  </div>
-                </div>
-                <div className="space-y-2.5">
-                  <input
-                    type="password"
-                    value={runtimeYtKey}
-                    onChange={(e) => setRuntimeYtKey(e.target.value)}
-                    placeholder="Paste YOUTUBE_API_KEY for session test..."
-                    className="w-full px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  />
-                  <input
-                    type="password"
-                    value={runtimeUnsplashKey}
-                    onChange={(e) => setRuntimeUnsplashKey(e.target.value)}
-                    placeholder="Paste UNSPLASH_ACCESS_KEY for session test..."
-                    className="w-full px-3 py-2 rounded-lg bg-[#070B0A] border border-slate-700 text-xs font-mono-code text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof window !== 'undefined') {
-                        window.__BLOCKBANGLA_ENV__ = {
-                          VITE_YOUTUBE_API_KEY: runtimeYtKey.trim(),
-                          VITE_UNSPLASH_ACCESS_KEY: runtimeUnsplashKey.trim()
-                        };
-                      }
-                      if (runtimeYtKey.trim()) fetchLiveYouTubeBangladesh(ytQuery, runtimeYtKey.trim());
-                      if (runtimeUnsplashKey.trim())
-                        fetchUnsplashBangladeshPhotos(unsplashQuery, runtimeUnsplashKey.trim());
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs font-mono-code"
-                  >
-                    Re-Sync All Live APIs Now
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Moderation Queue */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                    DEVELOPER SUBMISSION RECEIVER & MODERATION QUEUE ({moderationQueue.length})
-                  </span>
-                  <h2 className="text-lg font-display font-bold text-white mt-0.5">
-                    How You (As the Developer) Receive & Publish Visitor Uploads
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleCopyText(
-                      JSON.stringify(moderationQueue, null, 2),
-                      'export-mod-json'
-                    )
-                  }
-                  className="px-3.5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
-                >
-                  {copiedKey === 'export-mod-json'
-                    ? '✓ Copied Queue JSON!'
-                    : 'Copy Queue JSON for GitHub'}
-                </button>
-              </div>
-
-              {/* Developer Webhook / Formspree Receiver Configuration Box */}
-              <div className="p-4 rounded-xl bg-[#070B0A] border border-cyan-500/30 space-y-3 text-xs">
-                <div className="font-mono-code font-bold text-cyan-300">
-                  Connect Your Free Developer Inbox (Formspree / Web3Forms / Cloudflare Worker / Supabase)
-                </div>
-                <p className="text-slate-300 leading-relaxed">
-                  Because static websites run in each visitor&apos;s own browser, connect a free receiver URL below (such as <code className="text-emerald-300">https://formspree.io/f/your_id</code> or a Supabase table URL). Every time any player in Bangladesh submits a server, build, or screenshot, BLOCKBANGLA will automatically <code className="text-amber-300">POST</code> the submission straight to your email/Discord!
-                </p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    value={devReceiverEndpoint}
-                    onChange={(e) => {
-                      setDevReceiverEndpoint(e.target.value);
-                      try {
-                        localStorage.setItem('bb_dev_receiver_url', e.target.value);
-                      } catch (err) {}
-                    }}
-                    placeholder="Paste your Formspree URL (https://formspree.io/f/...) or Webhook URL..."
-                    className="flex-1 px-3 py-2 rounded-lg bg-[#0D1513] border border-slate-700 font-mono-code text-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setRemoteForwardStatus('Sending test ping to Formspree...');
-                      const res = await submitToFormspreeModal({
-                        email: 'admin@blockbangla.bd',
-                        _subject: '[BLOCKBANGLA TEST] Formspree Endpoint Verification',
-                        message: `Live test submission from BLOCKBANGLA Admin CMS at ${formatDhakaTime(
-                          new Date()
-                        )}. Your Formspree endpoint (${FORMSPREE_ENDPOINT}) is working!`
-                      });
-                      setRemoteForwardStatus(
-                        res.ok
-                          ? '✓ Test Ping Received by Formspree (Check Submissions Tab!)'
-                          : 'Test failed — check network or confirm Formspree email'
-                      );
-                    }}
-                    className="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono-code font-bold text-xs shrink-0"
-                  >
-                    Send Test Ping to Formspree
-                  </button>
-                  {remoteForwardStatus && (
-                    <span className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 font-mono-code self-center">
-                      {remoteForwardStatus}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {moderationQueue.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 flex flex-wrap items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1">
-                      <div className="text-xs font-mono-code text-emerald-400">
-                        [{item.type}] • {item.submittedBy} • {item.timestamp}
-                      </div>
-                      <div className="font-bold text-sm text-white">{item.title}</div>
-                      <div className="text-xs text-slate-400">{item.details}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-300 text-xs font-mono-code">
-                        {item.status}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setModerationQueue((q) =>
-                            q.map((x) => (x.id === item.id ? { ...x, status: 'Approved' } : x))
-                          )
-                        }
-                        className="px-3 py-1 rounded bg-emerald-500 text-slate-950 font-bold text-xs"
-                      >
-                        Approve
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Verified Research Sources Ledger */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-4">
-              <h2 className="text-lg font-display font-bold text-white">
-                Primary Research & Historical Source Ledger (7 Verified Records)
-              </h2>
-              <div className="space-y-3">
-                {RESEARCH_SOURCES_LEDGER.map((src) => (
-                  <div
-                    key={src.id}
-                    className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-1.5 text-xs"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono-code font-bold text-emerald-400">
-                        {src.id} • {src.sourceTitle}
-                      </span>
-                      <EpistemicBadge status={src.confidenceLevel} />
-                    </div>
-                    <p className="text-slate-200">{src.claim}</p>
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-slate-400 font-mono-code pt-1">
-                      <span>Note: {src.editorialNotes}</span>
-                      <a
-                        href={src.originalUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-400 hover:underline"
-                      >
-                        Source URL ↗
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Complete Visual Asset Manifest Ledger */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/30 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                    AUTONOMOUS VISUAL ASSET SYSTEM // COMPLETE MANIFEST ({VISUAL_ASSET_MANIFEST.length} REGISTERED POOLS)
-                  </span>
-                  <h2 className="text-lg font-display font-bold text-white mt-0.5">
-                    Visual Asset Provenance, Attribution & Licensing Ledger
-                  </h2>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#070B0A] text-slate-400 font-mono-code border-b border-slate-800">
-                    <tr>
-                      <th className="p-3">Asset ID</th>
-                      <th className="p-3">Title & Intended Section</th>
-                      <th className="p-3">Provider / Source</th>
-                      <th className="p-3">Photographer / Creator</th>
-                      <th className="p-3">License & Dimensions</th>
-                      <th className="p-3">Verified</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/70">
-                    {VISUAL_ASSET_MANIFEST.map((ast) => (
-                      <tr key={ast.assetId} className="hover:bg-white/5">
-                        <td className="p-3 font-mono-code font-bold text-emerald-400">
-                          {ast.assetId}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-white">{ast.title}</div>
-                          <div className="text-slate-400 text-[11px]">{ast.intendedPage}</div>
-                        </td>
-                        <td className="p-3 font-mono-code text-cyan-300">{ast.source}</td>
-                        <td className="p-3 text-slate-300">{ast.photographerOrCreator}</td>
-                        <td className="p-3 font-mono-code text-slate-400">
-                          {ast.licenseTerms} ({ast.dimensions})
-                        </td>
-                        <td className="p-3 font-mono-code text-amber-300">
-                          {ast.lastVerificationDate}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Section 6.6: Complete Integration Classification Register (A through E) */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-cyan-500/30 space-y-4">
-              <div>
-                <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                  SECTION 6 INTEGRATION REGISTER // CLASSIFIED BY AUTH & COST TIER (A – E)
-                </span>
-                <h2 className="text-lg font-display font-bold text-white mt-0.5">
-                  Live API & Open-Source Integration Register
-                </h2>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#070B0A] text-slate-400 font-mono-code border-b border-slate-800">
-                    <tr>
-                      <th className="p-3">Service / Library</th>
-                      <th className="p-3">Class</th>
-                      <th className="p-3">Purpose in BLOCKBANGLA</th>
-                      <th className="p-3">Auth / Rate Limit</th>
-                      <th className="p-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/70 font-mono-code">
-                    {[
-                      {
-                        service: 'Modrinth Public API v2',
-                        tier: 'A. Free (No API Key)',
-                        purpose: 'Mods, Shaders, Resource Packs & Gallery Discovery',
-                        limit: '300 req/min (Public)',
-                        status: 'LIVE CONNECTED'
-                      },
-                      {
-                        service: 'MCSRVStat v3 & MCStatus.io v2',
-                        tier: 'A. Free (No API Key)',
-                        purpose: 'Real-time Java & Bedrock Server Status, Players, Favicon',
-                        limit: 'Cached 1–5 min',
-                        status: 'LIVE CONNECTED'
-                      },
-                      {
-                        service: 'PlayerDB & MC-Heads Avatar API',
-                        tier: 'A. Free (No API Key)',
-                        purpose: 'Official Mojang UUID Verification & 2D/3D Skin Rendering',
-                        limit: 'Public Read API',
-                        status: 'LIVE CONNECTED'
-                      },
-                      {
-                        service: 'Minecraft Wiki MediaWiki API',
-                        tier: 'A. Free (No API Key)',
-                        purpose: 'Live Mechanics, Biome & Block Reference Search',
-                        limit: 'Public CORS Origin=*',
-                        status: 'LIVE CONNECTED'
-                      },
-                      {
-                        service: 'PrismarineJS (minecraft-data)',
-                        tier: 'E. Open-Source Dataset',
-                        purpose: 'Items, Enchantments, Potions & Protocol Compatibility',
-                        limit: 'Zero Network Latency',
-                        status: 'ACTIVE IN-MEMORY'
-                      },
-                      {
-                        service: 'YouTube Data API v3',
-                        tier: 'B. Free with API Key',
-                        purpose: 'Bangladeshi Creator Video Stream & View Statistics',
-                        limit: '10,000 units/day quota',
-                        status: 'KEY CONFIGURED & LIVE'
-                      },
-                      {
-                        service: 'Unsplash Official API',
-                        tier: 'B. Free with API Key',
-                        purpose: 'Autonomous Bangladesh, Gaming & Nature Photography',
-                        limit: '50 req/hr Demo / 5000 Prod',
-                        status: 'APP 1127489 LIVE'
-                      },
-                      {
-                        service: 'Cloudinary Media Pipeline',
-                        tier: 'C. Free Tier with Limits',
-                        purpose: 'Build Screenshot Validation & Responsive f_auto,q_auto',
-                        limit: '10MB Client Guard',
-                        status: 'PIPELINE CONFIGURED'
-                      }
-                    ].map((row) => (
-                      <tr key={row.service} className="hover:bg-white/5">
-                        <td className="p-3 font-bold text-white">{row.service}</td>
-                        <td className="p-3 text-emerald-300">{row.tier}</td>
-                        <td className="p-3 font-sans-bd text-slate-300">{row.purpose}</td>
-                        <td className="p-3 text-slate-400">{row.limit}</td>
-                        <td className="p-3 text-amber-300 font-bold">{row.status}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Production Backend Migration Blueprint (.env.example + Supabase SQL Schema) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono-code text-amber-400 uppercase">
-                    SERVER-SIDE ENVIRONMENT TEMPLATE (.ENV.EXAMPLE)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleCopyText(
-                        `# BLOCKBANGLA Production Environment Variables\nNEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key\nSUPABASE_SERVICE_ROLE_KEY=your-service-role-key\nYOUTUBE_API_KEY=your-youtube-v3-key\nUNSPLASH_ACCESS_KEY=your-unsplash-access-key\nUNSPLASH_SECRET_KEY=your-unsplash-secret-key\nCLOUDINARY_CLOUD_NAME=your-cloud-name\nCLOUDINARY_API_KEY=your-cloudinary-key\nCLOUDINARY_API_SECRET=your-cloudinary-secret\nMICROSOFT_CLIENT_ID=your-azure-ad-client-id\nMICROSOFT_CLIENT_SECRET=your-azure-ad-secret`,
-                        'env-copy'
-                      )
-                    }
-                    className="px-2.5 py-1 rounded bg-slate-900 text-emerald-300 text-xs font-mono-code"
-                  >
-                    {copiedKey === 'env-copy' ? 'Copied .env!' : 'Copy .env.example'}
-                  </button>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Move API keys out of client-side code into `.env.local` and proxy requests via `/api/*` server routes when deploying to production:
-                </p>
-                <pre className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 text-[11px] font-mono-code text-emerald-300 overflow-x-auto">
-{`NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-YOUTUBE_API_KEY=your-server-side-youtube-key
-UNSPLASH_ACCESS_KEY=your-unsplash-access-key
-UNSPLASH_SECRET_KEY=your-server-only-secret
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_SECRET=your-signed-upload-secret`}
-                </pre>
-              </div>
-
-              <div className="p-6 rounded-2xl bg-[#0D1513] border border-slate-800 space-y-3">
-                <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                  RELATIONAL DATABASE SCHEMA (SUPABASE POSTGRESQL + RLS)
-                </span>
-                <p className="text-xs text-slate-400">
-                  Core relational tables backing `blockbangla_user_id`, verified servers, events, and historical citations:
-                </p>
-                <pre className="p-3.5 rounded-xl bg-[#070B0A] border border-slate-800 text-[11px] font-mono-code text-cyan-300 overflow-x-auto">
-{`CREATE TABLE profiles (
-  blockbangla_user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  blockbangla_username TEXT UNIQUE NOT NULL,
-  minecraft_uuid TEXT UNIQUE,
-  minecraft_username TEXT,
-  minecraft_verified BOOLEAN DEFAULT FALSE,
-  account_type TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
--- Plus: servers, server_status_checks, events,
--- event_registrations, historical_entries, builds, audit_logs`}
-                </pre>
-              </div>
-            </div>
-
-            {/* Cloudflare Pages (blockbangla.pages.dev — ৳0 Cost) & GitHub Deployment Scaffold */}
-            <div className="p-6 rounded-2xl bg-[#0D1513] border border-emerald-500/40 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                    ZERO-COST (৳0) PRODUCTION DEPLOYMENT // TARGET: HTTPS://BLOCKBANGLA.PAGES.DEV
-                  </span>
-                  <h2 className="text-lg font-display font-bold text-white mt-0.5">
-                    Ready-to-Commit Vite + Cloudflare Pages Configuration Files
-                  </h2>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono-code">
-                <div className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-emerald-300 font-bold">
-                    <span>package.json</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopyText(
-                          JSON.stringify(
-                            {
-                              name: 'blockbangla',
-                              private: true,
-                              version: '4.0.0',
-                              type: 'module',
-                              scripts: {
-                                dev: 'vite',
-                                build: 'vite build',
-                                preview: 'vite preview'
-                              },
-                              dependencies: {
-                                react: '^18.3.1',
-                                'react-dom': '^18.3.1',
-                                'lucide-react': '^0.454.0'
-                              },
-                              devDependencies: {
-                                '@vitejs/plugin-react': '^4.3.3',
-                                tailwindcss: '^3.4.14',
-                                postcss: '^8.4.47',
-                                autoprefixer: '^10.4.20',
-                                vite: '^5.4.10'
-                              }
-                            },
-                            null,
-                            2
-                          ),
-                          'pkg-copy'
-                        )
-                      }
-                      className="text-amber-300 hover:underline"
-                    >
-                      {copiedKey === 'pkg-copy' ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <p className="text-slate-400 font-sans-bd">
-                    Cloudflare Pages Build Command: `npm run build` • Output Directory: `dist`
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-cyan-300 font-bold">
-                    <span>.gitignore (Secret Guard)</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopyText(
-                          `node_modules\ndist\n.env\n.env.local\n.env.*.local\n.wrangler\n.DS_Store`,
-                          'git-copy'
-                        )
-                      }
-                      className="text-amber-300 hover:underline"
-                    >
-                      {copiedKey === 'git-copy' ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <p className="text-slate-400 font-sans-bd">
-                    Excludes `.env`, `.env.local`, and `.wrangler` so credentials never leak to GitHub.
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-[#070B0A] border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between text-amber-300 font-bold">
-                    <span>functions/api/proxy.js</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleCopyText(
-                          `export async function onRequestGet(context) {\n  const { request, env } = context;\n  const url = new URL(request.url);\n  const service = url.searchParams.get('service');\n  const q = url.searchParams.get('q') || 'Minecraft Bangla';\n  if (service === 'youtube') {\n    const ytUrl = \`https://www.googleapis.com/youtube/v3/search?part=snippet&q=\${encodeURIComponent(q)}&type=video&maxResults=6&key=\${env.YOUTUBE_API_KEY}\`;\n    const r = await fetch(ytUrl);\n    return new Response(await r.text(), { headers: { 'Content-Type': 'application/json' } });\n  }\n  return new Response(JSON.stringify({ status: 'ok' }), { headers: { 'Content-Type': 'application/json' } });\n}`,
-                          'cf-fn-copy'
-                        )
-                      }
-                      className="text-emerald-300 hover:underline"
-                    >
-                      {copiedKey === 'cf-fn-copy' ? 'Copied!' : 'Copy'}
-                    </button>
-                  </div>
-                  <p className="text-slate-400 font-sans-bd">
-                    Cloudflare Pages Function keeping `YOUTUBE_API_KEY` & `UNSPLASH_SECRET_KEY` server-side.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
 
       {/* ================================================================== */}
       {/* FULLSCREEN HIGH-RESOLUTION VISUAL LIGHTBOX MODAL                   */}
       {/* ================================================================== */}
-      {lightboxAsset && (
-        <div
-          onClick={() => setLightboxAsset(null)}
-          className="fixed inset-0 z-[95] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-4xl rounded-2xl bg-[#0A110F] border border-emerald-500/40 overflow-hidden shadow-2xl space-y-0"
-          >
-            <div className="px-5 py-3.5 bg-[#060A09] border-b border-slate-800 flex items-center justify-between">
-              <div className="min-w-0">
-                <span className="text-[10px] font-mono-code text-emerald-400 uppercase block">
-                  HIGH-RESOLUTION VISUAL INSPECTOR // {lightboxAsset.attribution}
-                </span>
-                <h3 className="text-base font-display font-bold text-white truncate">
-                  {lightboxAsset.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLightboxAsset(null)}
-                className="p-1.5 rounded-lg bg-slate-900 text-slate-300 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="relative bg-black max-h-[70vh] overflow-hidden flex items-center justify-center">
-              <img
-                src={lightboxAsset.imageUrl}
-                alt={lightboxAsset.title}
-                className="max-h-[70vh] w-auto object-contain"
-              />
-            </div>
-            <div className="px-5 py-3.5 bg-[#060A09] border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-slate-300">{lightboxAsset.subtitle}</span>
-              {lightboxAsset.externalUrl && (
-                <a
-                  href={lightboxAsset.externalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-emerald-400 font-mono-code hover:underline"
-                >
-                  Open Original Source ↗
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================== */}
-      {/* GLOBAL SEARCH MODAL (CTRL+K)                                       */}
-      {/* ================================================================== */}
       {searchOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-start justify-center pt-20 px-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-start justify-center pt-20 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-[#0D1513] border border-emerald-500/40 p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono-code text-emerald-400">
-                GLOBAL PLATFORM SEARCH (SERVERS, HISTORY, CREATORS, GUIDES)
+                SEARCH / SERVER LISTINGS
               </span>
               <button
                 type="button"
@@ -9524,7 +1278,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
               autoFocus
               value={globalQuery}
               onChange={(e) => setGlobalQuery(e.target.value)}
-              placeholder="Search servers, BDZONE, 2011 LAN era, GeyserMC, commands..."
+              placeholder="Search server name or address"
               className="w-full px-4 py-3 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
             />
             <div className="space-y-2 max-h-72 overflow-y-auto">
@@ -9535,7 +1289,6 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                     type="button"
                     onClick={() => {
                       switchTabWithMotion(res.tab, res.type.toUpperCase());
-                      if (res.guideId) setSelectedGuideId(res.guideId);
                       setSearchOpen(false);
                     }}
                     className="w-full text-left p-3 rounded-xl bg-[#070B0A] hover:bg-slate-900 border border-slate-800 flex items-center justify-between"
@@ -9548,7 +1301,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 ))
               ) : (
                 <div className="text-xs text-slate-400 py-4 text-center">
-                  Type any keyword above to search across BLOCKBANGLA.
+                  Search the listed server names and addresses.
                 </div>
               )}
             </div>
@@ -9557,242 +1310,31 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
       )}
 
       {/* ================================================================== */}
-      {/* DUAL PLAYER LOGIN & IDENTITY MODAL                                 */}
-      {/* ================================================================== */}
-      {authModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[#0D1513] border border-emerald-500/40 p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-display font-bold text-white">
-                BLOCKBANGLA Player Identity System
-              </h3>
-              <button
-                type="button"
-                onClick={() => setAuthModalOpen(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Active Player Profile Inspector & Account Disconnection */}
-            {playerProfile && (
-              <div className="p-4 rounded-xl bg-[#070B0A] border border-emerald-500/40 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={playerProfile.skin_url}
-                      alt={playerProfile.blockbangla_username}
-                      className="w-12 h-12 rounded-lg border border-emerald-400"
-                    />
-                    <div>
-                      <div className="font-bold text-white text-sm">
-                        {playerProfile.blockbangla_username}
-                      </div>
-                      <div className="text-[11px] font-mono-code text-emerald-400">
-                        ID: {playerProfile.blockbangla_user_id}
-                      </div>
-                      <div className="text-[11px] font-mono-code text-amber-300">
-                        {playerProfile.account_type}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPlayerProfile(null);
-                      setAuthModalOpen(false);
-                    }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-mono-code"
-                  >
-                    <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-                {playerProfile.minecraft_uuid && (
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px] font-mono-code text-slate-300">
-                    <span>Mojang UUID: {playerProfile.minecraft_uuid}</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPlayerProfile({
-                          ...playerProfile,
-                          minecraft_uuid: null,
-                          minecraft_verified: false,
-                          account_type: 'FREE_BLOCKBANGLA_ACCOUNT (UNLINKED MC)'
-                        })
-                      }
-                      className="text-amber-300 hover:underline"
-                    >
-                      Unlink MC (Keep BB ID)
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setAuthMode('microsoft')}
-                className={`py-2.5 rounded-xl text-xs font-bold font-mono-code ${
-                  authMode === 'microsoft'
-                    ? 'bg-emerald-500 text-slate-950'
-                    : 'bg-slate-900 text-slate-300'
-                }`}
-              >
-                CONNECT WITH MICROSOFT
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthMode('free')}
-                className={`py-2.5 rounded-xl text-xs font-bold font-mono-code ${
-                  authMode === 'free'
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'bg-slate-900 text-slate-300'
-                }`}
-              >
-                CONTINUE WITH FREE ACCOUNT
-              </button>
-            </div>
-
-            {authError && (
-              <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-xs text-rose-200">
-                {authError}
-              </div>
-            )}
-
-            {authMode === 'microsoft' ? (
-              <form onSubmit={handleMicrosoftConnect} className="space-y-3">
-                <p className="text-xs text-slate-300">
-                  Link your official Minecraft profile via PlayerDB/Mojang UUID verification (no Microsoft password is ever collected).
-                </p>
-                <input
-                  type="text"
-                  value={msUsernameInput}
-                  onChange={(e) => setMsUsernameInput(e.target.value)}
-                  placeholder="Enter official Minecraft Username..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
-                />
-                <button
-                  type="submit"
-                  className="w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-                >
-                  {authLoading ? 'Verifying Mojang UUID...' : 'Verify & Connect Official Profile'}
-                </button>
-              </form>
-            ) : (
-              <form onSubmit={handleFreeAccountRegister} className="space-y-3">
-                <p className="text-xs text-slate-300">
-                  Don’t own paid Minecraft yet? Create a permanent `blockbangla_user_id` with a Steve or Alex avatar.
-                </p>
-                <input
-                  type="text"
-                  value={freeUsernameInput}
-                  onChange={(e) => setFreeUsernameInput(e.target.value)}
-                  placeholder="Choose BLOCKBANGLA Username..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
-                />
-                <input
-                  type="email"
-                  value={freeEmailInput}
-                  onChange={(e) => setFreeEmailInput(e.target.value)}
-                  placeholder="Email (Optional for session)..."
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
-                />
-                <div className="flex gap-2">
-                  {['steve', 'alex'].map((av) => (
-                    <button
-                      key={av}
-                      type="button"
-                      onClick={() => setFreeAvatarChoice(av)}
-                      className={`flex-1 py-2 rounded-lg text-xs font-mono-code uppercase border ${
-                        freeAvatarChoice === av
-                          ? 'border-amber-400 bg-amber-500/20 text-amber-200'
-                          : 'border-slate-800 bg-slate-900 text-slate-400'
-                      }`}
-                    >
-                      Avatar: {av}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  type="submit"
-                  className="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs"
-                >
-                  Create Free BLOCKBANGLA Account
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================== */}
-      {/* DETAIL INSPECTOR MODAL (SERVER / EVENT / BUILD)                    */}
-      {/* ================================================================== */}
+      {/* LISTING DETAILS */}
       {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-[#0D1513] border border-emerald-500/40 p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-mono-code text-emerald-400 uppercase">
-                TECHNICAL INSPECTOR // {selectedDetailItem.type}
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedDetailItem(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <section role="dialog" aria-modal="true" aria-labelledby="listing-detail-title" className="w-full max-w-lg space-y-4 border border-slate-300 bg-[#F3EFE4] p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="bb-kicker">LISTING SOURCE NOTE</div>
+              <button type="button" onClick={() => setSelectedDetailItem(null)} className="text-sm underline">Close</button>
             </div>
-            <h3 className="text-xl font-display font-bold text-white">
-              {selectedDetailItem.data.name || selectedDetailItem.data.titleEn}
-            </h3>
-            {selectedDetailItem.type === 'server' && (
-              <div className="space-y-2 text-xs text-slate-300 font-mono-code">
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800">
-                  Java PC Address: <span className="text-emerald-300">{selectedDetailItem.data.ip}</span>
-                </div>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800">
-                  Bedrock Mobile Address:{' '}
-                  <span className="text-amber-300">
-                    {selectedDetailItem.data.bedrockIp} (Port: {selectedDetailItem.data.port})
-                  </span>
-                </div>
-                <p className="text-slate-400 font-sans-bd">{selectedDetailItem.data.descriptionEn}</p>
-              </div>
-            )}
-            {selectedDetailItem.type === 'event' && (
-              <div className="space-y-2 text-xs text-slate-300">
-                <p>{selectedDetailItem.data.descriptionEn}</p>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 font-mono-code">
-                  Location: {selectedDetailItem.data.location}
-                </div>
-              </div>
-            )}
-            {selectedDetailItem.type === 'build' && (
-              <div className="space-y-2 text-xs text-slate-300">
-                <p>{selectedDetailItem.data.descriptionEn}</p>
-                <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 font-mono-code">
-                  Palette: {(selectedDetailItem.data.palette || []).join(', ')}
-                </div>
-              </div>
-            )}
-          </div>
+            <h2 id="listing-detail-title" className="text-2xl font-display font-bold">
+              {selectedDetailItem.data.name}
+            </h2>
+            <p className="border-l-2 border-[#A94F32] pl-3 font-mono-code text-sm">Address: {selectedDetailItem.data.ip}</p>
+            <p className="text-sm text-slate-600">This name and address are unconfirmed. Check with the server owner before joining. A public status response does not verify ownership, safety, or edition support.</p>
+          </section>
         </div>
       )}
-
-      {/* ================================================================== */}
-      {/* COMMUNITY SUBMISSION MODAL                                         */}
+      {/* LISTING / CORRECTION FORM                                         */}
       {/* ================================================================== */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-lg rounded-2xl bg-[#0D1513] border border-emerald-500/40 p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-mono-code text-emerald-400 uppercase block">
-                  COMMUNITY CONTRIBUTION & EDITORIAL REVIEW WORKFLOW
+                  SERVER LISTING / CORRECTION
                 </span>
                 <h3 className="text-lg font-display font-bold text-white uppercase">
                   {activeModal.replace('-', ' ')}
@@ -9807,14 +1349,10 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
               </button>
             </div>
 
-            {/* Quick Category Switcher & 3-Step Review Status Disclosure */}
+            {/* Choose the type of message */}
             <div className="flex flex-wrap gap-1.5">
               {[
-                { id: 'submit-server', label: 'Server' },
-                { id: 'submit-creator', label: 'Creator' },
-                { id: 'submit-event', label: 'Event' },
-                { id: 'submit-build', label: 'Build' },
-                { id: 'submit-memory', label: 'History Memory' },
+                { id: 'submit-server', label: 'Server listing' },
                 { id: 'report-inaccuracy', label: 'Report Correction' }
               ].map((m) => (
                 <button
@@ -9832,13 +1370,8 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
               ))}
             </div>
 
-            <div className="p-3 rounded-xl bg-[#070B0A] border border-slate-800 text-[11px] text-slate-300 space-y-1">
-              <div className="font-mono-code text-amber-300 font-bold">
-                Review Pipeline: 1. Submit Entry → 2. Editorial & Source Check → 3. Published with Badge
-              </div>
-              <p className="text-slate-400">
-                Guidelines: Do not include personal phone numbers or private data. Include verifiable links (YouTube, Discord, Server IP, or dated screenshot context).
-              </p>
+            <div className="border-l-4 border-[#A94F32] bg-[#E8E4D8] p-3 text-xs text-slate-700">
+              This form sends your message to Formspree. It does not publish a listing or create a public submission queue. Include a source link when you have one.
             </div>
 
             {formNotice && (
@@ -9858,7 +1391,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Your Email (Required by Formspree for verification/reply)..."
+                placeholder="Email for a reply"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <FormspreeValidationError
@@ -9872,7 +1405,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 required
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="Title / Server Name / Channel Name / Era..."
+                placeholder="Server name or listing title"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <input
@@ -9880,7 +1413,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 name="subtitle"
                 value={formData.subtitle}
                 onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-                placeholder="Your Minecraft Username / Organizer Handle..."
+                placeholder="Your name or Minecraft username (optional)"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <input
@@ -9888,7 +1421,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 name="link"
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
-                placeholder="Source URL / Server IP / YouTube or Discord Link (Optional)..."
+                placeholder="Public source link or server address (optional)"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <textarea
@@ -9897,7 +1430,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 required
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Verification details, coordinates, edition (Java/Bedrock), or historical notes..."
+                placeholder="What should be added or corrected? Include confirmed Java/Bedrock addresses if available."
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#070B0A] border border-slate-700 text-sm text-white"
               />
               <FormspreeValidationError
@@ -9910,9 +1443,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 disabled={fsModalState.submitting}
                 className="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs"
               >
-                {fsModalState.submitting
-                  ? 'Sending to Formspree (xkjjdnpr)...'
-                  : 'Submit to Formspree & Editorial Queue'}
+                {fsModalState.submitting ? 'Sending…' : 'Send message'}
               </button>
             </form>
           </div>
@@ -9933,25 +1464,15 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
             </div>
             <p className="text-slate-400 max-w-xl">
               NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
-              BLOCKBANGLA is an independent Bangladeshi community archive, server directory, and educational hub.
+              BLOCKBANGLA is a Minecraft server directory for Bangladesh. Public status checks do not verify ownership, safety, or every listing detail.
             </p>
             <div className="flex flex-wrap gap-4 pt-1 text-[11px] font-mono-code text-emerald-400">
               <button
                 type="button"
-                onClick={() =>
-                  setSelectedDetailItem({
-                    type: 'event',
-                    data: {
-                      titleEn: 'Community Guidelines, Privacy Policy & Terms of Use',
-                      descriptionEn:
-                        '1. Zero Personal Data Exposure: Public submissions never expose private emails or phone numbers. 2. Intellectual Property: Respect Mojang Studios Usage Guidelines and Unsplash/Modrinth creator licenses. 3. Fair Play & Anti-Malware: Links to pirated executables, token loggers, or unverified .exe launchers are strictly prohibited and rejected by moderators.',
-                      location: 'BLOCKBANGLA Trust, Safety & Copyright Charter (2026)'
-                    }
-                  })
-                }
+                onClick={() => switchTabWithMotion('about')}
                 className="hover:underline"
               >
-                Community Guidelines & Privacy Policy
+                About this directory
               </button>
               <button
                 type="button"
@@ -9961,7 +1482,7 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
                 }}
                 className="text-amber-300 hover:underline"
               >
-                Report Inaccurate Listing / DMCA
+                Report a listing
               </button>
             </div>
           </div>
@@ -9983,102 +1504,12 @@ CLOUDINARY_API_SECRET=your-signed-upload-secret`}
       {/* ================================================================== */}
       {/* STICKY MOBILE BOTTOM NAVIGATION BAR (FOR SMARTPHONE PLAYERS)       */}
       {/* ================================================================== */}
-      {deployModalOpen && (
-        <div className="fixed inset-0 z-[95] bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-[#0D1513] border border-cyan-500/40 p-6 space-y-5 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <span className="text-xs font-mono-code text-cyan-400 uppercase">
-                  ZERO-COST (৳0) CLOUDFLARE PAGES DEPLOYMENT KIT // BLOCKBANGLA.PAGES.DEV
-                </span>
-                <h3 className="text-xl font-display font-extrabold text-white mt-0.5">
-                  Deploy BLOCKBANGLA to Production
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDeployModalOpen(false)}
-                className="p-1.5 rounded-lg bg-slate-900 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 leading-relaxed">
-              <strong>Honest Environment Boundary:</strong> Because this AI workspace runs inside a sandboxed browser canvas without access to your private Cloudflare or GitHub OAuth credentials, it cannot push directly into your Cloudflare account without your login. Use either of the two 60-second paths below:
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-[#070B0A] border border-emerald-500/30 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="font-mono-code font-bold text-emerald-400">
-                    OPTION A // 1-COMMAND CLI DEPLOY (WRANGLER)
-                  </div>
-                  <p className="text-slate-300">
-                    1. Download <code className="text-emerald-300">setup-blockbangla.mjs</code> below and place it in a folder alongside <code className="text-emerald-300">App.jsx</code>.
-                  </p>
-                  <pre className="p-2.5 rounded bg-slate-950 border border-slate-800 font-mono-code text-[11px] text-cyan-300 overflow-x-auto">
-{`node setup-blockbangla.mjs
-npm install
-npm run build
-npx wrangler pages deploy dist --project-name=blockbangla`}
-                  </pre>
-                </div>
-                <button
-                  type="button"
-                  onClick={downloadCloudflareSetupScript}
-                  className="tactile-btn w-full py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs font-mono-code"
-                >
-                  ⬇ Download setup-blockbangla.mjs
-                </button>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#070B0A] border border-cyan-500/30 space-y-3 flex flex-col justify-between">
-                <div className="space-y-2">
-                  <div className="font-mono-code font-bold text-cyan-400">
-                    OPTION B // GITHUB + CLOUDFLARE DASHBOARD
-                  </div>
-                  <p className="text-slate-300">
-                    Connect your GitHub repository to Cloudflare Pages for automatic deployments on every commit:
-                  </p>
-                  <ul className="space-y-1 text-slate-400 font-mono-code text-[11px]">
-                    <li>• Framework Preset: <span className="text-white">Vite</span></li>
-                    <li>• Build Command: <span className="text-emerald-300">npm run build</span></li>
-                    <li>• Output Folder: <span className="text-amber-300">dist</span></li>
-                    <li>• Cost: <span className="text-emerald-300">৳0 (Free Tier)</span></li>
-                  </ul>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="https://github.com/new"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 font-mono-code font-bold text-center"
-                  >
-                    1. Create GitHub Repo (blockbangla) ↗
-                  </a>
-                  <a
-                    href="https://dash.cloudflare.com/?to=/:account/pages"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-mono-code font-bold text-center"
-                  >
-                    2. Authorize Cloudflare Pages ↗
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <nav className="xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#060A09]/95 backdrop-blur-xl border-t border-emerald-500/30 px-2 py-1.5 grid grid-cols-5 gap-1">
+      <nav className="xl:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#060A09]/95 border-t border-emerald-500/30 px-2 py-1.5 grid grid-cols-4 gap-1">
         {[
           { id: 'home', labelEn: 'Home', labelBn: 'হোম', icon: Compass },
-          { id: 'events', labelEn: 'Events', labelBn: 'ইভেন্ট', icon: Calendar },
           { id: 'servers', labelEn: 'Servers', labelBn: 'সার্ভার', icon: Server },
-          { id: 'toolbox', labelEn: 'Toolbox', labelBn: 'টুলবক্স', icon: Wrench },
-          { id: 'legacy', labelEn: 'Legacy', labelBn: 'ইতিহাস', icon: History }
+          { id: 'toolbox', labelEn: 'Tools', labelBn: 'টুলস', icon: Wrench },
+          { id: 'about', labelEn: 'About', labelBn: 'পরিচিতি', icon: Award }
         ].map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
